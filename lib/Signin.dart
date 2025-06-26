@@ -78,6 +78,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         });
 
         if (response.statusCode == 200) {
+          final responseData = jsonDecode(response.body);
+          final token = responseData['token'];
+          final user = responseData['user'];
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Login Successful!'),
@@ -87,7 +91,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => AdminFarmerPage()),
+            MaterialPageRoute(
+              builder: (context) => AdminFarmerPage(token: token, user: user),
+            ),
           );
         } else {
           final errorMessage = jsonDecode(response.body)['message'] ?? 'Invalid credentials';
@@ -369,10 +375,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           child: Text(
             'Sign Up',
             style: TextStyle(
-              color: Color(0xFF4CAF50),
+              color: Color(0xFFFFFFFF),
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              decoration: TextDecoration.underline,
+
             ),
           ),
         ),

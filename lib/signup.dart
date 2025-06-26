@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'Admin/requstaccept.dart';
 import 'Signin.dart';
+import 'package:crypto/crypto.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -15,7 +17,7 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController(); // Renamed from _nameController
+  final _usernameController = TextEditingController(); 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -160,9 +162,35 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<String?> uploadImageToCloudinary(File imageFile) async {
+    final cloudName = 'dcwpr28uf';
+    final apiKey = '334646742262894';
+    final apiSecret = 'QlFJbjla0epfpzpTib6R0STIEFg';
+    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+    // For signed upload, create the signature
+    final paramsToSign = 'timestamp=$timestamp';
+    final signature = sha1.convert(utf8.encode(paramsToSign + apiSecret)).toString();
+
+    final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
+    final request = http.MultipartRequest('POST', url)
+      ..fields['api_key'] = apiKey
+      ..fields['timestamp'] = timestamp.toString()
+      ..fields['signature'] = signature
+      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
+
+    final response = await request.send();
+    if (response.statusCode == 200) {
+      final resStr = await response.stream.bytesToString();
+      final resJson = jsonDecode(resStr);
+      return resJson['secure_url'];
+    } else {
+      return null;
+    }
+  }
+
   void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
-      // Check if image is required for all roles
       if (_selectedImage == null) {
         String imageType = _selectedRole == 'Farmer'
             ? 'passport image'
@@ -184,13 +212,23 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
       });
 
       try {
-        final backendRole = _selectedRole!.toLowerCase();
+        // 1. Upload image to Cloudinary
+        final imageUrl = await uploadImageToCloudinary(_selectedImage!);
+        if (imageUrl == null) {
+          setState(() { _isLoading = false; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Image upload failed'), backgroundColor: Colors.red),
+          );
+          return;
+        }
 
+        // 2. Proceed with registration, including imageUrl
+        final backendRole = _selectedRole!.toLowerCase();
         final response = await http.post(
           Uri.parse('https://farmercrate.onrender.com/api/auth/register'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'username': _usernameController.text.trim(),
+            'name': _usernameController.text.trim(),
             'email': _emailController.text.trim(),
             'password': _passwordController.text,
             'mobileNumber': _phoneController.text.trim(),
@@ -202,6 +240,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
             'state': _stateController.text.trim(),
             if (_selectedRole == 'Farmer') 'accountNumber': _accountNumberController.text.trim(),
             if (_selectedRole == 'Farmer') 'ifscCode': _ifscCodeController.text.trim(),
+            'image_url': imageUrl,
           }),
         );
 
@@ -231,7 +270,9 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) =>  LoginPage()),
+            MaterialPageRoute(
+              builder: (context) => AdminFarmerPage(token: token, user: user),
+            ),
           );
         } else {
           final responseData = jsonDecode(response.body);

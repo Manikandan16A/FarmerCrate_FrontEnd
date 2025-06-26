@@ -150,8 +150,8 @@ class _LandingPageState extends State<LandingPage>
   void _showLoginPage() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) =>  AdminFarmerPage()),
-    );
+      MaterialPageRoute(builder: (context) =>  LoginPage(),
+    ));
   }
 
   @override
@@ -201,7 +201,7 @@ class _LandingPageState extends State<LandingPage>
                             ),
                           ),
 
-// Soil-like decorative elements
+
                           _buildDecorativeElement(80, 120, Colors.brown, 6),
                           _buildDecorativeElement(180, 140, Colors.brown, 8),
                           _buildDecorativeElement(120, 60, Colors.brown, 4),
