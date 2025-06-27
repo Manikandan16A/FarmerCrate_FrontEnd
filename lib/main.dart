@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'Admin/requstaccept.dart';
@@ -159,200 +161,270 @@ class _LandingPageState extends State<LandingPage>
     return Scaffold(
       body: Stack(
         children: [
+          // Dynamic gradient background with overlay
           Container(
             width: double.infinity,
             height: double.infinity,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFFE8E4FF),
-                  Color(0xFFF5F3FF),
-                  Colors.white,
+                  Color(0xFF4CAF50),
+                  Color(0xFF81C784),
+                  Color(0xFFB2FF59),
+                  Color(0xFF388E3C),
                 ],
-                stops: [0.0, 0.3, 1.0],
               ),
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 35.0, vertical: 40.0),
-                child: Column(
-                  children: [
-                    const Spacer(flex: 1),
-
-// Agriculture-themed illustration
-                    Container(
-                      width: 280,
-                      height: 280,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8E4FF).withOpacity(0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Stack(
-                        children: [
-// Farmer image from assets
-                          Center(
-                            child: Image.asset(
-                              'assets/getstart.png',
-                              width: 280,
-                              height: 280,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-
-
-                          _buildDecorativeElement(80, 120, Colors.brown, 6),
-                          _buildDecorativeElement(180, 140, Colors.brown, 8),
-                          _buildDecorativeElement(120, 60, Colors.brown, 4),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 60),
-                    const Text(
-                      "Farmers Crate",
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF2D3748),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        "Lets Get Started On Your Journey\n to Freshness Begins Here",
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF718096),
-                          height: 1.5,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const Spacer(flex: 1),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE2E8F0),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 24,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF4CAF50),
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFE2E8F0),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+            child: Stack(
+              children: [
+                // Animated floating crops
+                Positioned(
+                  top: 80,
+                  left: 40,
+                  child: _AnimatedCrop(icon: Icons.grass, color: Color(0xFF8BC34A), delay: 0),
+                ),
+                Positioned(
+                  top: 200,
+                  right: 60,
+                  child: _AnimatedCrop(icon: Icons.eco, color: Color(0xFF43A047), delay: 1),
+                ),
+                Positioned(
+                  bottom: 120,
+                  left: 80,
+                  child: _AnimatedCrop(icon: Icons.spa, color: Color(0xFFB2FF59), delay: 2),
+                ),
+                Positioned(
+                  bottom: 60,
+                  right: 40,
+                  child: _AnimatedCrop(icon: Icons.local_florist, color: Color(0xFF388E3C), delay: 3),
+                ),
+                // Soft white overlay for glassmorphism
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withOpacity(0.08),
+                        Colors.white.withOpacity(0.02),
                       ],
                     ),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _showLoginPage,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Get Started',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
+              ],
+            ),
+          ),
+          // Decorative glassy circles
+          Positioned(
+            top: -80,
+            left: -80,
+            child: Container(
+              width: 220,
+              height: 220,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.13),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.08),
+                    blurRadius: 32,
+                    offset: Offset(0, 8),
+                  ),
+                ],
               ),
             ),
           ),
           Positioned(
-            top: 16,
-            right: 16,
-            child: GestureDetector(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text('Select Language'),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('English'),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              // Set language to English
-                            },
+            bottom: -60,
+            right: -60,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.10),
+                    blurRadius: 32,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 35.0, vertical: 40.0),
+              child: Column(
+                children: [
+                  const Spacer(flex: 1),
+                  // App Logo and Welcome with glow
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.greenAccent.withOpacity(0.5),
+                                blurRadius: 32,
+                                spreadRadius: 8,
+                              ),
+                            ],
                           ),
-                          ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('தமிழ்'),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              // Set language to Tamil
-                            },
+                          child: CircleAvatar(
+                            radius: 60,
+                            backgroundColor: Colors.white,
+                            child: Image.asset(
+                              'assets/get.png',
+                              width: 80,
+                              height: 80,
+                              fit: BoxFit.cover,
+                            ),
                           ),
-                          ListTile(
-                            leading: const Icon(Icons.language),
-                            title: const Text('हिन्दी'),
-                            onTap: () {
-                              Navigator.of(context).pop();
-                              // Set language to Hindi
-                            },
+                        ),
+                        const SizedBox(height: 18),
+                        ShaderMask(
+                          shaderCallback: (Rect bounds) {
+                            return LinearGradient(
+                              colors: [
+                                Color(0xFF4CAF50),
+                                Color(0xFF388E3C),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ).createShader(bounds);
+                          },
+                          child: Text(
+                            'Farmer Crate',
+                            style: TextStyle(
+                              fontSize: 38,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.black26,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Connecting Farmers & Customers',
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Colors.white70,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Image.asset(
-                  'assets/images/OIP.jpg',
-                  width: 36,
-                  height: 36,
-                  fit: BoxFit.cover,
-                ),
+                  ),
+
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 420),
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.10),
+                          blurRadius: 24,
+                          offset: Offset(0, 12),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.18),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 8),
+                        Text(
+                          "Let's Get Started On Your Journey\n to Freshness Begins Here",
+                          style: TextStyle(
+                            fontSize: 20,
+                            color: Color(0xFF388E3C),
+                            height: 1.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 56,
+                          child: ElevatedButton(
+                            onPressed: _showLoginPage,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF4CAF50),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                              shadowColor: Colors.greenAccent.withOpacity(0.2),
+                            ),
+                            child: const Text(
+                              'Get Started',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE2E8F0),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 24,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF4CAF50),
+                                borderRadius: BorderRadius.all(Radius.circular(4)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE2E8F0),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(flex: 1),
+                ],
               ),
             ),
           ),
@@ -413,6 +485,72 @@ class _LandingPageState extends State<LandingPage>
               decoration: BoxDecoration(
                 color: color.withOpacity(0.3),
                 shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AnimatedCrop extends StatefulWidget {
+  final IconData icon;
+  final Color color;
+  final int delay;
+  const _AnimatedCrop({required this.icon, required this.color, required this.delay});
+  @override
+  State<_AnimatedCrop> createState() => _AnimatedCropState();
+}
+
+class _AnimatedCropState extends State<_AnimatedCrop> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(seconds: 3 + widget.delay),
+      vsync: this,
+    )..repeat(reverse: true);
+    _animation = Tween<double>(begin: 0, end: 18 + 8.0 * widget.delay).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, -_animation.value),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: widget.color.withOpacity(0.85),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: widget.color.withOpacity(0.18),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                widget.icon,
+                color: Colors.white,
+                size: 22,
               ),
             ),
           ),

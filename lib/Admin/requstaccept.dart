@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../Signin.dart';
+import 'ConsumerManagement.dart';
+import 'Farmeruser.dart';
 
 class AdminFarmerPage extends StatefulWidget {
   final String token;
@@ -17,7 +19,7 @@ class AdminFarmerPage extends StatefulWidget {
 class _AdminFarmerPageState extends State<AdminFarmerPage> {
   List<Farmer> farmers = [];
   bool isLoading = true;
-  int _currentIndex = 0; // For bottom navigation bar
+  int _currentIndex = 0;
 
   @override
   void initState() {
@@ -31,7 +33,6 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
     });
 
     try {
-      // Replace with your actual API endpoint
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/pending'),
         headers: {
@@ -39,6 +40,8 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
           'Authorization': 'Bearer ${widget.token}',
         },
       );
+
+      print(response.body);
 
       final Map<String, dynamic> responseData = jsonDecode(response.body);
       if (response.statusCode == 200 && responseData['success'] == true) {
@@ -94,9 +97,8 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  // Replace with your actual delete API endpoint
                   final response = await http.delete(
-                    Uri.parse('https://your-api-endpoint.com/api/farmers/$farmerId'),
+                    Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$farmerId'),
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': 'Bearer ${widget.token}',
@@ -121,7 +123,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Your account has not been verified.'),
+                      content: Text('Error deleting farmer: $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -144,9 +146,8 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
 
   Future<void> _toggleVerification(String farmerId) async {
     try {
-      // Replace with your actual verification API endpoint
       final response = await http.put(
-        Uri.parse('https://your-api-endpoint.com/api/farmers/$farmerId/verify'),
+        Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$farmerId/verify'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
@@ -186,29 +187,24 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
     }
   }
 
-  void _navigateToSignUp() {
-    // Navigate to sign up page - replace with your actual navigation
-    Navigator.pushNamed(context, '/signup');
-  }
-
   void _showApproveDialog(Farmer farmer) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Approve Farmer'),
-          content: Text('Do you want to verify this farmer account?'),
+          title: const Text('Approve Farmer'),
+          content: const Text('Do you want to verify this farmer account?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
+              child: const Text('Cancel'),
             ),
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
                 await _approveFarmer(farmer.id);
               },
-              child: Text('Approve'),
+              child: const Text('Approve'),
             ),
           ],
         );
@@ -224,22 +220,21 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
         },
-        // No body needed
       );
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Your Account verified Successfully')),
+          const SnackBar(content: Text('Farmer account verified successfully')),
         );
-        _fetchFarmers(); // Refresh list
+        _fetchFarmers();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Your account has not been verified.')),
+          const SnackBar(content: Text('Failed to verify farmer account')),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Your account has not been verified.')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -248,6 +243,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -293,7 +289,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(height: 8),
+                  SizedBox(height: 10),
                   Text(
                     'Welcome, Admin!',
                     style: TextStyle(
@@ -306,40 +302,53 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
             ),
             ListTile(
               leading: Icon(Icons.home, color: Colors.green[600]),
-              title: Text('Home'),
+              title: const Text('Home'),
               onTap: () {
                 setState(() { _currentIndex = 0; });
                 Navigator.pop(context);
-                // TODO: Implement Home navigation
               },
             ),
             ListTile(
               leading: Icon(Icons.pending_actions, color: Colors.green[600]),
-              title: Text('Requests'),
-              onTap: () {
-                setState(() { _currentIndex = 1; });
-                Navigator.pop(context);
-                // TODO: Implement Requests navigation
+              title: const Text('Farmer Management'),
+              onTap: () {// Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AdminUserManagementPage(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.pending_actions, color: Colors.green[600]),
+              title: const Text('Consumer Management'),
+              onTap: () {// Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>  CustomerManagementScreen(),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.person, color: Colors.green[600]),
-              title: Text('Profile'),
+              title: const Text('Profile'),
               onTap: () {
                 setState(() { _currentIndex = 2; });
                 Navigator.pop(context);
-                // TODO: Implement Profile navigation
               },
             ),
-            Divider(),
+            const Divider(),
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: Text('Logout'),
+              title: const Text('Logout'),
               onTap: () {
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => LoginPage()),
-                  (route) => false,
+                      (route) => false,
                 );
               },
             ),
@@ -357,7 +366,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
               Color(0xFFA5D6A7),
               Color(0xFF81C784),
             ],
-            stops: [0.0, 0.3, 0, 1.0],
+            stops: [0.0, 0.3, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
@@ -365,9 +374,8 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
               ? const Center(child: CircularProgressIndicator())
               : Column(
             children: [
-              // Header
               Container(
-                padding: EdgeInsets.all(screenWidth * 0.04),
+                padding: EdgeInsets.all(screenWidth * 0.03),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
@@ -400,8 +408,6 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                   ],
                 ),
               ),
-
-              // Stats Card
               Container(
                 margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
                 padding: EdgeInsets.all(screenWidth * 0.04),
@@ -447,10 +453,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                   ],
                 ),
               ),
-
               SizedBox(height: screenHeight * 0.025),
-
-              // Farmers List
               Expanded(
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
@@ -476,18 +479,22 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                       ],
                     ),
                   )
-                      : GridView.builder(
-                    padding: EdgeInsets.only(bottom: screenHeight * 0.025),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 1,
-                      childAspectRatio: screenWidth / (screenHeight * 0.2),
-                      mainAxisSpacing: screenHeight * 0.02,
+                      : SingleChildScrollView(
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: EdgeInsets.only(bottom: screenHeight * 0.025),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 1,
+                        childAspectRatio: screenWidth / (screenHeight * 0.2),
+                        mainAxisSpacing: screenHeight * 0.02,
+                      ),
+                      itemCount: farmers.length,
+                      itemBuilder: (context, index) {
+                        final farmer = farmers[index];
+                        return _buildFarmerCard(farmer);
+                      },
                     ),
-                    itemCount: farmers.length,
-                    itemBuilder: (context, index) {
-                      final farmer = farmers[index];
-                      return _buildFarmerCard(farmer);
-                    },
                   ),
                 ),
               ),
@@ -503,7 +510,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
               color: Colors.grey.withOpacity(0.1),
               spreadRadius: 1,
               blurRadius: 10,
-              offset: Offset(0, -2),
+              offset: const Offset(0, -2),
             ),
           ],
         ),
@@ -512,11 +519,11 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
           backgroundColor: Colors.white,
           selectedItemColor: Colors.black,
           unselectedItemColor: Colors.blueGrey,
-          selectedLabelStyle: TextStyle(
+          selectedLabelStyle: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
-          unselectedLabelStyle: TextStyle(
+          unselectedLabelStyle: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.normal,
           ),
@@ -526,32 +533,18 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
             setState(() {
               _currentIndex = index;
             });
-            // TODO: Implement navigation for each tab
-            // Example:
-            // if (index == 0) { /* Home */ }
-            // else if (index == 1) { /* Requests */ }
-            // else if (index == 2) { /* Profile */ }
           },
-          items: [
+          items: const [
             BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.home, size: 24),
-              ),
+              icon: Icon(Icons.home, size: 24),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.pending_actions, size: 24),
-              ),
+              icon: Icon(Icons.pending_actions, size: 24),
               label: 'Requests',
             ),
             BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.person_outline, size: 24),
-              ),
+              icon: Icon(Icons.person_outline, size: 24),
               label: 'Profile',
             ),
           ],
@@ -606,226 +599,254 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.all(screenWidth * 0.05),
-        child: Row(
+        padding: EdgeInsets.all(screenWidth * 0.02),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar
-            Container(
-              width: screenWidth * 0.15,
-              height: screenWidth * 0.15,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)],
-                ),
-                borderRadius: BorderRadius.circular(screenWidth * 0.075),
-              ),
-              child: Center(
-                child: Text(
-                  farmer.name.split(' ').map((n) => n[0]).take(2).join(),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth * 0.05,
-                    fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                Container(
+                  width: screenWidth * 0.15,
+                  height: screenWidth * 0.15,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)],
+                    ),
+                    borderRadius: BorderRadius.circular(screenWidth * 0.075),
                   ),
-                ),
-              ),
-            ),
-
-            SizedBox(width: screenWidth * 0.05),
-
-            // Farmer Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          farmer.name,
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.045,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF1B5E20),
+                  child: farmer.imageUrl.isNotEmpty
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.075),
+                          child: Image.network(
+                            farmer.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Text(
+                                  farmer.name.split(' ').map((n) => n[0]).take(2).join(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: screenWidth * 0.05,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (farmer.isVerified)
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.02,
-                            vertical: screenWidth * 0.01,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50),
-                            borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                          ),
+                        )
+                      : Center(
                           child: Text(
-                            'VERIFIED',
+                            farmer.name.split(' ').map((n) => n[0]).take(2).join(),
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: screenWidth * 0.025,
+                              fontSize: screenWidth * 0.05,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                  SizedBox(height: screenWidth * 0.02),
-                  Row(
+                ),
+                SizedBox(width: screenWidth * 0.05),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildDetailRow(Icons.email, farmer.email),
-                            _buildDetailRow(Icons.phone, farmer.mobileNumber),
-                            _buildDetailRow(Icons.location_on, farmer.address),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              farmer.name,
+                              style: TextStyle(
+                                fontSize: screenWidth * 0.045,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1B5E20),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (farmer.isVerified)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.02,
+                                vertical: screenWidth * 0.01,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4CAF50),
+                                borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                              ),
+                              child: Text(
+                                'VERIFIED',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenWidth * 0.025,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildDetailRow(Icons.landscape, farmer.zone),
-                            _buildDetailRow(Icons.grass, farmer.state),
-                          ],
-                        ),
+                      SizedBox(height: screenWidth * 0.02),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(Icons.email, farmer.email),
+                                _buildDetailRow(Icons.phone, farmer.mobileNumber),
+                                _buildDetailRow(Icons.location_on, farmer.address),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDetailRow(Icons.landscape, farmer.zone),
+                                _buildDetailRow(Icons.grass, farmer.state),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-
-            SizedBox(width: screenWidth * 0.05),
-
-            // Action Buttons
-            Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            SizedBox(height: screenWidth * 0.04),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // Verification Button with beautiful design
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: farmer.isVerified
-                        ? const LinearGradient(
-                      colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    )
-                        : const LinearGradient(
-                      colors: [Color(0xFFFF9800), Color(0xFFE65100)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (farmer.isVerified
-                            ? const Color(0xFF4CAF50)
-                            : const Color(0xFFFF9800)).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      gradient: farmer.isVerified
+                          ? const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                          : const LinearGradient(
+                        colors: [Color(0xFF8BC34A), Color(0xFF2E7D32)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
                       borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      onTap: () => _showApproveDialog(farmer),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.04,
-                          vertical: screenWidth * 0.025,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (farmer.isVerified
+                              ? const Color(0xFF4CAF50)
+                              : const Color(0xFFFF9800))
+                              .withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              farmer.isVerified ? Icons.verified : Icons.pending_actions,
-                              size: screenWidth * 0.04,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: screenWidth * 0.02),
-                            Text(
-                              farmer.isVerified ? 'Verified' : 'Verify',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.032,
-                                fontWeight: FontWeight.bold,
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        onTap: () => _showApproveDialog(farmer),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.01,
+                            vertical: screenWidth * 0.018,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                farmer.isVerified ? Icons.verified : Icons.pending_actions,
+                                size: screenWidth * 0.04,
                                 color: Colors.white,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: screenWidth * 0.01),
+                              Text(
+                                farmer.isVerified ? 'Verified' : 'Verify',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.032,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                SizedBox(height: screenWidth * 0.02),
-                // Delete Button
-                ElevatedButton(
-                  onPressed: () => _deleteFarmer(farmer.id),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFD32F2F),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.02),
-                    ),
-                    elevation: 2,
-                    minimumSize: Size(screenWidth * 0.18, screenHeight * 0.04),
-                  ),
-                  child: Text('Delete'),
-                ),
-                SizedBox(height: screenWidth * 0.03),
-                // Info Button with beautiful design
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2196F3).withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      onTap: () => _showFarmerDetailsDialog(farmer),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth * 0.04,
-                          vertical: screenWidth * 0.025,
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    child: ElevatedButton(
+                      onPressed: () => _deleteFarmer(farmer.id),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD32F2F),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: screenWidth * 0.04,
-                              color: Colors.white,
-                            ),
-                            SizedBox(width: screenWidth * 0.02),
-                            Text(
-                              'Details',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.032,
-                                fontWeight: FontWeight.bold,
+                        elevation: 2,
+                        minimumSize: Size(screenWidth * 0.12, screenHeight * 0.04),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.018),
+                      ),
+                      child: const Text('Delete'),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2196F3).withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                        onTap: () => _showFarmerDetailsDialog(farmer),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: screenWidth * 0.01,
+                            vertical: screenWidth * 0.018,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                size: screenWidth * 0.04,
                                 color: Colors.white,
                               ),
-                            ),
-                          ],
+                              SizedBox(width: screenWidth * 0.01),
+                              Text(
+                                'Details',
+                                style: TextStyle(
+                                  fontSize: screenWidth * 0.032,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -919,7 +940,6 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // Header with close button
               Container(
                 padding: EdgeInsets.all(screenWidth * 0.04),
                 child: Row(
@@ -952,7 +972,6 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Verification status badge
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: screenWidth * 0.04,
@@ -971,7 +990,8 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                           BoxShadow(
                             color: (farmer.isVerified
                                 ? const Color(0xFF4CAF50)
-                                : const Color(0xFFFF9800)).withOpacity(0.3),
+                                : const Color(0xFFFF9800))
+                                .withOpacity(0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 4),
                           ),
@@ -1000,14 +1020,11 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-              // Main Content
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(screenWidth * 0.04),
                   child: Column(
                     children: [
-                      // Profile Section
                       Container(
                         width: double.infinity,
                         padding: EdgeInsets.all(screenWidth * 0.06),
@@ -1024,7 +1041,6 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ),
                         child: Column(
                           children: [
-                            // Profile Image or Avatar
                             Container(
                               width: screenWidth * 0.25,
                               height: screenWidth * 0.25,
@@ -1094,10 +1110,7 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-
                       SizedBox(height: screenWidth * 0.05),
-
-                      // Personal Information
                       _buildInfoSection(
                         'Personal Information',
                         Icons.person,
@@ -1108,10 +1121,7 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ],
                         screenWidth,
                       ),
-
                       SizedBox(height: screenWidth * 0.05),
-
-                      // Location Information
                       _buildInfoSection(
                         'Location Details',
                         Icons.map,
@@ -1122,10 +1132,7 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ],
                         screenWidth,
                       ),
-
                       SizedBox(height: screenWidth * 0.05),
-
-                      // Banking Information
                       _buildInfoSection(
                         'Banking Details',
                         Icons.account_balance,
@@ -1135,10 +1142,7 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ],
                         screenWidth,
                       ),
-
                       SizedBox(height: screenWidth * 0.05),
-
-                      // Account Information
                       _buildInfoSection(
                         'Account Information',
                         Icons.info,
@@ -1147,10 +1151,7 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                         ],
                         screenWidth,
                       ),
-
                       SizedBox(height: screenWidth * 0.08),
-
-                      // Action Button
                       Container(
                         width: double.infinity,
                         height: screenHeight * 0.07,
@@ -1171,7 +1172,8 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                             BoxShadow(
                               color: (farmer.isVerified
                                   ? const Color(0xFFFF9800)
-                                  : const Color(0xFF4CAF50)).withOpacity(0.4),
+                                  : const Color(0xFF4CAF50))
+                                  .withOpacity(0.4),
                               blurRadius: 15,
                               offset: const Offset(0, 8),
                             ),
@@ -1209,7 +1211,6 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-
                       SizedBox(height: screenWidth * 0.05),
                     ],
                   ),
@@ -1375,10 +1376,11 @@ class Farmer {
       state: json['state'] ?? '',
       district: json['district'] ?? '',
       age: json['age'] ?? 0,
-      accountNumber: json['account_number'] ?? '',
-      ifscCode: json['ifsc_code'] ?? '',
+      accountNumber: json['accountNumber'] ?? '',
+      ifscCode: json['ifscCode'] ?? '',
       imageUrl: json['image_url'] ?? '',
       createdAt: json['created_at'] ?? '',
       isVerified: json['isVerified'] ?? false,
     );
-  }}
+  }
+}

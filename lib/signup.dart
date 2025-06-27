@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'Admin/requstaccept.dart';
 import 'Signin.dart';
 import 'package:crypto/crypto.dart';
+import 'Farmer/homepage.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -238,8 +239,8 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
             'zone': _zoneController.text.trim(),
             'district': _districtController.text.trim(),
             'state': _stateController.text.trim(),
-            if (_selectedRole == 'Farmer') 'accountNumber': _accountNumberController.text.trim(),
-            if (_selectedRole == 'Farmer') 'ifscCode': _ifscCodeController.text.trim(),
+            if (backendRole == 'farmer') 'account_number': _accountNumberController.text.trim(),
+            if (backendRole == 'farmer') 'ifsc_code': _ifscCodeController.text.trim(),
             'image_url': imageUrl,
           }),
         );
@@ -260,19 +261,36 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           await prefs.setString('role', user['role']);
           await prefs.setInt('user_id', user['id']);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
+          String role = backendRole; // already lowercased
+          String title = "Account Created!";
+          String message = "";
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AdminFarmerPage(token: token, user: user),
-            ),
+          if (role == "farmer") {
+            message = "Your account has created successfully. Wait for verification to join our family.";
+          } else {
+            message = "Your account created successfully.";
+          }
+
+          showSuccessDialog(
+            title,
+            message,
+            onOk: () {
+              if (user['role'] == 'farmer') {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FarmersHomePage(),
+                  ),
+                );
+              } else {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminFarmerPage(token: token, user: user),
+                  ),
+                );
+              }
+            },
           );
         } else {
           final responseData = jsonDecode(response.body);
@@ -969,6 +987,61 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void showSuccessDialog(String title, String message, {VoidCallback? onOk}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.celebration, color: Color(0xFF4CAF50), size: 60),
+              SizedBox(height: 16),
+              Text(
+                title,
+                style: TextStyle(
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12),
+              Text(
+                message,
+                style: TextStyle(
+                  color: Color(0xFF388E3C),
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFF4CAF50),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  if (onOk != null) onOk();
+                },
+                child: Text("OK", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         ),
       ),
