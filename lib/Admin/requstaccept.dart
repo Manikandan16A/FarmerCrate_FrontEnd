@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Signin.dart';
 import 'ConsumerManagement.dart';
 import 'Farmeruser.dart';
 
 class AdminFarmerPage extends StatefulWidget {
+  final dynamic user;
   final String token;
-  final Map<String, dynamic> user;
-
-  const AdminFarmerPage({Key? key, required this.token, required this.user}) : super(key: key);
+  const AdminFarmerPage({Key? key, required this.user, required this.token}) : super(key: key);
 
   @override
   State<AdminFarmerPage> createState() => _AdminFarmerPageState();
@@ -24,7 +24,47 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
   @override
   void initState() {
     super.initState();
+    _checkAdminAccess();
     _fetchFarmers();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final role = widget.user['role'];
+    final token = widget.token;
+    
+    print('=== Admin Access Check ===');
+    print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+    print('Role: $role');
+    print('User: ${widget.user}');
+    
+    if (token == null || token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No authentication token found'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+      return;
+    }
+    
+    if (role != 'admin' && role != 'super_admin' && role != 'moderator') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Access denied. Admin privileges required.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+    }
   }
 
   Future<void> _fetchFarmers() async {
@@ -33,25 +73,118 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
     });
 
     try {
+      // Use the token passed from signin page
+      final token = widget.token;
+      final role = widget.user['role'];
+      
+      print('=== Fetching Farmers ===');
+      print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+      print('Role: $role');
+
+      if (token == null || token.isEmpty) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+
+      // Try the pending farmers endpoint first
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/pending'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
         },
       );
 
-      print(response.body);
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
-      final Map<String, dynamic> responseData = jsonDecode(response.body);
-      if (response.statusCode == 200 && responseData['success'] == true) {
-        final List<dynamic> data = responseData['data'];
-        setState(() {
-          farmers = data.map((json) => Farmer.fromJson(json)).toList();
-          isLoading = false;
-        });
+      if (response.statusCode == 200) {
+        final dynamic decodedJson = jsonDecode(response.body);
+
+        if (decodedJson is Map<String, dynamic>) {
+          // Check if the response has the expected structure
+          if (decodedJson.containsKey('farmers') || decodedJson.containsKey('data')) {
+            final List<dynamic> data = decodedJson['farmers'] ?? decodedJson['data'] ?? [];
+            setState(() {
+              farmers = data.map((json) => Farmer.fromJson(json)).toList();
+              isLoading = false;
+            });
+            print('Successfully loaded ${farmers.length} farmers');
+          } else if (decodedJson.containsKey('success') && decodedJson['success'] == true) {
+            final List<dynamic> data = decodedJson['data'] ?? [];
+            setState(() {
+              farmers = data.map((json) => Farmer.fromJson(json)).toList();
+              isLoading = false;
+            });
+            print('Successfully loaded ${farmers.length} farmers');
+          } else {
+            throw Exception('Unexpected response structure: ${response.body}');
+          }
+        } else if (decodedJson is List) {
+          setState(() {
+            farmers = decodedJson.map((json) => Farmer.fromJson(json)).toList();
+            isLoading = false;
+          });
+          print('Successfully loaded ${farmers.length} farmers from direct array');
+        } else {
+          throw Exception('Unexpected response format: ${response.body}');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication failed. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access denied. You do not have permission to access this resource.');
+      } else if (response.statusCode == 404) {
+        // Try alternative endpoint for all farmers
+        print('Pending endpoint not found, trying all farmers endpoint...');
+        final allFarmersResponse = await http.get(
+          Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+
+        print('All farmers response status: ${allFarmersResponse.statusCode}');
+        print('All farmers response body: ${allFarmersResponse.body}');
+
+        if (allFarmersResponse.statusCode == 200) {
+          final Map<String, dynamic> allFarmersData = jsonDecode(allFarmersResponse.body);
+          
+          if (allFarmersData.containsKey('farmers') || allFarmersData.containsKey('data')) {
+            final List<dynamic> data = allFarmersData['farmers'] ?? allFarmersData['data'] ?? [];
+            // Filter for unverified farmers only
+            final pendingFarmers = data.where((farmer) => 
+              farmer['verified_status'] == false || 
+              farmer['isVerified'] == false || 
+              farmer['verified'] == false
+            ).toList();
+            
+            setState(() {
+              farmers = pendingFarmers.map((json) => Farmer.fromJson(json)).toList();
+              isLoading = false;
+            });
+            print('Successfully loaded ${farmers.length} pending farmers from all farmers');
+          } else if (allFarmersData.containsKey('success') && allFarmersData['success'] == true) {
+            final List<dynamic> data = allFarmersData['data'] ?? [];
+            // Filter for unverified farmers only
+            final pendingFarmers = data.where((farmer) => 
+              farmer['verified_status'] == false || 
+              farmer['isVerified'] == false || 
+              farmer['verified'] == false
+            ).toList();
+            
+            setState(() {
+              farmers = pendingFarmers.map((json) => Farmer.fromJson(json)).toList();
+              isLoading = false;
+            });
+            print('Successfully loaded ${farmers.length} pending farmers from all farmers');
+          } else {
+            throw Exception('Failed to load farmers from all farmers endpoint');
+          }
+        } else {
+          throw Exception('Failed to load farmers. Status: ${response.statusCode}');
+        }
       } else {
-        throw Exception('Failed to load farmers');
+        throw Exception('Failed to load farmers. Status: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -61,8 +194,10 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
         SnackBar(
           content: Text('Error fetching farmers: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
+      print('Error details: $e');
     }
   }
 
@@ -97,15 +232,25 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
             ElevatedButton(
               onPressed: () async {
                 try {
+                  // Use the token passed from signin page
+                  final token = widget.token;
+                  
+                  if (token == null || token.isEmpty) {
+                    throw Exception('No authentication token found. Please login again.');
+                  }
+
                   final response = await http.delete(
                     Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$farmerId'),
                     headers: {
                       'Content-Type': 'application/json',
-                      'Authorization': 'Bearer ${widget.token}',
+                      'Authorization': 'Bearer $token',
                     },
                   );
 
-                  if (response.statusCode == 200) {
+                  print('Delete response status: ${response.statusCode}');
+                  print('Delete response body: ${response.body}');
+
+                  if (response.statusCode == 200 || response.statusCode == 204) {
                     setState(() {
                       farmers.removeWhere((farmer) => farmer.id == farmerId);
                     });
@@ -117,7 +262,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                       ),
                     );
                   } else {
-                    throw Exception('Failed to delete farmer');
+                    throw Exception('Failed to delete farmer. Status: ${response.statusCode}');
                   }
                 } catch (e) {
                   Navigator.of(context).pop();
@@ -146,16 +291,26 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
 
   Future<void> _toggleVerification(String farmerId) async {
     try {
+      // Use the token passed from signin page
+      final token = widget.token;
+      
+      if (token == null || token.isEmpty) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+
       final response = await http.put(
         Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$farmerId/verify'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           'isVerified': !farmers.firstWhere((farmer) => farmer.id == farmerId).isVerified,
         }),
       );
+
+      print('Verify response status: ${response.statusCode}');
+      print('Verify response body: ${response.body}');
 
       if (response.statusCode == 200) {
         setState(() {
@@ -175,7 +330,7 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
           ),
         );
       } else {
-        throw Exception('Failed to update verification status');
+        throw Exception('Failed to update verification status. Status: ${response.statusCode}');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -214,27 +369,46 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
 
   Future<void> _approveFarmer(String farmerId) async {
     try {
+      // Use the token passed from signin page
+      final token = widget.token;
+      
+      if (token == null || token.isEmpty) {
+        throw Exception('No authentication token found. Please login again.');
+      }
+
       final response = await http.put(
         Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$farmerId/approve'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer $token',
         },
       );
 
+      print('Approve response status: ${response.statusCode}');
+      print('Approve response body: ${response.body}');
+
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Farmer account verified successfully')),
+          const SnackBar(
+            content: Text('Farmer account verified successfully'),
+            backgroundColor: Color(0xFF2E7D32),
+          ),
         );
-        _fetchFarmers();
+        _fetchFarmers(); // Refresh the list
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to verify farmer account')),
+          SnackBar(
+            content: Text('Failed to verify farmer account. Status: ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -264,6 +438,19 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.green[800]),
+            onPressed: () {
+              _fetchFarmers();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Refreshing farmers list...'),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
             onPressed: () {},
@@ -458,44 +645,58 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
                   child: farmers.isEmpty
-                      ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.agriculture,
-                          size: screenWidth * 0.2,
-                          color: Colors.grey[400],
-                        ),
-                        SizedBox(height: screenHeight * 0.02),
-                        Text(
-                          'No farmers found',
-                          style: TextStyle(
-                            fontSize: screenWidth * 0.045,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+                      ? RefreshIndicator(
+                          onRefresh: _fetchFarmers,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.agriculture,
+                                  size: screenWidth * 0.2,
+                                  color: Colors.grey[400],
+                                ),
+                                SizedBox(height: screenHeight * 0.02),
+                                Text(
+                                  'No farmers found',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.045,
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(height: screenHeight * 0.01),
+                                Text(
+                                  'Pull down to refresh',
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.035,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: _fetchFarmers,
+                          child: SingleChildScrollView(
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              padding: EdgeInsets.only(bottom: screenHeight * 0.025),
+                              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 1,
+                                childAspectRatio: screenWidth / (screenHeight * 0.2),
+                                mainAxisSpacing: screenHeight * 0.02,
+                              ),
+                              itemCount: farmers.length,
+                              itemBuilder: (context, index) {
+                                final farmer = farmers[index];
+                                return _buildFarmerCard(farmer);
+                              },
+                            ),
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                      : SingleChildScrollView(
-                    child: GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.only(bottom: screenHeight * 0.025),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 1,
-                        childAspectRatio: screenWidth / (screenHeight * 0.2),
-                        mainAxisSpacing: screenHeight * 0.02,
-                      ),
-                      itemCount: farmers.length,
-                      itemBuilder: (context, index) {
-                        final farmer = farmers[index];
-                        return _buildFarmerCard(farmer);
-                      },
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -1366,21 +1567,57 @@ class Farmer {
   });
 
   factory Farmer.fromJson(Map<String, dynamic> json) {
-    return Farmer(
-      id: json['id'].toString(),
-      name: json['name'] ?? '',
-      email: json['email'] ?? '',
-      mobileNumber: json['mobile_number'] ?? '',
-      address: json['address'] ?? '',
-      zone: json['zone'] ?? '',
-      state: json['state'] ?? '',
-      district: json['district'] ?? '',
-      age: json['age'] ?? 0,
-      accountNumber: json['accountNumber'] ?? '',
-      ifscCode: json['ifscCode'] ?? '',
-      imageUrl: json['image_url'] ?? '',
-      createdAt: json['created_at'] ?? '',
-      isVerified: json['isVerified'] ?? false,
-    );
+    try {
+      print('Parsing farmer JSON: $json');
+      
+      // Handle different verification status field names
+      bool isVerified = false;
+      if (json.containsKey('verified_status')) {
+        isVerified = json['verified_status'] == true;
+      } else if (json.containsKey('isVerified')) {
+        isVerified = json['isVerified'] == true;
+      } else if (json.containsKey('verified')) {
+        isVerified = json['verified'] == true;
+      } else if (json.containsKey('status')) {
+        isVerified = json['status'] == 'verified' || json['status'] == 'approved';
+      }
+      
+      return Farmer(
+        id: json['id']?.toString() ?? json['farmer_id']?.toString() ?? '',
+        name: json['name'] ?? json['farmer_name'] ?? '',
+        email: json['email'] ?? '',
+        mobileNumber: json['mobile_number'] ?? json['mobileNumber'] ?? '',
+        address: json['address'] ?? '',
+        zone: json['zone'] ?? '',
+        state: json['state'] ?? '',
+        district: json['district'] ?? '',
+        age: json['age'] ?? 0,
+        accountNumber: json['account_number'] ?? json['accountNumber'] ?? '',
+        ifscCode: json['ifsc_code'] ?? json['ifscCode'] ?? '',
+        imageUrl: json['image_url'] ?? json['imageUrl'] ?? '',
+        createdAt: json['created_at'] ?? json['createdAt'] ?? '',
+        isVerified: isVerified,
+      );
+    } catch (e) {
+      print('Error parsing farmer JSON: $e');
+      print('JSON data: $json');
+      // Return a default farmer object if parsing fails
+      return Farmer(
+        id: '0',
+        name: 'Error parsing farmer data',
+        email: '',
+        mobileNumber: '',
+        address: '',
+        zone: '',
+        state: '',
+        district: '',
+        age: 0,
+        accountNumber: '',
+        ifscCode: '',
+        imageUrl: '',
+        createdAt: '',
+        isVerified: false,
+      );
+    }
   }
 }

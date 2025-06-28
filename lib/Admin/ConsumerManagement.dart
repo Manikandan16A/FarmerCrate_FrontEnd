@@ -1,5 +1,22 @@
 import 'package:flutter/material.dart';
 
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Customer Management',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+      ),
+      home: CustomerManagementScreen(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
 
 class Customer {
   final String id;
@@ -296,6 +313,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
+
           ),
         ),
       ),
@@ -342,326 +360,116 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                 itemCount: customers.length,
                 itemBuilder: (context, index) {
                   final customer = customers[index];
-                  return TweenAnimationBuilder(
-                    duration: Duration(milliseconds: 500),
-                    curve: Curves.elasticOut,
-                    tween: Tween<double>(begin: 0, end: 1),
-                    builder: (context, double value, child) {
-                      return Transform.scale(
-                        scale: 0.8 + (0.2 * value),
-                        child: Opacity(
-                          opacity: value,
-                          child: Container(
-                            margin: EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Colors.white,
-                                  Colors.grey[50]!,
-                                  Colors.white,
-                                ],
-                                stops: [0.0, 0.5, 1.0],
+                  return Container(
+                    margin: EdgeInsets.only(bottom: 16),
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 3,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: Colors.green,
+                              radius: 25,
+                              child: Text(
+                                customer.name.split(' ').map((e) => e[0]).join(''),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withOpacity(0.08),
-                                  spreadRadius: 0,
-                                  blurRadius: 20,
-                                  offset: Offset(0, 8),
-                                ),
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.04),
-                                  spreadRadius: 0,
-                                  blurRadius: 10,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
                             ),
-                            child: Material(
-                              color: Colors.transparent,
-                              borderRadius: BorderRadius.circular(24),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(24),
-                                onTap: () {},
-                                splashColor: Colors.green.withOpacity(0.1),
-                                highlightColor: Colors.green.withOpacity(0.05),
-                                child: Padding(
-                                  padding: EdgeInsets.all(24),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Header Section
-                                      Row(
-                                        children: [
-                                          // Avatar with enhanced styling
-                                          Container(
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              gradient: LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  Colors.green[300]!,
-                                                  Colors.green[500]!,
-                                                  Colors.green[700]!,
-                                                ],
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.green.withOpacity(0.4),
-                                                  spreadRadius: 0,
-                                                  blurRadius: 12,
-                                                  offset: Offset(0, 4),
-                                                ),
-                                              ],
-                                            ),
-                                            child: CircleAvatar(
-                                              backgroundColor: Colors.transparent,
-                                              radius: 32,
-                                              child: Text(
-                                                customer.name.split(' ').map((e) => e[0]).join(''),
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w800,
-                                                  letterSpacing: 1.2,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 20),
-                                          // Name and ID Section
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  customer.name,
-                                                  style: TextStyle(
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.grey[800],
-                                                    letterSpacing: 0.3,
-                                                    height: 1.2,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 8),
-                                                Container(
-                                                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey[100],
-                                                    borderRadius: BorderRadius.circular(20),
-                                                    border: Border.all(
-                                                      color: Colors.grey[300]!,
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.tag,
-                                                        size: 14,
-                                                        color: Colors.grey[600],
-                                                      ),
-                                                      SizedBox(width: 6),
-                                                      Text(
-                                                        customer.id,
-                                                        style: TextStyle(
-                                                          fontSize: 13,
-                                                          color: Colors.grey[700],
-                                                          fontWeight: FontWeight.w600,
-                                                          letterSpacing: 0.5,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(height: 20),
-
-                                      // Customer Badge
-                                      Row(
-                                        children: [
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Colors.green[50]!,
-                                                  Colors.green[100]!,
-                                                ],
-                                              ),
-                                              borderRadius: BorderRadius.circular(25),
-                                              border: Border.all(
-                                                color: Colors.green[200]!,
-                                                width: 1.5,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.green.withOpacity(0.1),
-                                                  spreadRadius: 0,
-                                                  blurRadius: 8,
-                                                  offset: Offset(0, 2),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Container(
-                                                  width: 8,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Colors.green[600],
-                                                  ),
-                                                ),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  'Active Customer',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.green[700],
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: 0.4,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      SizedBox(height: 24),
-
-                                      // Action Buttons
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(16),
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.green[400]!,
-                                                    Colors.green[600]!,
-                                                  ],
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.green.withOpacity(0.3),
-                                                    spreadRadius: 0,
-                                                    blurRadius: 12,
-                                                    offset: Offset(0, 4),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                borderRadius: BorderRadius.circular(16),
-                                                child: InkWell(
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  onTap: () => _showUserInfo(customer),
-                                                  child: Padding(
-                                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.info_outline_rounded,
-                                                          size: 20,
-                                                          color: Colors.white,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text(
-                                                          'User Info',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 15,
-                                                            fontWeight: FontWeight.w700,
-                                                            letterSpacing: 0.5,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 16),
-                                          Expanded(
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(16),
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Colors.red[400]!,
-                                                    Colors.red[600]!,
-                                                  ],
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.red.withOpacity(0.3),
-                                                    spreadRadius: 0,
-                                                    blurRadius: 12,
-                                                    offset: Offset(0, 4),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                borderRadius: BorderRadius.circular(16),
-                                                child: InkWell(
-                                                  borderRadius: BorderRadius.circular(16),
-                                                  onTap: () => _showDeleteDialog(customer),
-                                                  child: Padding(
-                                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                                    child: Row(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.delete_outline_rounded,
-                                                          size: 20,
-                                                          color: Colors.white,
-                                                        ),
-                                                        SizedBox(width: 8),
-                                                        Text(
-                                                          'Delete',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 15,
-                                                            fontWeight: FontWeight.w700,
-                                                            letterSpacing: 0.5,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    customer.name,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'ID: ${customer.id}',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'Customer',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green[700],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _showUserInfo(customer),
+                                icon: Icon(Icons.info_outline, size: 18),
+                                label: Text('User Info'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => _showDeleteDialog(customer),
+                                icon: Icon(Icons.delete_outline, size: 18),
+                                label: Text('Delete'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   );
                 },
               ),

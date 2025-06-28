@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'Admin/requstaccept.dart';
 import 'Signup.dart';
 import 'Customer/Forget.dart';
@@ -100,7 +101,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => AdminFarmerPage(token: token, user: user),
+                builder: (context) => AdminFarmerPage(user: user, token: token),
               ),
             );
           }

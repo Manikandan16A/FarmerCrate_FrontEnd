@@ -112,7 +112,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
-          (route) => false,
+      (route) => false,
     );
   }
 

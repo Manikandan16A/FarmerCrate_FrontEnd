@@ -9,6 +9,7 @@ import 'Admin/requstaccept.dart';
 import 'Signin.dart';
 import 'package:crypto/crypto.dart';
 import 'Farmer/homepage.dart';
+import 'utils/cloudinary_upload.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -163,33 +164,6 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     }
   }
 
-  Future<String?> uploadImageToCloudinary(File imageFile) async {
-    final cloudName = 'dcwpr28uf';
-    final apiKey = '334646742262894';
-    final apiSecret = 'QlFJbjla0epfpzpTib6R0STIEFg';
-    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-    // For signed upload, create the signature
-    final paramsToSign = 'timestamp=$timestamp';
-    final signature = sha1.convert(utf8.encode(paramsToSign + apiSecret)).toString();
-
-    final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
-    final request = http.MultipartRequest('POST', url)
-      ..fields['api_key'] = apiKey
-      ..fields['timestamp'] = timestamp.toString()
-      ..fields['signature'] = signature
-      ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
-
-    final response = await request.send();
-    if (response.statusCode == 200) {
-      final resStr = await response.stream.bytesToString();
-      final resJson = jsonDecode(resStr);
-      return resJson['secure_url'];
-    } else {
-      return null;
-    }
-  }
-
   void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
       if (_selectedImage == null) {
@@ -213,36 +187,86 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
       });
 
       try {
-        // 1. Upload image to Cloudinary
-        final imageUrl = await uploadImageToCloudinary(_selectedImage!);
+        // 1. Upload image to Cloudinary with retry mechanism
+        String? imageUrl;
+        int retryCount = 0;
+        const maxRetries = 2;
+        
+        while (imageUrl == null && retryCount < maxRetries) {
+          if (retryCount > 0) {
+            // Show retry message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Retrying image upload... (${retryCount}/${maxRetries})'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+          
+          imageUrl = await CloudinaryUploader.uploadImage(_selectedImage!);
+          retryCount++;
+          
+          if (imageUrl == null && retryCount < maxRetries) {
+            // Wait a bit before retrying
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        }
+        
+        // Handle null return from Cloudinary upload after all retries
         if (imageUrl == null) {
           setState(() { _isLoading = false; });
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Image upload failed'), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text('Image upload failed after ${maxRetries} attempts. Please check your internet connection and try again.'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
           );
           return;
         }
 
         // 2. Proceed with registration, including imageUrl
         final backendRole = _selectedRole!.toLowerCase();
+        // Convert 'transport' to 'transporter' to match API
+        final apiRole = backendRole == 'transport' ? 'transporter' : backendRole;
+        
+        // Prepare request body based on role
+        Map<String, dynamic> requestBody = {
+          'name': _usernameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+          'mobileNumber': '+91${_phoneController.text.trim()}',
+          'role': apiRole,
+          'age': _ageController.text.trim(),
+          'address': _addressController.text.trim(),
+          'zone': _zoneController.text.trim(),
+          'district': _districtController.text.trim(),
+          'state': _stateController.text.trim(),
+          'image_url': imageUrl,
+        };
+        
+        // Add role-specific fields
+        if (apiRole == 'farmer') {
+          requestBody['account_number'] = _accountNumberController.text.trim();
+          requestBody['ifsc_code'] = _ifscCodeController.text.trim();
+        } else if (apiRole == 'transporter') {
+          // For transporters, we need additional fields (these would need to be added to the UI)
+          // For now, we'll send empty values or you can add these fields to the signup form
+          requestBody['aadhar_url'] = '';
+          requestBody['pan_url'] = '';
+          requestBody['voter_id_url'] = '';
+          requestBody['license_url'] = '';
+          requestBody['aadhar_number'] = '';
+          requestBody['pan_number'] = '';
+          requestBody['voter_id_number'] = '';
+          requestBody['license_number'] = '';
+        }
+        
         final response = await http.post(
           Uri.parse('https://farmercrate.onrender.com/api/auth/register'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'name': _usernameController.text.trim(),
-            'email': _emailController.text.trim(),
-            'password': _passwordController.text,
-            'mobileNumber': _phoneController.text.trim(),
-            'role': backendRole,
-            'age': _ageController.text.trim(),
-            'address': _addressController.text.trim(),
-            'zone': _zoneController.text.trim(),
-            'district': _districtController.text.trim(),
-            'state': _stateController.text.trim(),
-            if (backendRole == 'farmer') 'account_number': _accountNumberController.text.trim(),
-            if (backendRole == 'farmer') 'ifsc_code': _ifscCodeController.text.trim(),
-            'image_url': imageUrl,
-          }),
+          body: jsonEncode(requestBody),
         );
 
         setState(() {
@@ -250,54 +274,191 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         });
 
         if (response.statusCode == 201) {
-          final responseData = jsonDecode(response.body);
-          final token = responseData['token'];
-          final user = responseData['user'];
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('jwt_token', token);
-          await prefs.setString('username', user['username']);
-          await prefs.setString('email', user['email']);
-          await prefs.setString('role', user['role']);
-          await prefs.setInt('user_id', user['id']);
-
-          String role = backendRole; // already lowercased
-          String title = "Account Created!";
-          String message = "";
-
-          if (role == "farmer") {
-            message = "Your account has created successfully. Wait for verification to join our family.";
-          } else {
-            message = "Your account created successfully.";
+          Map<String, dynamic> responseData;
+          try {
+            responseData = jsonDecode(response.body);
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error registering user: Invalid server response'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+          
+          // Handle different response structures based on role
+          Map<String, dynamic> userData = {};
+          String message = responseData['message'] ?? 'Account created successfully';
+          
+          if (apiRole == 'farmer') {
+            final farmer = responseData['farmer'];
+            if (farmer == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Missing farmer data from server response'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+            userData = {
+              'id': farmer['id'],
+              'name': farmer['name'],
+              'email': farmer['email'],
+              'role': 'farmer',
+              'verified_status': farmer['verified_status'] ?? false,
+            };
+          } else if (apiRole == 'customer') {
+            final customer = responseData['customer'];
+            if (customer == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Missing customer data from server response'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+            userData = {
+              'id': customer['id'],
+              'name': customer['name'],
+              'email': customer['email'],
+              'role': 'customer',
+            };
+          } else if (apiRole == 'transporter') {
+            final transporter = responseData['transporter'];
+            if (transporter == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Missing transporter data from server response'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+            userData = {
+              'id': transporter['id'],
+              'name': transporter['name'],
+              'email': transporter['email'],
+              'role': 'transport',
+              'verified_status': transporter['verified_status'] ?? false,
+            };
+          } else if (apiRole == 'admin') {
+            final admin = responseData['admin'];
+            if (admin == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Missing admin data from server response'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+              return;
+            }
+            userData = {
+              'id': admin['id'],
+              'name': admin['name'],
+              'email': admin['email'],
+              'role': admin['role'] ?? 'admin',
+            };
           }
 
+          // Save user data to SharedPreferences with null safety
+          final prefs = await SharedPreferences.getInstance();
+          // Note: API doesn't return a token, so we'll store a placeholder or handle authentication differently
+          await prefs.setString('jwt_token', 'temp_token_${userData['id']}');
+          await prefs.setString('username', (userData['name'] ?? '').toString());
+          await prefs.setString('email', (userData['email'] ?? '').toString());
+          await prefs.setString('role', (userData['role'] ?? apiRole).toString());
+          await prefs.setInt('user_id', userData['id'] ?? 0);
+
+          // Determine success message based on role
+          String title = "Account Created!";
+          String successMessage = "";
+
+          if (apiRole == "farmer") {
+            successMessage = "Your account has created successfully. Wait for verification to join our family.";
+          } else if (apiRole == "transporter") {
+            successMessage = "Your account has created successfully. Wait for verification to join our family.";
+          } else {
+            successMessage = "Your account created successfully.";
+          }
+
+          // Show success dialog
           showSuccessDialog(
             title,
-            message,
+            successMessage,
             onOk: () {
-              if (user['role'] == 'farmer') {
+              if (apiRole == 'farmer') {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => FarmersHomePage(),
+                    builder: (context) => LoginPage(),
+                  ),
+                );
+              } else if (apiRole == 'customer') {
+                // Navigate to customer explore page or main customer page
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginPage(),
+                  ),
+                );
+              } else if (apiRole == 'transporter') {
+                // Navigate to transport page or main page
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginPage(),
                   ),
                 );
               } else {
+                // Default navigation for any other role
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AdminFarmerPage(token: token, user: user),
+                    builder: (context) => LoginPage(),
                   ),
                 );
               }
             },
           );
         } else {
-          final responseData = jsonDecode(response.body);
-          String errorMessage = responseData['message'] ?? 'Error registering user';
-          if (responseData['errors'] != null) {
-            errorMessage = responseData['errors'].map((error) => error['msg']).join(', ');
+          Map<String, dynamic> responseData;
+          try {
+            responseData = jsonDecode(response.body);
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error registering user: Invalid server response'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+            return;
           }
+          
+          String errorMessage = 'Error registering user';
+          if (responseData != null) {
+            errorMessage = responseData['message']?.toString() ?? 'Error registering user';
+            if (responseData['errors'] != null) {
+              try {
+                final errors = responseData['errors'] as List;
+                errorMessage = errors.map((error) => error['msg']?.toString() ?? '').where((msg) => msg.isNotEmpty).join(', ');
+                if (errorMessage.isEmpty) {
+                  errorMessage = 'Error registering user';
+                }
+              } catch (e) {
+                errorMessage = 'Error registering user';
+              }
+            }
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
@@ -469,6 +630,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   FilteringTextInputFormatter.digitsOnly,
                   LengthLimitingTextInputFormatter(10),
                 ],
+                prefixText: '+91 ',
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your mobile number';
@@ -839,6 +1001,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     TextInputType? keyboardType,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    String? prefixText,
   }) {
     return TextFormField(
       controller: controller,
@@ -874,6 +1037,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         filled: true,
         fillColor: Colors.grey[50],
         labelStyle: const TextStyle(color: Colors.grey),
+        prefixText: prefixText,
       ),
     );
   }
