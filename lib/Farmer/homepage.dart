@@ -6,7 +6,9 @@ import 'farmerprofile.dart';
 import 'ProductEdit.dart';
 
 class FarmersHomePage extends StatefulWidget {
-  const FarmersHomePage({Key? key}) : super(key: key);
+  final String? token; // Add token parameter
+  
+  const FarmersHomePage({Key? key, this.token}) : super(key: key);
 
   @override
   _FarmersHomePageState createState() => _FarmersHomePageState();
@@ -97,7 +99,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
         targetPage = const FarmersHomePage();
         break;
       case 1:
-        targetPage = const AddProductPage();
+        targetPage = AddProductPage(token: widget.token);
         break;
       case 2:
         targetPage = const FarmerProductsPage();
@@ -197,7 +199,12 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               title: Text('Add Product'),
               onTap: () {
                 Navigator.pop(context); // Close drawer
-                _onNavItemTapped(1);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddProductPage(token: widget.token),
+                  ),
+                );
               },
             ),
             ListTile(
