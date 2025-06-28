@@ -102,7 +102,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
         targetPage = AddProductPage(token: widget.token);
         break;
       case 2:
-        targetPage = const FarmerProductsPage();
+        targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
         targetPage = const FarmerProfilePage(username: '');
@@ -145,7 +145,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const FarmerProductsPage()),
+                MaterialPageRoute(builder: (context) => FarmerProductsPage(token: widget.token)),
                     (route) => false,
               );
             },

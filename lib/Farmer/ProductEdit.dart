@@ -1,130 +1,97 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
 import '../Signin.dart'; // Ensure this path is correct
 import 'Addproduct.dart'; // Ensure this path is correct
 import 'farmerprofile.dart'; // Ensure this path is correct
 import 'homepage.dart';
+import '../utils/cloudinary_upload.dart';
 
 class Product {
   final int id;
   String name;
-  String farmer;
-  String category;
-  final double price;
-  int quantity;
-  String unit;
-  final DateTime dateAdded;
-  String status;
   String description;
-  String? imageUrl;
+  double price;
+  int quantity;
+  String category;
+  String? images;
+  DateTime? createdAt;
+  DateTime? updatedAt;
 
   Product({
     required this.id,
     required this.name,
-    required this.farmer,
-    required this.category,
+    required this.description,
     required this.price,
     required this.quantity,
-    required this.unit,
-    required this.dateAdded,
-    required this.status,
-    required this.description,
-    this.imageUrl,
+    required this.category,
+    this.images,
+    this.createdAt,
+    this.updatedAt,
   });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'],
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      price: double.tryParse(json['price'].toString()) ?? 0.0,
+      quantity: json['quantity'] ?? 0,
+      category: json['category'] ?? '',
+      images: json['images'],
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'price': price,
+      'quantity': quantity,
+      'category': category,
+      'images': images,
+    };
+  }
 }
 
 class FarmerProductsPage extends StatefulWidget {
-  const FarmerProductsPage({Key? key}) : super(key: key);
+  final String? token;
+  
+  const FarmerProductsPage({Key? key, this.token}) : super(key: key);
 
   @override
   _FarmerProductsPageState createState() => _FarmerProductsPageState();
 }
 
 class _FarmerProductsPageState extends State<FarmerProductsPage> {
-  int _currentIndex = 2; // Set to 2 to highlight "Edit Product" in BottomNavigationBar
-  List<Product> products = [
-    // Your existing product list remains unchanged
-    Product(
-      id: 1,
-      name: 'Organic Tomatoes',
-      farmer: 'John Smith',
-      category: 'Vegetables',
-      price: 45.00,
-      quantity: 150,
-      unit: 'kg',
-      dateAdded: DateTime(2024, 6, 15),
-      status: 'Available',
-      description: 'Fresh organic tomatoes grown without pesticides',
-      imageUrl: null,
-    ),
-    Product(
-      id: 2,
-      name: 'Fresh Milk',
-      farmer: 'Mary Johnson',
-      category: 'Dairy',
-      price: 35.00,
-      quantity: 50,
-      unit: 'liters',
-      dateAdded: DateTime(2024, 6, 18),
-      status: 'Available',
-      description: 'Pure cow milk from grass-fed cattle',
-      imageUrl: null,
-    ),
-    Product(
-      id: 3,
-      name: 'Wheat Flour',
-      farmer: 'David Brown',
-      category: 'Grains',
-      price: 28.00,
-      quantity: 200,
-      unit: 'kg',
-      dateAdded: DateTime(2024, 6, 10),
-      status: 'Low Stock',
-      description: 'Stone-ground whole wheat flour',
-      imageUrl: null,
-    ),
-    Product(
-      id: 4,
-      name: 'Free Range Eggs',
-      farmer: 'Sarah Wilson',
-      category: 'Poultry',
-      price: 120.00,
-      quantity: 100,
-      unit: 'dozen',
-      dateAdded: DateTime(2024, 6, 20),
-      status: 'Available',
-      description: 'Farm fresh eggs from free-range chickens',
-      imageUrl: null,
-    ),
-    Product(
-      id: 5,
-      name: 'Organic Apples',
-      farmer: 'Michael Davis',
-      category: 'Fruits',
-      price: 80.00,
-      quantity: 75,
-      unit: 'kg',
-      dateAdded: DateTime(2024, 6, 12),
-      status: 'Available',
-      description: 'Crisp organic apples, variety mix',
-      imageUrl: null,
-    ),
-  ];
-
+  int _currentIndex = 2;
+  List<Product> products = [];
   List<Product> filteredProducts = [];
   String searchQuery = '';
   String selectedCategory = 'All';
-  String sortBy = 'dateAdded';
+  String sortBy = 'createdAt';
   bool isAscending = false;
+  bool isLoading = false;
+  String? errorMessage;
 
   final List<String> categories = [
     'All',
-    'Vegetables',
     'Fruits',
-    'Dairy',
+    'Vegetables',
     'Grains',
+    'Dairy',
+    'Herbs',
     'Poultry',
+    'Fish',
+    'Nuts',
+    'Spices',
+    'Other'
   ];
 
   final List<String> units = ['kg', 'liters', 'dozen', 'pieces', 'bags'];
@@ -133,15 +100,365 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
   @override
   void initState() {
     super.initState();
-    filteredProducts = List.from(products);
-    _applyFiltersAndSort();
+    fetchProducts();
+  }
+
+  Future<void> fetchProducts() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Use the specific endpoint for farmer's products
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/products');
+      
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+        print('Token being used: ${widget.token!.substring(0, widget.token!.length > 20 ? 20 : widget.token!.length)}...'); // Debug print
+      } else {
+        print('No token available'); // Debug print
+        setState(() {
+          errorMessage = 'Authentication token not available. Please login again.';
+          isLoading = false;
+        });
+        return;
+      }
+
+      print('Fetching products from: $uri'); // Debug print
+      print('Headers: $headers'); // Debug print
+
+      final response = await http.get(uri, headers: headers).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('API call timed out'); // Debug print
+          throw TimeoutException('Request timed out');
+        },
+      );
+
+      print('Response status code: ${response.statusCode}'); // Debug print
+      
+      if (response.body.isNotEmpty) {
+        print('Response body: ${response.body}'); // Debug print - show full response
+      }
+
+      if (response.statusCode == 200) {
+        try {
+          final dynamic responseData = jsonDecode(response.body);
+          print('Parsed response data type: ${responseData.runtimeType}'); // Debug print
+          print('Parsed response data: $responseData'); // Debug print
+          
+          List<dynamic> productsData;
+          
+          // Handle different possible response formats
+          if (responseData is List) {
+            // Direct array response
+            productsData = responseData;
+            print('Response is a direct array with ${productsData.length} items');
+          } else if (responseData is Map && responseData.containsKey('data')) {
+            // Nested data response
+            productsData = responseData['data'] ?? [];
+            print('Response has nested data with ${productsData.length} items');
+          } else if (responseData is Map && responseData.containsKey('products')) {
+            // Products key response
+            productsData = responseData['products'] ?? [];
+            print('Response has products key with ${productsData.length} items');
+          } else if (responseData is Map && responseData.containsKey('items')) {
+            // Items key response
+            productsData = responseData['items'] ?? [];
+            print('Response has items key with ${productsData.length} items');
+          } else {
+            // Try to find any array in the response
+            productsData = [];
+            if (responseData is Map) {
+              for (var key in responseData.keys) {
+                if (responseData[key] is List) {
+                  productsData = responseData[key];
+                  print('Found array in key "$key" with ${productsData.length} items');
+                  break;
+                }
+              }
+            }
+          }
+          
+          print('Final products data: $productsData'); // Debug print
+          
+          if (productsData.isNotEmpty) {
+            setState(() {
+              products = productsData.map((json) {
+                print('Processing product: $json'); // Debug print
+                return Product.fromJson(json);
+              }).toList();
+              filteredProducts = List.from(products);
+              isLoading = false;
+            });
+            _applyFiltersAndSort();
+            
+            print('Successfully loaded ${products.length} products'); // Debug print
+          } else {
+            print('No products found in response'); // Debug print
+            setState(() {
+              products = [];
+              filteredProducts = [];
+              isLoading = false;
+              errorMessage = 'No products found. Add your first product.';
+            });
+          }
+        } catch (parseError) {
+          print('JSON parsing error: $parseError'); // Debug print
+          print('Response body that caused error: ${response.body}'); // Debug print
+          setState(() {
+            errorMessage = 'Invalid response format from server. Please try again.';
+            isLoading = false;
+          });
+        }
+      } else if (response.statusCode == 401) {
+        print('Authentication failed - status 401'); // Debug print
+        setState(() {
+          errorMessage = 'Authentication failed. Please login again.';
+          isLoading = false;
+        });
+      } else if (response.statusCode == 403) {
+        print('Access denied - status 403'); // Debug print
+        setState(() {
+          errorMessage = 'Access denied. You don\'t have permission to view products.';
+          isLoading = false;
+        });
+      } else if (response.statusCode == 404) {
+        print('API endpoint not found - status 404'); // Debug print
+        setState(() {
+          errorMessage = 'API endpoint not found. Please check the URL.';
+          isLoading = false;
+        });
+      } else if (response.statusCode >= 500) {
+        print('Server error - status ${response.statusCode}'); // Debug print
+        setState(() {
+          errorMessage = 'Server error (${response.statusCode}). Please try again later.';
+          isLoading = false;
+        });
+      } else {
+        print('Unexpected status code: ${response.statusCode}'); // Debug print
+        setState(() {
+          errorMessage = 'Failed to fetch products. Status: ${response.statusCode}. Response: ${response.body}';
+          isLoading = false;
+        });
+      }
+    } on FormatException catch (e) {
+      print('JSON parsing error: $e'); // Debug print
+      setState(() {
+        errorMessage = 'Invalid response from server. Please try again.';
+        isLoading = false;
+      });
+    } on SocketException catch (e) {
+      print('Socket error: $e'); // Debug print
+      setState(() {
+        errorMessage = 'No internet connection. Please check your network.';
+        isLoading = false;
+      });
+    } on TimeoutException catch (e) {
+      print('Timeout error: $e'); // Debug print
+      setState(() {
+        errorMessage = 'Request timed out. Please try again.';
+        isLoading = false;
+      });
+    } catch (e) {
+      print('General error: $e'); // Debug print
+      setState(() {
+        errorMessage = 'Network error: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> updateProduct(Product product) async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Handle image upload if it's a local file
+      String? imageUrl = product.images;
+      if (product.images != null && !product.images!.startsWith('http') && File(product.images!).existsSync()) {
+        print('Uploading new image for product update');
+        imageUrl = await CloudinaryUploader.uploadImage(File(product.images!));
+        if (imageUrl == null) {
+          setState(() {
+            isLoading = false;
+            errorMessage = 'Failed to upload image. Please try again.';
+          });
+          return;
+        }
+        print('Image uploaded successfully: $imageUrl');
+      }
+
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/products/${product.id}');
+      
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      
+      if (widget.token != null && widget.token!.isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      } else {
+        setState(() {
+          errorMessage = 'Authentication token not available. Please login again.';
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Create updated product with the new image URL
+      final updatedProductData = {
+        'name': product.name,
+        'description': product.description,
+        'price': product.price,
+        'quantity': product.quantity,
+        'category': product.category,
+        'images': imageUrl,
+      };
+
+      print('Updating product with ID: ${product.id}');
+      print('Update request to: $uri');
+      print('Update data: $updatedProductData');
+
+      final response = await http.put(
+        uri,
+        headers: headers,
+        body: jsonEncode(updatedProductData),
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          print('Update request timed out');
+          throw TimeoutException('Update request timed out');
+        },
+      );
+
+      print('Update response status: ${response.statusCode}');
+      print('Update response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Refresh the product list
+        await fetchProducts();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product updated successfully in database!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (response.statusCode == 401) {
+        setState(() {
+          errorMessage = 'Authentication failed. Please login again.';
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Authentication failed. Please login again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (response.statusCode == 403) {
+        setState(() {
+          errorMessage = 'Access denied. You don\'t have permission to update this product.';
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Access denied. You don\'t have permission to update this product.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (response.statusCode == 404) {
+        setState(() {
+          errorMessage = 'Product not found. It may have been deleted.';
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product not found. It may have been deleted.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      } else {
+        String errorMessage = 'Failed to update product in database.';
+        try {
+          if (response.body.isNotEmpty) {
+            final errorData = jsonDecode(response.body);
+            errorMessage = errorData['message'] ?? errorMessage;
+          }
+        } catch (e) {
+          errorMessage = 'Failed to update product in database. Status: ${response.statusCode}';
+        }
+        
+        setState(() {
+          this.errorMessage = errorMessage;
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } on TimeoutException catch (e) {
+      print('Update timeout error: $e');
+      setState(() {
+        errorMessage = 'Request timed out. Please try again.';
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Request timed out. Please try again.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } on SocketException catch (e) {
+      print('Update socket error: $e');
+      setState(() {
+        errorMessage = 'No internet connection. Please check your network.';
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No internet connection. Please check your network.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      print('Update general error: $e');
+      setState(() {
+        errorMessage = 'Network error: $e';
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Network error. Please try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _applyFiltersAndSort() {
     setState(() {
       filteredProducts = products.where((product) {
         bool matchesSearch = product.name.toLowerCase().contains(searchQuery.toLowerCase()) ||
-            product.farmer.toLowerCase().contains(searchQuery.toLowerCase()) ||
+            product.description.toLowerCase().contains(searchQuery.toLowerCase()) ||
             product.category.toLowerCase().contains(searchQuery.toLowerCase());
         bool matchesCategory = selectedCategory == 'All' || product.category == selectedCategory;
         return matchesSearch && matchesCategory;
@@ -153,10 +470,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           case 'name':
             aValue = a.name.toLowerCase();
             bValue = b.name.toLowerCase();
-            break;
-          case 'farmer':
-            aValue = a.farmer.toLowerCase();
-            bValue = b.farmer.toLowerCase();
             break;
           case 'category':
             aValue = a.category.toLowerCase();
@@ -170,10 +483,10 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             aValue = a.quantity;
             bValue = b.quantity;
             break;
-          case 'dateAdded':
+          case 'createdAt':
           default:
-            aValue = a.dateAdded;
-            bValue = b.dateAdded;
+            aValue = a.createdAt ?? DateTime.now();
+            bValue = b.createdAt ?? DateTime.now();
             break;
         }
         int comparison = aValue.compareTo(bValue);
@@ -197,15 +510,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
   void _showAddEditDialog({Product? product}) {
     final isEdit = product != null;
     final nameController = TextEditingController(text: product?.name ?? '');
-    final farmerController = TextEditingController(text: product?.farmer ?? '');
+    final descriptionController = TextEditingController(text: product?.description ?? '');
     final quantityController = TextEditingController(text: product?.quantity.toString() ?? '');
     final priceController = TextEditingController(text: product?.price.toStringAsFixed(2) ?? '');
-    final descriptionController = TextEditingController(text: product?.description ?? '');
-    String? imagePath = product?.imageUrl;
+    String? imagePath = product?.images;
 
-    String selectedCategoryDialog = product?.category ?? 'Vegetables';
-    String selectedUnit = product?.unit ?? 'kg';
-    String selectedStatus = product?.status ?? 'Available';
+    String selectedCategoryDialog = product?.category ?? 'Fruits';
 
     showDialog(
       context: context,
@@ -222,14 +532,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                       controller: nameController,
                       decoration: InputDecoration(
                         labelText: 'Product Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: farmerController,
-                      decoration: InputDecoration(
-                        labelText: 'Farmer Name',
                         border: OutlineInputBorder(),
                       ),
                     ),
@@ -253,41 +555,13 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                       },
                     ),
                     SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: TextField(
-                            controller: quantityController,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              labelText: 'Quantity',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: selectedUnit,
-                            decoration: InputDecoration(
-                              labelText: 'Unit',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: units.map((String unit) {
-                              return DropdownMenuItem<String>(
-                                value: unit,
-                                child: Text(unit),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              setDialogState(() {
-                                selectedUnit = newValue!;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                     SizedBox(height: 16),
                     TextField(
@@ -297,25 +571,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         labelText: 'Price (₹)',
                         border: OutlineInputBorder(),
                       ),
-                    ),
-                    SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: selectedStatus,
-                      decoration: InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: statuses.map((String status) {
-                        return DropdownMenuItem<String>(
-                          value: status,
-                          child: Text(status),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setDialogState(() {
-                          selectedStatus = newValue!;
-                        });
-                      },
                     ),
                     SizedBox(height: 16),
                     TextField(
@@ -333,18 +588,22 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         ElevatedButton(
                           onPressed: () async {
                             final pickedImage = await _pickImageFromGallery();
-                            setDialogState(() {
-                              imagePath = pickedImage;
-                            });
+                            if (pickedImage != null) {
+                              setDialogState(() {
+                                imagePath = pickedImage;
+                              });
+                            }
                           },
                           child: Text('Choose Photo'),
                         ),
                         ElevatedButton(
                           onPressed: () async {
                             final pickedImage = await _pickImageFromCamera();
-                            setDialogState(() {
-                              imagePath = pickedImage;
-                            });
+                            if (pickedImage != null) {
+                              setDialogState(() {
+                                imagePath = pickedImage;
+                              });
+                            }
                           },
                           child: Text('Take Photo'),
                         ),
@@ -354,12 +613,80 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                       SizedBox(height: 16),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(imagePath!),
-                          height: 100,
-                          width: 100,
-                          fit: BoxFit.cover,
-                        ),
+                        child: imagePath!.startsWith('http')
+                            ? Image.network(
+                                imagePath!,
+                                height: 100,
+                                width: 100,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    height: 100,
+                                    width: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 100,
+                                    width: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          size: 24,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Error',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              )
+                            : File(imagePath!).existsSync()
+                                ? Image.file(
+                                    File(imagePath!),
+                                    height: 100,
+                                    width: 100,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(
+                                    height: 100,
+                                    width: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.image,
+                                      size: 30,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
                       ),
                       SizedBox(height: 8),
                       TextButton(
@@ -374,76 +701,46 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         ),
                       ),
                     ],
-                    if (isEdit) ...[
-                      SizedBox(height: 16),
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          border: Border.all(color: Colors.orange.shade200),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info_outline, color: Colors.orange.shade700),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Price (₹${product!.price.toStringAsFixed(2)}) cannot be modified',
-                                style: TextStyle(color: Colors.orange.shade700),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(), // Fixed: Correctly close dialog
+                  onPressed: () => Navigator.of(context).pop(),
                   child: Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (nameController.text.isNotEmpty &&
-                        farmerController.text.isNotEmpty &&
+                        descriptionController.text.isNotEmpty &&
                         quantityController.text.isNotEmpty &&
                         priceController.text.isNotEmpty) {
-                      if (isEdit) {
-                        setState(() {
-                          product!.name = nameController.text;
-                          product.farmer = farmerController.text;
-                          product.category = selectedCategoryDialog;
-                          product.quantity = int.tryParse(quantityController.text) ?? 0;
-                          product.unit = selectedUnit;
-                          product.status = selectedStatus;
-                          product.description = descriptionController.text;
-                          product.imageUrl = imagePath;
-                        });
-                      } else {
-                        final newProduct = Product(
-                          id: products.isEmpty
-                              ? 1
-                              : products.map((p) => p.id).reduce((a, b) => a > b ? a : b) + 1,
+                      
+                      Navigator.of(context).pop();
+                      
+                      if (isEdit && product != null) {
+                        // Update existing product
+                        final updatedProduct = Product(
+                          id: product.id,
                           name: nameController.text,
-                          farmer: farmerController.text,
-                          category: selectedCategoryDialog,
+                          description: descriptionController.text,
                           price: double.tryParse(priceController.text) ?? 0.0,
                           quantity: int.tryParse(quantityController.text) ?? 0,
-                          unit: selectedUnit,
-                          dateAdded: DateTime.now(),
-                          status: selectedStatus,
-                          description: descriptionController.text,
-                          imageUrl: imagePath,
+                          category: selectedCategoryDialog,
+                          images: imagePath,
+                          createdAt: product.createdAt,
+                          updatedAt: DateTime.now(),
                         );
-                        setState(() {
-                          products.add(newProduct);
-                        });
+                        await updateProduct(updatedProduct);
+                      } else {
+                        // Navigate to AddProduct page for new products
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddProductPage(token: widget.token),
+                          ),
+                        );
                       }
-                      _applyFiltersAndSort();
-                      Navigator.of(context).pop();
                     }
                   },
                   child: Text(isEdit ? 'Update' : 'Add'),
@@ -451,35 +748,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               ],
             );
           },
-        );
-      },
-    );
-  }
-
-  void _deleteProduct(Product product) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Delete Product'),
-          content: Text('Are you sure you want to delete "${product.name}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  products.removeWhere((p) => p.id == product.id);
-                });
-                _applyFiltersAndSort();
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: Text('Delete'),
-            ),
-          ],
         );
       },
     );
@@ -506,24 +774,169 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     Widget targetPage;
     switch (index) {
       case 0:
-        targetPage = const FarmersHomePage();
+        targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = const AddProductPage();
+        targetPage = AddProductPage(token: widget.token);
         break;
       case 2:
-        targetPage = const FarmerProductsPage();
+        targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
         targetPage = const FarmerProfilePage(username: '');
         break;
       default:
-        targetPage = const FarmersHomePage();
+        targetPage = FarmersHomePage(token: widget.token);
     }
 
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
+    );
+  }
+
+  void _showDebugInfo() {
+    String tokenInfo = widget.token != null && widget.token!.isNotEmpty 
+        ? 'Token: ${widget.token!.substring(0, widget.token!.length > 30 ? 30 : widget.token!.length)}...'
+        : 'No token available';
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Debug Information'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Token Status: $tokenInfo'),
+              SizedBox(height: 16),
+              Text('Products loaded: ${products.length}'),
+              SizedBox(height: 8),
+              Text('Filtered products: ${filteredProducts.length}'),
+              SizedBox(height: 8),
+              Text('Loading: $isLoading'),
+              SizedBox(height: 8),
+              if (errorMessage != null)
+                Text('Error: $errorMessage'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await fetchProducts();
+              },
+              child: Text('Refresh Products'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showImagePreview(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.7,
+                      maxWidth: MediaQuery.of(context).size.width * 0.9,
+                    ),
+                    child: imageUrl.startsWith('http')
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                height: 200,
+                                width: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      size: 40,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'Image not available',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          )
+                        : File(imageUrl).existsSync()
+                            ? Image.file(
+                                File(imageUrl),
+                                fit: BoxFit.contain,
+                              )
+                            : Container(
+                                height: 200,
+                                width: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.image,
+                                  size: 50,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -549,6 +962,20 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.green[800]),
+            onPressed: () {
+              fetchProducts();
+            },
+            tooltip: 'Refresh Products',
+          ),
+          IconButton(
+            icon: Icon(Icons.bug_report, color: Colors.orange[800]),
+            onPressed: () {
+              _showDebugInfo();
+            },
+            tooltip: 'Debug Info',
+          ),
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
             onPressed: () {},
@@ -589,45 +1016,65 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               leading: Icon(Icons.home, color: Colors.green[600]),
               title: Text('Home'),
               onTap: () {
-                Navigator.push;
-                _onNavItemTapped(0);
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FarmersHomePage(token: widget.token),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.add, color: Colors.green[600]),
               title: Text('Add Product'),
               onTap: () {
-                Navigator.push;
-                _onNavItemTapped(1);
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddProductPage(token: widget.token),
+                  ),
+                );
               },
             ),
             ListTile(
               leading: Icon(Icons.edit, color: Colors.green[600]),
               title: Text('Edit Products'),
               onTap: () {
-                Navigator.push;
-                _onNavItemTapped(2);
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FarmerProductsPage(token: widget.token),
+                  ),
+                );
               },
             ),
             ListTile(
-                leading: Icon(Icons.contact_mail, color: Colors.green[600]),
-                title: Text('Contact Admin'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => FarmersHomePage(),
-                    ),
-                  );
-                }
-
+              leading: Icon(Icons.contact_mail, color: Colors.green[600]),
+              title: Text('Contact Admin'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => FarmersHomePage(token: widget.token),
+                  ),
+                );
+              },
             ),
             ListTile(
               leading: Icon(Icons.person, color: Colors.green[600]),
               title: Text('Profile'),
               onTap: () {
-                Navigator.push;
-                _onNavItemTapped(3);
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FarmerProfilePage(username: ''),
+                  ),
+                );
               },
             ),
             Divider(),
@@ -654,7 +1101,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               children: [
                 TextField(
                   decoration: InputDecoration(
-                    hintText: 'Search products, farmers...',
+                    hintText: 'Search products...',
                     prefixIcon: Icon(Icons.search),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -702,9 +1149,8 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         ),
                         items: [
-                          DropdownMenuItem(value: 'dateAdded', child: Text('Date Added')),
+                          DropdownMenuItem(value: 'createdAt', child: Text('Date Added')),
                           DropdownMenuItem(value: 'name', child: Text('Name')),
-                          DropdownMenuItem(value: 'farmer', child: Text('Farmer')),
                           DropdownMenuItem(value: 'category', child: Text('Category')),
                           DropdownMenuItem(value: 'price', child: Text('Price')),
                           DropdownMenuItem(value: 'quantity', child: Text('Quantity')),
@@ -732,208 +1178,345 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               ],
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Text(
-                  'Products (${filteredProducts.length})',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+          
+          // Loading Indicator
+          if (isLoading)
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading products...',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          Expanded(
-            child: filteredProducts.isEmpty
-                ? Center(
+          
+          // Error Message
+          if (errorMessage != null && !isLoading)
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.all(16),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red[50],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red[200]!),
+              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.inventory_2_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
+                  Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.red[600], size: 24),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          errorMessage!,
+                          style: TextStyle(
+                            color: Colors.red[700],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No products found',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey.shade600,
+                  SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        errorMessage = null;
+                      });
+                      fetchProducts();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Retry',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
               ),
-            )
-                : ListView.builder(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              itemCount: filteredProducts.length,
-              itemBuilder: (context, index) {
-                final product = filteredProducts[index];
-                return Card(
-                  margin: EdgeInsets.only(bottom: 12),
-                  elevation: 2,
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (product.imageUrl != null)
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(product.imageUrl!),
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        else
-                          Container(
-                            height: 150,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.image,
-                              size: 50,
+            ),
+          
+          if (!isLoading && errorMessage == null) ...[
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    'Products (${filteredProducts.length})',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: filteredProducts.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'No products found',
+                            style: TextStyle(
+                              fontSize: 18,
                               color: Colors.grey.shade600,
                             ),
                           ),
-                        SizedBox(height: 12),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
+                          SizedBox(height: 8),
+                          Text(
+                            'Pull down to refresh or add your first product',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: fetchProducts,
+                      child: ListView.builder(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: filteredProducts.length,
+                        itemBuilder: (context, index) {
+                          final product = filteredProducts[index];
+                          return Card(
+                            margin: EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    product.name,
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
+                                  if (product.images != null)
+                                    GestureDetector(
+                                      onTap: () => _showImagePreview(product.images!),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: product.images!.startsWith('http')
+                                            ? Image.network(
+                                                product.images!,
+                                                height: 150,
+                                                width: double.infinity,
+                                                fit: BoxFit.cover,
+                                                loadingBuilder: (context, child, loadingProgress) {
+                                                  if (loadingProgress == null) return child;
+                                                  return Container(
+                                                    height: 150,
+                                                    width: double.infinity,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey.shade200,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Center(
+                                                      child: CircularProgressIndicator(
+                                                        value: loadingProgress.expectedTotalBytes != null
+                                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                            : null,
+                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  return Container(
+                                                    height: 150,
+                                                    width: double.infinity,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey.shade200,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Column(
+                                                      mainAxisAlignment: MainAxisAlignment.center,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.error_outline,
+                                                          size: 40,
+                                                          color: Colors.grey.shade600,
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Text(
+                                                          'Image not available',
+                                                          style: TextStyle(
+                                                            color: Colors.grey.shade600,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              )
+                                            : File(product.images!).existsSync()
+                                                ? Image.file(
+                                                    File(product.images!),
+                                                    height: 150,
+                                                    width: double.infinity,
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : Container(
+                                                    height: 150,
+                                                    width: double.infinity,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey.shade200,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.image,
+                                                      size: 50,
+                                                      color: Colors.grey.shade600,
+                                                    ),
+                                                  ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      height: 150,
+                                      width: double.infinity,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(
+                                        Icons.image,
+                                        size: 50,
+                                        color: Colors.grey.shade600,
+                                      ),
                                     ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              product.name,
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              product.description,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 14,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(height: 4),
+                                  SizedBox(height: 12),
                                   Row(
                                     children: [
-                                      Icon(Icons.person, size: 16, color: Colors.grey.shade600),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(Icons.category, size: 16, color: Colors.grey.shade600),
+                                                SizedBox(width: 4),
+                                                Text(product.category),
+                                              ],
+                                            ),
+                                            SizedBox(height: 4),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
+                                                SizedBox(width: 4),
+                                                Text('${product.quantity} units'),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '₹${product.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade700,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Price',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
                                       SizedBox(width: 4),
                                       Text(
-                                        product.farmer,
+                                        product.createdAt != null 
+                                            ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
+                                            : 'Date not available',
                                         style: TextStyle(color: Colors.grey.shade600),
+                                      ),
+                                      Spacer(),
+                                      IconButton(
+                                        onPressed: () => _showAddEditDialog(product: product),
+                                        icon: Icon(Icons.edit, color: Colors.blue),
+                                        tooltip: 'Edit Product',
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(product.status).shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                product.status,
-                                style: TextStyle(
-                                  color: _getStatusColor(product.status).shade800,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(Icons.category, size: 16, color: Colors.grey.shade600),
-                                      SizedBox(width: 4),
-                                      Text(product.category),
-                                    ],
-                                  ),
-                                  SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
-                                      SizedBox(width: 4),
-                                      Text('${product.quantity} ${product.unit}'),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '₹${product.price.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade700,
-                                  ),
-                                ),
-                                Text(
-                                  'Fixed Price',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        if (product.description.isNotEmpty) ...[
-                          SizedBox(height: 8),
-                          Text(
-                            product.description,
-                            style: TextStyle(color: Colors.grey.shade700),
-                          ),
-                        ],
-                        SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                            SizedBox(width: 4),
-                            Text(
-                              '${product.dateAdded.day}/${product.dateAdded.month}/${product.dateAdded.year}',
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                            Spacer(),
-                            IconButton(
-                              onPressed: () => _showAddEditDialog(product: product),
-                              icon: Icon(Icons.edit, color: Colors.blue),
-                              tooltip: 'Edit Product',
-                            ),
-                            IconButton(
-                              onPressed: () => _deleteProduct(product),
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              tooltip: 'Delete Product',
-                            ),
-                          ],
-                        ),
-                      ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                );
-              },
             ),
-          ),
+          ],
         ],
       ),
       bottomNavigationBar: Container(
