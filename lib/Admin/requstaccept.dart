@@ -1,3 +1,4 @@
+import 'package:farmer_crate/Admin/adminreport.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -522,9 +523,13 @@ class _AdminFarmerPageState extends State<AdminFarmerPage> {
             ListTile(
               leading: Icon(Icons.person, color: Colors.green[600]),
               title: const Text('Profile'),
-              onTap: () {
-                setState(() { _currentIndex = 2; });
-                Navigator.pop(context);
+              onTap: () {// Close drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>  ReportsPage(),
+                  ),
+                );
               },
             ),
             const Divider(),

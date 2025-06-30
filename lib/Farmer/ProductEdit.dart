@@ -110,8 +110,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     });
 
     try {
-      // Use the specific endpoint for farmer's products
-      final uri = Uri.parse('https://farmercrate.onrender.com/api/products');
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/products/farmer/me');
       
       Map<String, String> headers = {
         'Content-Type': 'application/json',
@@ -136,7 +135,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       final response = await http.get(uri, headers: headers).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
-          print('API call timed out'); // Debug print
+          print('API call timed out');
           throw TimeoutException('Request timed out');
         },
       );
@@ -153,37 +152,10 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           print('Parsed response data type: ${responseData.runtimeType}'); // Debug print
           print('Parsed response data: $responseData'); // Debug print
           
-          List<dynamic> productsData;
+          List<dynamic> productsData = [];
           
-          // Handle different possible response formats
-          if (responseData is List) {
-            // Direct array response
-            productsData = responseData;
-            print('Response is a direct array with ${productsData.length} items');
-          } else if (responseData is Map && responseData.containsKey('data')) {
-            // Nested data response
+          if (responseData is Map && responseData.containsKey('data')) {
             productsData = responseData['data'] ?? [];
-            print('Response has nested data with ${productsData.length} items');
-          } else if (responseData is Map && responseData.containsKey('products')) {
-            // Products key response
-            productsData = responseData['products'] ?? [];
-            print('Response has products key with ${productsData.length} items');
-          } else if (responseData is Map && responseData.containsKey('items')) {
-            // Items key response
-            productsData = responseData['items'] ?? [];
-            print('Response has items key with ${productsData.length} items');
-          } else {
-            // Try to find any array in the response
-            productsData = [];
-            if (responseData is Map) {
-              for (var key in responseData.keys) {
-                if (responseData[key] is List) {
-                  productsData = responseData[key];
-                  print('Found array in key "$key" with ${productsData.length} items');
-                  break;
-                }
-              }
-            }
           }
           
           print('Final products data: $productsData'); // Debug print
@@ -230,7 +202,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           isLoading = false;
         });
       } else if (response.statusCode == 404) {
-        print('API endpoint not found - status 404'); // Debug print
+        print(' not found - API endpointstatus 404'); // Debug print
         setState(() {
           errorMessage = 'API endpoint not found. Please check the URL.';
           isLoading = false;

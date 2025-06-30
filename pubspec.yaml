@@ -36,6 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.0.4
   google_fonts: ^6.2.1
+  table_calendar: ^3.0.9
 
 
   # HTTP package for making API calls

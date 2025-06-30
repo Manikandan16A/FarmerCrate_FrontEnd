@@ -97,7 +97,23 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 builder: (context) => FarmersHomePage(token: token),
               ),
             );
-          } else {
+          }
+          if (user['role'] == 'customer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FarmersHomePage(token: token),
+              ),
+            );
+          }
+          if (user['role'] == 'transpoter') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => FarmersHomePage(token: token),
+              ),
+            );
+          }else {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
