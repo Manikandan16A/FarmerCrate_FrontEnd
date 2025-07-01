@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'Admin/requstaccept.dart';
 import 'Signup.dart';
 import 'Customer/Forget.dart';
+import 'Customer/customerhomepage.dart';
 import 'Farmer/homepage.dart';
 
 class LoginPage extends StatefulWidget {
@@ -97,8 +98,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 builder: (context) => FarmersHomePage(token: token),
               ),
             );
-          }
-            else {
+          } else if (user['role'] == 'customer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CustomerHomePage(token: token),
+              ),
+            );
+          } else {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(

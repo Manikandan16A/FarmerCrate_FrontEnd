@@ -8,9 +8,9 @@ import '../Customer/Cart.dart';
 import 'Addproduct.dart';
 
 class FarmerProfilePage extends StatefulWidget {
-  final String username;
+  final String? token;
 
-  const FarmerProfilePage({Key? key, required this.username}) : super(key: key);
+  const FarmerProfilePage({Key? key, this.token}) : super(key: key);
 
   @override
   _FarmerProfilePageState createState() => _FarmerProfilePageState();
@@ -77,7 +77,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.username;
+    _nameController.text = widget.token!;
   }
 
   @override
@@ -113,7 +113,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
         targetPage = const FarmerProductsPage(); // Navigate to FarmerProductsPage
         break;
       case 3:
-        targetPage = FarmerProfilePage(username: widget.username);
+        targetPage = FarmerProfilePage(token: widget.token);
         break;
       default:
         targetPage = const FarmersHomePage();
@@ -391,7 +391,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Welcome, ${widget.username}!',
+                    'Welcome, ${widget.token}!',
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 16,
@@ -551,7 +551,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                     Text(
                       _nameController.text.isNotEmpty
                           ? _nameController.text
-                          : widget.username,
+                          : widget.token!,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

@@ -755,7 +755,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
-        targetPage = const FarmerProfilePage(username: '');
+        targetPage = FarmerProfilePage(token: widget.token);
         break;
       default:
         targetPage = FarmersHomePage(token: widget.token);
@@ -1044,7 +1044,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const FarmerProfilePage(username: ''),
+                    builder: (context) => FarmerProfilePage(token: widget.token),
                   ),
                 );
               },

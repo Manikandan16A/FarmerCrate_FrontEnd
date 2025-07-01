@@ -84,7 +84,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
         targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
-        targetPage = const FarmerProfilePage(username: '');
+        targetPage = FarmerProfilePage(token: widget.token);
         break;
       default:
         targetPage = FarmersHomePage(token: widget.token);

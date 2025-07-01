@@ -4,6 +4,8 @@ import '../Customer/Cart.dart';
 import 'Addproduct.dart';
 import 'farmerprofile.dart';
 import 'ProductEdit.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -18,48 +20,14 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   final TextEditingController _searchController = TextEditingController();
   int _currentIndex = 0;
   String? _selectedCategory; // Track selected category (null for "All")
-
-  List<Map<String, dynamic>> _allProducts = [
-    {
-      'title': 'Berries',
-      'price': '₹500',
-      'rating': '4.8 (374)',
-      'bgColor': Colors.red[100]!,
-      'emoji': '🍓',
-      'category': 'Fruits'
-    },
-    {
-      'title': 'Tulsi',
-      'price': '₹100',
-      'rating': '4.8 (374)',
-      'bgColor': Colors.green[100]!,
-      'emoji': '🌿',
-      'category': 'Veg'
-    },
-    {
-      'title': 'Milk',
-      'price': '₹80',
-      'rating': '4.9 (540)',
-      'bgColor': Colors.blue[50]!,
-      'emoji': '🥛',
-      'category': 'Others'
-    },
-    {
-      'title': 'Tomatoes',
-      'price': '₹50',
-      'rating': '4.7 (376)',
-      'bgColor': Colors.red[50]!,
-      'emoji': '🍅',
-      'category': 'Veg'
-    },
-  ];
-  List<Map<String, dynamic>> _filteredProducts = [];
+  List<Product> products = [];
+  bool isLoading = false;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _filteredProducts = _allProducts;
-    _searchController.addListener(_onSearchChanged);
+    fetchProducts();
   }
 
   @override
@@ -70,14 +38,14 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
 
   void _onSearchChanged() {
     setState(() {
-      _filteredProducts = _allProducts.where((product) {
-        final matchesSearch = product['title']
-            .toLowerCase()
-            .contains(_searchController.text.toLowerCase());
-        final matchesCategory = _selectedCategory == null ||
-            product['category'] == _selectedCategory;
-        return matchesSearch && matchesCategory;
-      }).toList();
+      // _filteredProducts = _allProducts.where((product) {
+      //   final matchesSearch = product['title']
+      //       .toLowerCase()
+      //       .contains(_searchController.text.toLowerCase());
+      //   final matchesCategory = _selectedCategory == null ||
+      //       product['category'] == _selectedCategory;
+      //   return matchesSearch && matchesCategory;
+      // }).toList();
     });
   }
 
@@ -105,7 +73,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
         targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
-        targetPage = const FarmerProfilePage(username: '');
+        targetPage = FarmerProfilePage(token: widget.token);
         break;
       default:
         targetPage = const FarmersHomePage();
@@ -116,6 +84,43 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       MaterialPageRoute(builder: (context) => targetPage),
       (route) => false,
     );
+  }
+
+  Future<void> fetchProducts() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/products/farmer/me');
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        if (widget.token != null && widget.token!.isNotEmpty)
+          'Authorization': 'Bearer ${widget.token}',
+      };
+
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        final productsData = responseData['data'] ?? [];
+        setState(() {
+          products = productsData.map<Product>((json) => Product.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to fetch products. Status: ${response.statusCode}';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Network error: $e';
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -298,7 +303,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const FarmerProfilePage(username: ''),
+                    builder: (context) => FarmerProfilePage(token: widget.token),
                   ),
                 );
               },
@@ -416,14 +421,13 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
                   childAspectRatio: 0.75,
-                  children: _filteredProducts.map((product) {
+                  children: products.map((product) {
                     return _buildProductCard(
                       context,
-                      product['title'],
-                      product['price'],
-                      product['rating'] ?? 'Not rated',
-                      product['bgColor'],
-                      product['emoji'],
+                      product.name,
+                      '₹${product.price.toStringAsFixed(2)}',
+                      product.description,
+                      product.images,
                     );
                   }).toList(),
                 );
@@ -520,91 +524,65 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   }
 
   Widget _buildProductCard(
-      BuildContext context, String title, String price, String rating, Color bgColor, String emoji) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailPage(
-              title: title,
-              price: price,
-              rating: rating,
-              bgColor: bgColor,
-              emoji: emoji,
+      BuildContext context,
+      String name,
+      String price,
+      String description,
+      String? imageUrl,
+    ) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            child: imageUrl != null && imageUrl.startsWith('http')
+                ? Image.network(
+                    imageUrl,
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 120,
+                      color: Colors.grey[200],
+                      child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
+                    ),
+                  )
+                : Container(
+                    height: 120,
+                    color: Colors.grey[200],
+                    child: Icon(Icons.image, size: 40, color: Colors.grey),
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: 4),
+                Text(
+                  price,
+                  style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  description,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 100,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Center(
-                child: Text(
-                  emoji,
-                  style: TextStyle(fontSize: 48),
-                ),
-              ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                  Text(
-                    price,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[700],
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Icon(Icons.star, color: Colors.amber, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        rating,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
