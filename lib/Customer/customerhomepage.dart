@@ -1,14 +1,17 @@
+import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-
+import '../Signin.dart';
+import 'Cart.dart';
+import '../utils/cloudinary_upload.dart';
 
 class CustomerHomePage extends StatefulWidget {
   final String? token;
-  
+
   CustomerHomePage({this.token});
-  
+
   @override
   _CustomerHomePageState createState() => _CustomerHomePageState();
 }
@@ -19,15 +22,21 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   bool _isLoading = true;
   List<Product> products = [];
   List<Product> topBuys = [];
+  int _currentIndex = 0;
+
+  // Add for customer profile image
+  String? customerImageUrl;
+  String? customerName;
 
   final List<String> categories = [
-    'All', 'Vegetables', 'Fruits', 'Herbs', 'Organic', 'Seasonal'
+    'All', 'Vegetables', 'Fruits', 'Herbs'
   ];
 
   @override
   void initState() {
     super.initState();
     _fetchProducts();
+    _fetchCustomerProfile();
   }
 
   Future<void> _fetchProducts() async {
@@ -41,51 +50,46 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> productsData = jsonDecode(response.body);
+        final List<dynamic> productsData = jsonDecode(response.body)['data'];
         setState(() {
-          products = productsData.map((data) => Product(
-            data['name'] ?? 'Unknown Product',
-            data['image'] ?? 'assets/farmer.jpg',
-            (data['price'] ?? 0.0).toDouble(),
-            data['category'] ?? 'General',
-            (data['rating'] ?? 4.0).toDouble(),
-            data['isOrganic'] ?? false,
-          )).toList();
-          
-          // Set top buys as first 3 products
+          products = productsData.map((data) {
+            String imageUrl = '';
+            if (data['images'] != null && data['images'].toString().isNotEmpty) {
+              imageUrl = data['images'].toString();
+            }
+            return Product(
+              data['name'] ?? 'Unknown Product',
+              data['description'] ?? 'No description available',
+              double.tryParse(data['price'] ?? '0.0') ?? 0.0,
+              data['quantity'] ?? 0,
+              imageUrl,
+              data['category'] ?? 'General',
+            );
+          }).toList();
+
           topBuys = products.take(3).toList();
           _isLoading = false;
         });
       } else {
-        // If API fails, use fallback data
-        _loadFallbackData();
+        setState(() {
+          products = [];
+          topBuys = [];
+          _isLoading = false;
+        });
       }
     } catch (e) {
-      // If API fails, use fallback data
-      _loadFallbackData();
+      setState(() {
+        products = [];
+        topBuys = [];
+        _isLoading = false;
+      });
     }
   }
 
   void _loadFallbackData() {
     setState(() {
-      products = [
-        Product('Fresh Tomatoes', 'assets/farmer.jpg', 4.99, 'Vegetables', 4.5, true),
-        Product('Organic Spinach', 'assets/farmer.jpg', 3.49, 'Vegetables', 4.8, true),
-        Product('Sweet Apples', 'assets/farmer.jpg', 5.99, 'Fruits', 4.6, false),
-        Product('Fresh Carrots', 'assets/farmer.jpg', 2.99, 'Vegetables', 4.7, true),
-        Product('Ripe Bananas', 'assets/farmer.jpg', 1.99, 'Fruits', 4.4, false),
-        Product('Bell Peppers', 'assets/farmer.jpg', 6.49, 'Vegetables', 4.5, true),
-        Product('Fresh Strawberries', 'assets/farmer.jpg', 7.99, 'Fruits', 4.9, false),
-        Product('Green Lettuce', 'assets/farmer.jpg', 2.49, 'Vegetables', 4.3, true),
-        Product('Organic Basil', 'assets/farmer.jpg', 4.99, 'Herbs', 4.7, true),
-        Product('Sweet Corn', 'assets/farmer.jpg', 3.99, 'Vegetables', 4.6, false),
-      ];
-      
-      topBuys = [
-        Product('Fresh Tomatoes', 'assets/farmer.jpg', 4.99, 'Vegetables', 4.5, true),
-        Product('Sweet Apples', 'assets/farmer.jpg', 5.99, 'Fruits', 4.6, false),
-        Product('Fresh Strawberries', 'assets/farmer.jpg', 7.99, 'Fruits', 4.9, false),
-      ];
+      products = [];
+      topBuys = [];
       _isLoading = false;
     });
   }
@@ -103,53 +107,80 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     return filtered;
   }
 
+  // Fetch customer profile image using token
+  Future<void> _fetchCustomerProfile() async {
+    if (widget.token == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/customers/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Adjust the key below to match your backend's response
+        setState(() {
+          customerImageUrl = data['data']?['image_url'];
+          customerName = data['data']?['name'];
+        });
+      }
+    } catch (e) {
+      // ignore error, fallback to default icon
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE8F5E8),
-              Color(0xFFF0F8F0),
-              Color(0xFFFFFFFF),
-            ],
+      drawer: _buildSideNav(),
+      body: Builder(
+        builder: (context) => Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE8F5E8),
+                Color(0xFFF0F8F0),
+                Color(0xFFFFFFFF),
+              ],
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: _isLoading
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Loading fresh products...',
-                        style: TextStyle(
-                          color: Colors.green[700],
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+          child: SafeArea(
+            child: _isLoading
+                ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
                   ),
-                )
-              : CustomScrollView(
-                  physics: BouncingScrollPhysics(),
-                  slivers: [
-                    _buildAppBar(),
-                    _buildSearchBar(),
-                    _buildCategories(),
-                    _buildTopBuysSection(),
-                    _buildSuggestedSection(),
-                    _buildProductGrid(),
-                  ],
-                ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading fresh products...',
+                    style: TextStyle(
+                      color: Colors.green[700],
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            )
+                : CustomScrollView(
+              physics: BouncingScrollPhysics(),
+              slivers: [
+                _buildAppBar(),
+                _buildSearchBar(),
+                _buildCategories(),
+                _buildTopBuysSection(),
+                _buildSuggestedSection(),
+                _buildSuggestedProductGrid(),
+              ],
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
@@ -158,11 +189,17 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 100,
+      expandedHeight: 70,
       floating: false,
       pinned: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: Icon(Icons.menu, color: Colors.white),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -173,32 +210,18 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
             ),
           ),
           child: Center(
-            child: Column(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.eco, color: Colors.white, size: 28),
-                    SizedBox(width: 8),
-                    Text(
-                      'Farm Fresh',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
+                Icon(Icons.eco, color: Colors.white, size: 28),
+                SizedBox(width: 8),
                 Text(
-                  'Organic • Local • Fresh',
+                  'Farm Crate',
                   style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w300,
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ],
@@ -218,7 +241,12 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         ),
         IconButton(
           icon: Icon(Icons.shopping_cart_outlined, color: Colors.white),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+            );
+          },
         ),
         IconButton(
           icon: Icon(Icons.favorite_border, color: Colors.white),
@@ -385,7 +413,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     );
   }
 
-  Widget _buildProductGrid() {
+  Widget _buildSuggestedProductGrid() {
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 8),
       sliver: SliverGrid(
@@ -437,33 +465,15 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Center(
-                  child: Icon(
+                  child: _buildProductImage(
+                    product.images,
+                    80,
+                    80,
                     _getProductIcon(product.name),
-                    size: 50,
-                    color: Colors.green[600],
+                    50,
                   ),
                 ),
               ),
-              if (product.isOrganic)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.green[600],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'ORGANIC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
             ],
           ),
           Expanded(
@@ -482,24 +492,38 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  SizedBox(height: 2),
+                  Text(
+                    product.description,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 14),
+                      Icon(Icons.inventory, color: Colors.blue, size: 14),
                       SizedBox(width: 2),
                       Text(
-                        '${product.rating}',
+                        '${product.quantity}',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
-                  Spacer(),
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.green[700],
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        '₹${product.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.green[700],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -540,33 +564,15 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: Center(
-                  child: Icon(
+                  child: _buildProductImage(
+                    product.images,
+                    100,
+                    100,
                     _getProductIcon(product.name),
-                    size: 60,
-                    color: Colors.green[600],
+                    60,
                   ),
                 ),
               ),
-              if (product.isOrganic)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green[600],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'ORGANIC',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
               Positioned(
                 top: 8,
                 left: 8,
@@ -606,47 +612,61 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  SizedBox(height: 4),
+                  Text(
+                    product.description,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey[600],
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 16),
+                      Icon(Icons.inventory, color: Colors.blue, size: 16),
                       SizedBox(width: 4),
                       Text(
-                        '${product.rating}',
+                        '${product.quantity}',
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
                   ),
-                  Spacer(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '\$${product.price.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.green[700],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {},
-                        child: Container(
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomLeft,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '₹${product.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.green[700],
                             ),
-                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(
-                            Icons.add_shopping_cart,
-                            color: Colors.white,
-                            size: 18,
+                          GestureDetector(
+                            onTap: () {},
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.add_shopping_cart,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -675,7 +695,42 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         elevation: 0,
         selectedItemColor: Colors.green[600],
         unselectedItemColor: Colors.grey[500],
-        currentIndex: 0,
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+          // Handle navigation based on index
+          switch (index) {
+            case 0:
+            // Already on home page
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CategoriesPage()),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => WishlistPage()),
+              );
+              break;
+            case 4:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
+              break;
+          }
+        },
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
@@ -684,6 +739,179 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
+    );
+  }
+
+  Widget _buildSideNav() {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  radius: 30,
+                  backgroundImage: (customerImageUrl != null && customerImageUrl!.isNotEmpty)
+                      ? NetworkImage(customerImageUrl!)
+                      : null,
+                  child: (customerImageUrl == null || customerImageUrl!.isEmpty)
+                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
+                      : null,
+                ),
+                SizedBox(height: 10),
+                Text(
+                  customerName != null && customerName!.isNotEmpty
+                      ? customerName!
+                      : 'Welcome!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Explore Farm Fresh Products',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildDrawerItem(
+            icon: Icons.home,
+            title: 'Home',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => CustomerHomePage(token: widget.token)),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.category,
+            title: 'Categories',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CategoriesPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.shopping_cart,
+            title: 'Cart',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.favorite,
+            title: 'Wishlist',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => WishlistPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.payment,
+            title: 'Orders',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => OrdersPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.person,
+            title: 'Profile',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ProfilePage()),
+              );
+            },
+          ),
+          Divider(),
+          _buildDrawerItem(
+            icon: Icons.settings,
+            title: 'Settings',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.help,
+            title: 'Help & Support',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => HelpPage()),
+              );
+            },
+          ),
+          Divider(),
+          _buildDrawerItem(
+            icon: Icons.logout,
+            title: 'Logout',
+            onTap: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => LoginPage()),
+                    (Route<dynamic> route) => false, // Removes all previous routes
+              );
+            }
+            ,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.green[700]),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
     );
   }
 
@@ -700,15 +928,118 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
     if (productName.toLowerCase().contains('corn')) return Icons.eco;
     return Icons.eco;
   }
+
+  bool _isCloudinaryUrl(String url) {
+    return url.contains('cloudinary.com') || url.contains('res.cloudinary.com');
+  }
+
+  Widget _buildProductImage(String imageUrl, double width, double height, IconData fallbackIcon, double iconSize) {
+    if (imageUrl.isEmpty || imageUrl == 'null') {
+      return Icon(fallbackIcon, size: iconSize, color: Colors.green[600]);
+    }
+
+    if (_isCloudinaryUrl(imageUrl) || imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  : null,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(fallbackIcon, size: iconSize, color: Colors.green[600]);
+        },
+      );
+    } else if (imageUrl.startsWith('assets/')) {
+      return Image.asset(
+        imageUrl,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(fallbackIcon, size: iconSize, color: Colors.green[600]);
+        },
+      );
+    } else {
+      return Icon(fallbackIcon, size: iconSize, color: Colors.green[600]);
+    }
+  }
 }
 
 class Product {
   final String name;
-  final String imagePath;
+  final String description;
   final double price;
+  final int quantity;
+  final String images;
   final String category;
-  final double rating;
-  final bool isOrganic;
 
-  Product(this.name, this.imagePath, this.price, this.category, this.rating, this.isOrganic);
+  Product(
+      this.name,
+      this.description,
+      this.price,
+      this.quantity,
+      this.images,
+      this.category,
+      );
+}
+
+// You'll need to create these pages separately
+class CategoriesPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Categories')),
+      body: Center(child: Text('Categories Page')),
+    );
+  }
+}
+
+class WishlistPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Wishlist')),
+      body: Center(child: Text('Wishlist Page')),
+    );
+  }
+}
+
+class OrdersPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Orders')),
+      body: Center(child: Text('Orders Page')),
+    );
+  }
+}
+
+class SettingsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Settings')),
+      body: Center(child: Text('Settings Page')),
+    );
+  }
+}
+
+class HelpPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Help & Support')),
+      body: Center(child: Text('Help Page')),
+    );
+  }
 }

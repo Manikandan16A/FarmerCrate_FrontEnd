@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import '../Signin.dart';
 import '../Customer/Cart.dart';
 import 'Addproduct.dart';
@@ -6,6 +7,7 @@ import 'farmerprofile.dart';
 import 'ProductEdit.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -23,16 +25,22 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   List<Product> products = [];
   bool isLoading = false;
   String? errorMessage;
+  late ScrollController _scrollController;
+  bool _showSearchBar = true;
+  double _lastOffset = 0;
 
   @override
   void initState() {
     super.initState();
     fetchProducts();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -123,6 +131,14 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     }
   }
 
+  void _onScroll() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_showSearchBar) setState(() => _showSearchBar = false);
+    } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      if (!_showSearchBar) setState(() => _showSearchBar = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -151,9 +167,16 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => FarmerProductsPage(token: widget.token)),
-                    (route) => false,
+                (route) => false,
               );
             },
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.green[800]),
+            onPressed: () {
+              fetchProducts();
+            },
+            tooltip: 'Refresh Products',
           ),
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
@@ -248,7 +271,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               onTap: () {
                 Navigator.pushAndRemoveUntil(
                   context,
-                  MaterialPageRoute(builder: (context) =>  LoginPage()),
+                  MaterialPageRoute(builder: (context) => LoginPage()),
                       (route) => false,
                 );
               },
@@ -256,49 +279,53 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           ],
         ),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search Bar
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: Colors.grey[600]),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search...',
-                        border: InputBorder.none,
-                        hintStyle: TextStyle(
-                          color: Colors.grey[600],
+      body: CustomScrollView(
+        controller: _scrollController,
+        physics: BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: AnimatedSlide(
+              offset: _showSearchBar ? Offset(0, 0) : Offset(0, -1),
+              duration: Duration(milliseconds: 300),
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.grey[600]),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search...',
+                          border: InputBorder.none,
+                          hintStyle: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: TextStyle(
+                          color: Colors.grey[800],
                           fontSize: 16,
                         ),
                       ),
-                      style: TextStyle(
-                        color: Colors.grey[800],
-                        fontSize: 16,
-                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.tune, color: Colors.green[700]),
-                    onPressed: () {},
-                  ),
-                ],
+                    IconButton(
+                      icon: Icon(Icons.tune, color: Colors.green[700]),
+                      onPressed: () {},
+                    ),
+                  ],
+                ),
               ),
             ),
-            SizedBox(height: 20),
-            // Farmer Banner
-            GestureDetector(
+          ),
+          SliverToBoxAdapter(child: SizedBox(height: 20)),
+          SliverToBoxAdapter(
+            child: GestureDetector(
               onTap: () {
                 Navigator.push(
                   context,
@@ -364,77 +391,74 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 ),
               ),
             ),
-            SizedBox(height: 24),
-            // Categories
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Categories',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Categories',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
                 ),
-                GestureDetector(
-                  onTap: () => _onCategoryTapped('All'), // Always show all products
-                  child: Text(
-                    'View all',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.green[700],
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            // Category Icons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildCategoryItem('🍃', 'Fruits', _selectedCategory == 'Fruits'),
-                _buildCategoryItem('🌾', 'Grains', _selectedCategory == 'Grains'),
-                _buildCategoryItem('🥬', 'Veg', _selectedCategory == 'Veg'),
-              ],
-            ),
-            SizedBox(height: 24),
-            // Browse Products
-            Text(
-              'Your Products',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[800],
               ),
             ),
-            SizedBox(height: 16),
-            // Products Grid
-            LayoutBuilder(
-              builder: (context, constraints) {
-                return GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
-                  children: products.map((product) {
-                    return _buildProductCard(
-                      context,
-                      product.name,
-                      '₹${product.price.toStringAsFixed(2)}',
-                      product.description,
-                      product.images,
-                    );
-                  }).toList(),
-                );
-              },
+          ),
+          SliverToBoxAdapter(
+            child: Container(
+              height: 90, // Adjust as needed
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: 3,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: _buildCategoryItem(context, index, _selectedCategory, iconSize: 28, boxSize: 60),
+                  );
+                },
+              ),
             ),
-          ],
-        ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Text(
+                'Your Products',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 0.75,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final product = products[index];
+                  return _buildProductCard(
+                    context,
+                    product.name,
+                    '₹${product.price.toStringAsFixed(2)}',
+                    product.description,
+                    product.images,
+                  );
+                },
+                childCount: products.length,
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -487,14 +511,36 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     );
   }
 
-  Widget _buildCategoryItem(String emoji, String title, bool isSelected) {
+  Widget _buildCategoryItem(BuildContext context, int index, String? selectedCategory, {double iconSize = 32, double boxSize = 70}) {
+    String emoji = '';
+    String title = '';
+    bool isSelected = false;
+
+    switch (index) {
+      case 0:
+        emoji = '🍃';
+        title = 'Fruits';
+        isSelected = selectedCategory == 'Fruits';
+        break;
+      case 1:
+        emoji = '🌾';
+        title = 'Grains';
+        isSelected = selectedCategory == 'Grains';
+        break;
+      case 2:
+        emoji = '🥬';
+        title = 'Veg';
+        isSelected = selectedCategory == 'Veg';
+        break;
+    }
+
     return GestureDetector(
       onTap: () => _onCategoryTapped(title),
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: boxSize,
+            height: boxSize,
             decoration: BoxDecoration(
               color: isSelected ? Colors.green[200] : Colors.green[50],
               borderRadius: BorderRadius.circular(12),
@@ -505,7 +551,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
             child: Center(
               child: Text(
                 emoji,
-                style: TextStyle(fontSize: 24),
+                style: TextStyle(fontSize: iconSize),
               ),
             ),
           ),
@@ -768,7 +814,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CartPage(customerId: 0), // Adjust customerId as needed
+                            builder: (context) => CartPage(customerId: 0,), // Adjust customerId as needed
                           ),
                         );
                       },
