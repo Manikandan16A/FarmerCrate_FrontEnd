@@ -58,6 +58,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
               imageUrl = data['images'].toString();
             }
             return Product(
+              data['id'] ?? 0,
               data['name'] ?? 'Unknown Product',
               data['description'] ?? 'No description available',
               double.tryParse(data['price'] ?? '0.0') ?? 0.0,
@@ -128,6 +129,38 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       }
     } catch (e) {
       // ignore error, fallback to default icon
+    }
+  }
+
+  // Add to cart POST method
+  Future<void> _addToCart(Product product) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/cart'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          'product_id': product.id,
+          'quantity': 1,
+        }),
+      );
+      print('Cart API status: ${response.statusCode}');
+      print('Cart API response: ${response.body}');
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added to cart!'), backgroundColor: Colors.green),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add to cart'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -648,7 +681,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                             ),
                           ),
                           GestureDetector(
-                            onTap: () {},
+                            onTap: () => _addToCart(product),
                             child: Container(
                               padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -976,6 +1009,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
 }
 
 class Product {
+  final int id;
   final String name;
   final String description;
   final double price;
@@ -984,13 +1018,14 @@ class Product {
   final String category;
 
   Product(
-      this.name,
-      this.description,
-      this.price,
-      this.quantity,
-      this.images,
-      this.category,
-      );
+    this.id,
+    this.name,
+    this.description,
+    this.price,
+    this.quantity,
+    this.images,
+    this.category,
+  );
 }
 
 // You'll need to create these pages separately

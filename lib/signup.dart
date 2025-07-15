@@ -237,6 +237,16 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     ));
 
     _animationController.forward();
+
+    // Add listener to state controller to clear district when state changes
+    _stateController.addListener(() {
+      // If the state changes, clear the district and update UI
+      if ((_stateController.text.isEmpty && _districtController.text.isNotEmpty) ||
+          (_stateController.text.isNotEmpty && !(_stateDistricts[_stateController.text] ?? []).contains(_districtController.text))) {
+        _districtController.clear();
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -854,6 +864,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   }
                   return null;
                 },
+                isStateField: true,
               ),
               const SizedBox(height: 16),
               _buildAutocompleteField(
@@ -960,7 +971,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
               _buildSignUpButton(),
               const SizedBox(height: 16),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Already have an account?',
@@ -970,6 +981,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                       fontWeight: FontWeight.w400,
                     ),
                   ),
+                  SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
                       Navigator.pushReplacement(
@@ -978,7 +990,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                       );
                     },
                     child: const Text(
-                      'Sign In',
+                      'SignIn',
                       style: TextStyle(
                         fontSize: 14,
                         color: Color(0xFF4CAF50),
@@ -989,6 +1001,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   ),
                 ],
               ),
+              SizedBox(height: 8),
             ],
           ),
         ),
@@ -1185,6 +1198,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     required IconData icon,
     required List<String> options,
     String? Function(String?)? validator,
+    bool isStateField = false,
   }) {
     return Autocomplete<String>(
       optionsBuilder: (TextEditingValue textEditingValue) {
@@ -1196,9 +1210,10 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
       },
       onSelected: (String selection) {
         controller.text = selection;
-        _stateController.text = selection;
-        _districtController.clear();
-        setState(() {});
+        if (isStateField) {
+          _districtController.clear();
+          setState(() {});
+        }
       },
       fieldViewBuilder: (
           BuildContext context,
