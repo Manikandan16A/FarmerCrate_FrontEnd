@@ -2,6 +2,7 @@ import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'Categories.dart';
 
 import '../Signin.dart';
 import 'Cart.dart';
@@ -741,7 +742,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
             case 1:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CategoriesPage()),
+                MaterialPageRoute(builder: (context) => CategoryPage()),
               );
               break;
             case 2:
@@ -841,7 +842,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CategoriesPage()),
+                MaterialPageRoute(builder: (context) => CategoryPage()),
               );
             },
           ),
@@ -1029,15 +1030,7 @@ class Product {
 }
 
 // You'll need to create these pages separately
-class CategoriesPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Categories')),
-      body: Center(child: Text('Categories Page')),
-    );
-  }
-}
+
 
 class WishlistPage extends StatelessWidget {
   @override
