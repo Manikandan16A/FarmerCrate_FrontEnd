@@ -11,7 +11,7 @@ import '../utils/cloudinary_upload.dart';
 class CustomerHomePage extends StatefulWidget {
   final String? token;
 
-  CustomerHomePage({this.token});
+  const CustomerHomePage({Key? key, this.token}) : super(key: key);
 
   @override
   _CustomerHomePageState createState() => _CustomerHomePageState();
@@ -760,7 +760,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
             case 4:
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ProfilePage()),
+                MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token ?? '')),
               );
               break;
           }
@@ -886,7 +886,7 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => ProfilePage()),
+                MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token ?? '')),
               );
             },
           ),
