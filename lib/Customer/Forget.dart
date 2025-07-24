@@ -484,7 +484,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with TickerProv
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Make sure to check your spam/junk folder if you don\'t receive the OTP within a few minutes.',
+              'Make sure to check your spam/junk folder if you don\'t receive the OTP within a few minutes try again.',
               style: TextStyle(
                 color: Color(0xFF2E7D32),
                 fontSize: 14,

@@ -1,10 +1,184 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
 import 'customerhomepage.dart';
 
+// Enhanced Data Models (API Ready)
+class Farmer {
+  final String id;
+  final String name;
+  final double rating;
+  final String location;
+
+  Farmer({
+    required this.id,
+    required this.name,
+    required this.rating,
+    required this.location,
+  });
+
+  // Factory method for API integration
+  factory Farmer.fromJson(Map<String, dynamic> json) {
+    return Farmer(
+      id: json['id'],
+      name: json['name'],
+      rating: json['rating'].toDouble(),
+      location: json['location'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'rating': rating,
+      'location': location,
+    };
+  }
+}
+
+class Product {
+  final String id;
+  final String name;
+  final String imageUrl;
+  final double price;
+  final String quantity;
+  final String farmerId;
+  final String farmerName;
+  final String category;
+  final String subcategory;
+  final List<String> variety;
+  final double rating;
+  final int discount;
+  final bool inStock;
+  final String description;
+
+  Product({
+    required this.id,
+    required this.name,
+    required this.imageUrl,
+    required this.price,
+    required this.quantity,
+    required this.farmerId,
+    required this.farmerName,
+    required this.category,
+    required this.subcategory,
+    required this.variety,
+    required this.rating,
+    required this.discount,
+    required this.inStock,
+    required this.description,
+  });
+
+  // Factory method for API integration
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'],
+      name: json['name'],
+      imageUrl: json['imageUrl'],
+      price: json['price'].toDouble(),
+      quantity: json['quantity'],
+      farmerId: json['farmerId'],
+      farmerName: json['farmerName'],
+      category: json['category'],
+      subcategory: json['subcategory'],
+      variety: List<String>.from(json['variety']),
+      rating: json['rating'].toDouble(),
+      discount: json['discount'],
+      inStock: json['inStock'],
+      description: json['description'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'imageUrl': imageUrl,
+      'price': price,
+      'quantity': quantity,
+      'farmerId': farmerId,
+      'farmerName': farmerName,
+      'category': category,
+      'subcategory': subcategory,
+      'variety': variety,
+      'rating': rating,
+      'discount': discount,
+      'inStock': inStock,
+      'description': description,
+    };
+  }
+}
+
+// API Service Class (Ready for implementation)
+class ApiService {
+  static const String baseUrl = 'https://your-api-endpoint.com/api';
+
+  // Get all farmers
+  static Future<List<Farmer>> getFarmers() async {
+    // Implementation will be added when API is ready
+    // Example:
+    // final response = await http.get(Uri.parse('$baseUrl/farmers'));
+    // if (response.statusCode == 200) {
+    //   List<dynamic> data = json.decode(response.body);
+    //   return data.map((farmer) => Farmer.fromJson(farmer)).toList();
+    // }
+    throw UnimplementedError('API not implemented yet');
+  }
+
+  // Get all products
+  static Future<List<Product>> getProducts() async {
+    // Implementation will be added when API is ready
+    // Example:
+    // final response = await http.get(Uri.parse('$baseUrl/products'));
+    // if (response.statusCode == 200) {
+    //   List<dynamic> data = json.decode(response.body);
+    //   return data.map((product) => Product.fromJson(product)).toList();
+    // }
+    throw UnimplementedError('API not implemented yet');
+  }
+
+  // Get products by farmer
+  static Future<List<Product>> getProductsByFarmer(String farmerId) async {
+    // Implementation will be added when API is ready
+    // Example:
+    // final response = await http.get(Uri.parse('$baseUrl/products?farmerId=$farmerId'));
+    // if (response.statusCode == 200) {
+    //   List<dynamic> data = json.decode(response.body);
+    //   return data.map((product) => Product.fromJson(product)).toList();
+    // }
+    throw UnimplementedError('API not implemented yet');
+  }
+
+  // Search products
+  static Future<List<Product>> searchProducts(String query) async {
+    // Implementation will be added when API is ready
+    // Example:
+    // final response = await http.get(Uri.parse('$baseUrl/products/search?q=$query'));
+    // if (response.statusCode == 200) {
+    //   List<dynamic> data = json.decode(response.body);
+    //   return data.map((product) => Product.fromJson(product)).toList();
+    // }
+    throw UnimplementedError('API not implemented yet');
+  }
+
+  static Future<List<String>> fetchProductImages() async {
+    final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/products'));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List products = data['data'];
+      // Extract only the image URLs
+      return products.map<String>((product) => product['images'] as String).toList();
+    } else {
+      throw Exception('Failed to load product images');
+    }
+  }
+}
+
 class CategoryPage extends StatefulWidget {
-  const CategoryPage({Key? key}) : super(key: key);
+  final String? token;
+  const CategoryPage({Key? key, this.token}) : super(key: key);
 
   @override
   State<CategoryPage> createState() => _CategoryPageState();
@@ -49,183 +223,18 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     'Organic', 'Seasonal', 'Hydroponic', 'Pesticide-Free', 'Heirloom'
   ];
 
-  // Sample data (API ready structure)
-  final List<Farmer> _farmers = [
-    Farmer(id: '1', name: 'John Smith', rating: 4.8, location: 'California'),
-    Farmer(id: '2', name: 'Maria Garcia', rating: 4.9, location: 'Texas'),
-    Farmer(id: '3', name: 'David Johnson', rating: 4.7, location: 'Florida'),
-    Farmer(id: '4', name: 'Sarah Wilson', rating: 4.6, location: 'Oregon'),
-    Farmer(id: '5', name: 'Michael Brown', rating: 4.8, location: 'Washington'),
-    Farmer(id: '6', name: 'Emma Davis', rating: 4.9, location: 'New York'),
-    Farmer(id: '7', name: 'Robert Taylor', rating: 4.5, location: 'Georgia'),
-  ];
+  // API farmers
+  List<Farmer> _apiFarmers = [];
+  bool _isLoadingFarmers = true;
 
-  final List<Product> _allProducts = [
-    Product(
-      id: '1',
-      name: 'Fresh Tomatoes',
-      imageUrl: 'https://images.unsplash.com/photo-1546470427-e2d2c8b9e1c7?w=400',
-      price: 4.99,
-      quantity: '2 kg',
-      farmerId: '1',
-      farmerName: 'John Smith',
-      category: 'Vegetables',
-      subcategory: 'Tomatoes',
-      variety: ['Organic', 'Seasonal'],
-      rating: 4.8,
-      discount: 10,
-      inStock: true,
-      description: 'Fresh, juicy tomatoes perfect for salads and cooking.',
-    ),
-    Product(
-      id: '2',
-      name: 'Sweet Apples',
-      imageUrl: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400',
-      price: 6.50,
-      quantity: '1 kg',
-      farmerId: '2',
-      farmerName: 'Maria Garcia',
-      category: 'Fruits',
-      subcategory: 'Apples',
-      variety: ['Organic', 'Heirloom'],
-      rating: 4.9,
-      discount: 0,
-      inStock: true,
-      description: 'Crisp and sweet apples, naturally grown.',
-    ),
-    Product(
-      id: '3',
-      name: 'Fresh Carrots',
-      imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=400',
-      price: 3.75,
-      quantity: '1.5 kg',
-      farmerId: '1',
-      farmerName: 'John Smith',
-      category: 'Vegetables',
-      subcategory: 'Carrots',
-      variety: ['Seasonal', 'Pesticide-Free'],
-      rating: 4.7,
-      discount: 5,
-      inStock: true,
-      description: 'Fresh carrots rich in beta-carotene and vitamins.',
-    ),
-    Product(
-      id: '4',
-      name: 'Organic Bananas',
-      imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400',
-      price: 5.25,
-      quantity: '2 kg',
-      farmerId: '3',
-      farmerName: 'David Johnson',
-      category: 'Fruits',
-      subcategory: 'Bananas',
-      variety: ['Organic'],
-      rating: 4.6,
-      discount: 15,
-      inStock: true,
-      description: 'Perfectly ripe organic bananas, great for smoothies.',
-    ),
-    Product(
-      id: '5',
-      name: 'Green Spinach',
-      imageUrl: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400',
-      price: 2.99,
-      quantity: '500g',
-      farmerId: '2',
-      farmerName: 'Maria Garcia',
-      category: 'Vegetables',
-      subcategory: 'Spinach',
-      variety: ['Organic', 'Seasonal'],
-      rating: 4.8,
-      discount: 0,
-      inStock: true,
-      description: 'Fresh spinach leaves, perfect for salads and cooking.',
-    ),
-    Product(
-      id: '6',
-      name: 'Juicy Oranges',
-      imageUrl: 'https://images.unsplash.com/photo-1547036967-23d11aacaee0?w=400',
-      price: 7.80,
-      quantity: '3 kg',
-      farmerId: '4',
-      farmerName: 'Sarah Wilson',
-      category: 'Fruits',
-      subcategory: 'Oranges',
-      variety: ['Seasonal'],
-      rating: 4.5,
-      discount: 8,
-      inStock: true,
-      description: 'Sweet and juicy oranges, packed with vitamin C.',
-    ),
-    Product(
-      id: '7',
-      name: 'Colorful Bell Peppers',
-      imageUrl: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400',
-      price: 4.50,
-      quantity: '1 kg',
-      farmerId: '5',
-      farmerName: 'Michael Brown',
-      category: 'Vegetables',
-      subcategory: 'Bell Peppers',
-      variety: ['Organic', 'Hydroponic'],
-      rating: 4.7,
-      discount: 0,
-      inStock: true,
-      description: 'Vibrant bell peppers in mixed colors.',
-    ),
-    Product(
-      id: '8',
-      name: 'Sweet Strawberries',
-      imageUrl: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400',
-      price: 8.99,
-      quantity: '500g',
-      farmerId: '3',
-      farmerName: 'David Johnson',
-      category: 'Fruits',
-      subcategory: 'Strawberries',
-      variety: ['Organic', 'Seasonal'],
-      rating: 4.9,
-      discount: 20,
-      inStock: false,
-      description: 'Delicious strawberries, perfect for desserts.',
-    ),
-    Product(
-      id: '9',
-      name: 'Fresh Broccoli',
-      imageUrl: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?w=400',
-      price: 3.99,
-      quantity: '1 kg',
-      farmerId: '6',
-      farmerName: 'Emma Davis',
-      category: 'Vegetables',
-      subcategory: 'Broccoli',
-      variety: ['Organic', 'Pesticide-Free'],
-      rating: 4.6,
-      discount: 0,
-      inStock: true,
-      description: 'Fresh broccoli florets, rich in nutrients.',
-    ),
-    Product(
-      id: '10',
-      name: 'Sweet Mangoes',
-      imageUrl: 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=400',
-      price: 9.99,
-      quantity: '2 kg',
-      farmerId: '7',
-      farmerName: 'Robert Taylor',
-      category: 'Fruits',
-      subcategory: 'Mangoes',
-      variety: ['Seasonal', 'Heirloom'],
-      rating: 4.8,
-      discount: 12,
-      inStock: true,
-      description: 'Tropical mangoes with exceptional sweetness.',
-    ),
-  ];
-
-  List<String> _productImages = [];
+  List<Product> _allProducts = [];
   bool _isLoadingImages = true;
   Product? _selectedProduct;
+  // New: Store API products
+  List<dynamic> _apiProducts = [];
+
+  // Farmer names for filter
+  List<Map<String, dynamic>> _farmerNames = [];
 
   @override
   void initState() {
@@ -250,6 +259,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       _varietyFilters[variety] = false;
     }
     _fetchImages();
+    _fetchFarmerNames();
   }
 
   @override
@@ -350,17 +360,122 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   void _fetchImages() async {
     try {
-      final images = await ApiService.fetchProductImages();
-      setState(() {
-        _productImages = images;
-        _isLoadingImages = false;
-      });
+      final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/products'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List products = data['data'];
+        setState(() {
+          _allProducts = products.map<Product>((product) {
+            // Farmer info may be nested under 'farmer'
+            final farmer = product['farmer'];
+            return Product(
+              id: product['id'].toString(),
+              name: product['name'] ?? '',
+              imageUrl: product['images'] ?? '',
+              price: double.tryParse(product['price'].toString()) ?? 0.0,
+              quantity: product['quantity'].toString(),
+              farmerId: farmer != null ? farmer['id'].toString() : (product['farmer_id']?.toString() ?? ''),
+              farmerName: farmer != null ? farmer['name'] ?? '' : '',
+              category: product['category'] ?? '',
+              subcategory: '', // Not available in API
+              variety: [], // Not available in API
+              rating: 0.0, // Not available in API
+              discount: 0, // Not available in API
+              inStock: product['status'] == 'available',
+              description: product['description'] ?? '',
+            );
+          }).toList();
+          _apiProducts = products;
+          _isLoadingImages = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingImages = false;
+        });
+      }
     } catch (e) {
       setState(() {
         _isLoadingImages = false;
       });
-      // Handle error (show snackbar, etc.)
     }
+  }
+
+  // Fetch farmers from API
+  void _fetchFarmers() async {
+    try {
+      final headers = <String, String>{'Content-Type': 'application/json'};
+      if (widget.token != null) {
+        headers['Authorization'] = 'Bearer ${widget.token}';
+      }
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/products/farmer'),
+        headers: headers,
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List farmers = data['data'];
+        setState(() {
+          _apiFarmers = farmers.map<Farmer>((f) => Farmer(
+            id: f['id'].toString(),
+            name: f['name'],
+            rating: f['rating'] != null ? double.tryParse(f['rating'].toString()) ?? 0.0 : 0.0,
+            location: f['location'] ?? '',
+          )).toList();
+          _isLoadingFarmers = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingFarmers = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingFarmers = false;
+      });
+    }
+  }
+
+  // Fetch farmer names for filter
+  void _fetchFarmerNames() async {
+    try {
+      final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/farmer/names'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _farmerNames = List<Map<String, dynamic>>.from(data['data']);
+        });
+      }
+    } catch (e) {
+      // ignore error
+    }
+  }
+
+  // Helper to get API price by product name (or id if available)
+  String? _getApiPrice(Product product) {
+    final apiProduct = _apiProducts.firstWhere(
+          (p) => (p['name'] == product.name),
+      orElse: () => null,
+    );
+    if (apiProduct != null && apiProduct['price'] != null) {
+      return apiProduct['price'].toString();
+    }
+    return null;
+  }
+  // New: Helper to get API product by id
+  Map<String, dynamic>? _getApiProductById(String id) {
+    return _apiProducts.firstWhere(
+          (p) => p['id'].toString() == id,
+      orElse: () => null,
+    );
+  }
+
+  // Helper to get API farmer name by farmerId
+  String _getApiFarmerName(String farmerId) {
+    final farmer = _apiFarmers.firstWhere(
+          (f) => f.id == farmerId,
+      orElse: () => Farmer(id: '', name: '', rating: 0.0, location: ''),
+    );
+    return farmer.name;
   }
 
   @override
@@ -467,17 +582,17 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       ),
       child: _selectedProduct != null
           ? ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                _selectedProduct!.imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, size: 80),
-              ),
-            )
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          _selectedProduct!.imageUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, size: 80),
+        ),
+      )
           : Center(
-              child: Icon(Icons.image, size: 80, color: Colors.grey[400]),
-            ),
+        child: Icon(Icons.image, size: 80, color: Colors.grey[400]),
+      ),
     );
   }
 
@@ -603,16 +718,14 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                           value: null,
                           child: Text('All Farmers'),
                         ),
-                        ..._farmers.map((farmer) {
-                          return DropdownMenuItem<String>(
-                            value: farmer.id,
-                            child: Text(
-                              farmer.name,
-                              style: const TextStyle(fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
+                        ..._farmerNames.map((farmer) => DropdownMenuItem<String>(
+                          value: farmer['id'].toString(),
+                          child: Text(
+                            farmer['name'],
+                            style: const TextStyle(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )).toList(),
                       ],
                       onChanged: (value) {
                         setState(() {
@@ -862,6 +975,14 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   Widget _buildProductCard(Product product) {
     int productIndex = _filteredProducts.indexOf(product);
+    // Get API product by id
+    final apiProduct = _getApiProductById(product.id);
+    final displayName = apiProduct != null && apiProduct['name'] != null ? apiProduct['name'] : product.name;
+    final displayDescription = apiProduct != null && apiProduct['description'] != null ? apiProduct['description'] : product.description;
+    final displayImage = apiProduct != null && apiProduct['images'] != null && apiProduct['images'].toString().isNotEmpty ? apiProduct['images'] : product.imageUrl;
+    final displayPrice = apiProduct != null && apiProduct['price'] != null ? apiProduct['price'].toString() : product.price.toString();
+    // Get farmer name from API if available
+    final displayFarmerName = _getApiFarmerName(product.farmerId).isNotEmpty ? _getApiFarmerName(product.farmerId) : product.farmerName;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -896,17 +1017,17 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
                     ),
-                    child: (_productImages.isNotEmpty && productIndex < _productImages.length)
+                    child: displayImage != null && displayImage.toString().isNotEmpty
                         ? Image.network(
-                            _productImages[productIndex],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: 120,
-                            errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image),
-                          )
+                      displayImage,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: 120,
+                      errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image),
+                    )
                         : Center(
-                            child: Icon(Icons.image, size: 60, color: Colors.grey[400]),
-                          ),
+                      child: Icon(Icons.image, size: 60, color: Colors.grey[400]),
+                    ),
                   ),
 
                   // Discount Badge
@@ -970,11 +1091,22 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        product.name,
+                        displayName,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2E7D32),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        displayFarmerName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF4CAF50),
+                          fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1042,9 +1174,9 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                                 const SizedBox(width: 4),
                               ],
                               Text(
-                                'product.price',
+                                '₹$displayPrice',
                                 style: const TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 20, // Increased font size
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF4CAF50),
                                 ),
@@ -1097,6 +1229,14 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   Widget _buildProductListItem(Product product) {
     int productIndex = _filteredProducts.indexOf(product);
+    // Get API product by id
+    final apiProduct = _getApiProductById(product.id);
+    final displayName = apiProduct != null && apiProduct['name'] != null ? apiProduct['name'] : product.name;
+    final displayDescription = apiProduct != null && apiProduct['description'] != null ? apiProduct['description'] : product.description;
+    final displayImage = apiProduct != null && apiProduct['images'] != null && apiProduct['images'].toString().isNotEmpty ? apiProduct['images'] : product.imageUrl;
+    final displayPrice = apiProduct != null && apiProduct['price'] != null ? apiProduct['price'].toString() : product.price.toString();
+    // Get farmer name from API if available
+    final displayFarmerName = _getApiFarmerName(product.farmerId).isNotEmpty ? _getApiFarmerName(product.farmerId) : product.farmerName;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -1125,14 +1265,14 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
               child: Stack(
                 children: [
                   Center(
-                    child: (_productImages.isNotEmpty && productIndex < _productImages.length)
+                    child: displayImage != null && displayImage.toString().isNotEmpty
                         ? Image.network(
-                            _productImages[productIndex],
-                            fit: BoxFit.cover,
-                            width: 80,
-                            height: 80,
-                            errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image),
-                          )
+                      displayImage,
+                      fit: BoxFit.cover,
+                      width: 80,
+                      height: 80,
+                      errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image),
+                    )
                         : Icon(Icons.image, size: 60, color: Colors.grey[400]),
                   ),
                   if (product.discount > 0)
@@ -1166,12 +1306,23 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product.name,
+                    displayName,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2E7D32),
                     ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    displayFarmerName,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF4CAF50),
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -1219,7 +1370,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product.description,
+                    displayDescription,
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.grey[600],
@@ -1258,7 +1409,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
               children: [
                 if (product.discount > 0) ...[
                   Text(
-                    'product price',
+                    '',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.grey,
@@ -1268,9 +1419,9 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                   const SizedBox(height: 2),
                 ],
                 Text(
-                  'product price',
+                  '₹$displayPrice',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 22, // Increased font size
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF4CAF50),
                   ),
@@ -1316,177 +1467,5 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         ),
       ),
     );
-  }
-}
-
-// Enhanced Data Models (API Ready)
-class Farmer {
-  final String id;
-  final String name;
-  final double rating;
-  final String location;
-
-  Farmer({
-    required this.id,
-    required this.name,
-    required this.rating,
-    required this.location,
-  });
-
-  // Factory method for API integration
-  factory Farmer.fromJson(Map<String, dynamic> json) {
-    return Farmer(
-      id: json['id'],
-      name: json['name'],
-      rating: json['rating'].toDouble(),
-      location: json['location'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'rating': rating,
-      'location': location,
-    };
-  }
-}
-
-class Product {
-  final String id;
-  final String name;
-  final String imageUrl;
-  final double price;
-  final String quantity;
-  final String farmerId;
-  final String farmerName;
-  final String category;
-  final String subcategory;
-  final List<String> variety;
-  final double rating;
-  final int discount;
-  final bool inStock;
-  final String description;
-
-  Product({
-    required this.id,
-    required this.name,
-    required this.imageUrl,
-    required this.price,
-    required this.quantity,
-    required this.farmerId,
-    required this.farmerName,
-    required this.category,
-    required this.subcategory,
-    required this.variety,
-    required this.rating,
-    required this.discount,
-    required this.inStock,
-    required this.description,
-  });
-
-  // Factory method for API integration
-  factory Product.fromJson(Map<String, dynamic> json) {
-    return Product(
-      id: json['id'],
-      name: json['name'],
-      imageUrl: json['imageUrl'],
-      price: json['price'].toDouble(),
-      quantity: json['quantity'],
-      farmerId: json['farmerId'],
-      farmerName: json['farmerName'],
-      category: json['category'],
-      subcategory: json['subcategory'],
-      variety: List<String>.from(json['variety']),
-      rating: json['rating'].toDouble(),
-      discount: json['discount'],
-      inStock: json['inStock'],
-      description: json['description'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'imageUrl': imageUrl,
-      'price': price,
-      'quantity': quantity,
-      'farmerId': farmerId,
-      'farmerName': farmerName,
-      'category': category,
-      'subcategory': subcategory,
-      'variety': variety,
-      'rating': rating,
-      'discount': discount,
-      'inStock': inStock,
-      'description': description,
-    };
-  }
-}
-
-// API Service Class (Ready for implementation)
-class ApiService {
-  static const String baseUrl = 'https://your-api-endpoint.com/api';
-
-  // Get all farmers
-  static Future<List<Farmer>> getFarmers() async {
-    // Implementation will be added when API is ready
-    // Example:
-    // final response = await http.get(Uri.parse('$baseUrl/farmers'));
-    // if (response.statusCode == 200) {
-    //   List<dynamic> data = json.decode(response.body);
-    //   return data.map((farmer) => Farmer.fromJson(farmer)).toList();
-    // }
-    throw UnimplementedError('API not implemented yet');
-  }
-
-  // Get all products
-  static Future<List<Product>> getProducts() async {
-    // Implementation will be added when API is ready
-    // Example:
-    // final response = await http.get(Uri.parse('$baseUrl/products'));
-    // if (response.statusCode == 200) {
-    //   List<dynamic> data = json.decode(response.body);
-    //   return data.map((product) => Product.fromJson(product)).toList();
-    // }
-    throw UnimplementedError('API not implemented yet');
-  }
-
-  // Get products by farmer
-  static Future<List<Product>> getProductsByFarmer(String farmerId) async {
-    // Implementation will be added when API is ready
-    // Example:
-    // final response = await http.get(Uri.parse('$baseUrl/products?farmerId=$farmerId'));
-    // if (response.statusCode == 200) {
-    //   List<dynamic> data = json.decode(response.body);
-    //   return data.map((product) => Product.fromJson(product)).toList();
-    // }
-    throw UnimplementedError('API not implemented yet');
-  }
-
-  // Search products
-  static Future<List<Product>> searchProducts(String query) async {
-    // Implementation will be added when API is ready
-    // Example:
-    // final response = await http.get(Uri.parse('$baseUrl/products/search?q=$query'));
-    // if (response.statusCode == 200) {
-    //   List<dynamic> data = json.decode(response.body);
-    //   return data.map((product) => Product.fromJson(product)).toList();
-    // }
-    throw UnimplementedError('API not implemented yet');
-  }
-
-  static Future<List<String>> fetchProductImages() async {
-    final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/products'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List products = data['data'];
-      // Extract only the image URLs
-      return products.map<String>((product) => product['images'] as String).toList();
-    } else {
-      throw Exception('Failed to load product images');
-    }
   }
 }

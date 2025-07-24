@@ -95,6 +95,36 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       _isLoading = false;
     });
   }
+  
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        targetPage = CustomerHomePage(token: widget.token);
+        break;
+      case 1:
+        targetPage = CategoryPage();
+        break;
+      case 2:
+        targetPage = CartPage(customerId: 1);
+        break;
+      case 3:
+        targetPage = ProfilePage(token: widget.token ?? '');
+        break;
+      default:
+        targetPage = CustomerHomePage(token: widget.token);
+    }
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => targetPage),
+      (route) => false,
+    );
+  }
 
   List<Product> get filteredProducts {
     List<Product> filtered = selectedCategory == 'All'
@@ -168,23 +198,43 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      drawer: _buildSideNav(),
-      body: Builder(
-        builder: (context) => Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFFE8F5E8),
-                Color(0xFFF0F8F0),
-                Color(0xFFFFFFFF),
-              ],
-            ),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 5,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.menu, color: Colors.green[800]),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
-          child: SafeArea(
-            child: _isLoading
-                ? Center(
+        ),
+        title: Text(
+          'FarmerCrate',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.shopping_cart, color: Colors.green[800]),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      drawer: _buildSideNav(),
+      body: _isLoading
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -203,10 +253,9 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                 ],
               ),
             )
-                : CustomScrollView(
+          : CustomScrollView(
               physics: BouncingScrollPhysics(),
               slivers: [
-                _buildAppBar(),
                 _buildSearchBar(),
                 _buildCategories(),
                 _buildTopBuysSection(),
@@ -214,119 +263,132 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
                 _buildSuggestedProductGrid(),
               ],
             ),
-          ),
-        ),
-      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      expandedHeight: 70,
-      floating: false,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: Icon(Icons.menu, color: Colors.white),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+  // AppBar is now directly in the build method
+
+  Widget _buildSearchBar() {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
             ),
-          ),
-          child: Center(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.eco, color: Colors.white, size: 28),
-                SizedBox(width: 8),
-                Text(
-                  'Farm Crate',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+                Icon(Icons.search, color: Colors.grey[600]),
+                SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search...',
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: TextStyle(
+                      color: Colors.grey[800],
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(Icons.refresh, color: Colors.white),
-          onPressed: () {
-            setState(() {
-              _isLoading = true;
-            });
-            _fetchProducts();
-          },
-        ),
-        IconButton(
-          icon: Icon(Icons.shopping_cart_outlined, color: Colors.white),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
-            );
-          },
-        ),
-        IconButton(
-          icon: Icon(Icons.favorite_border, color: Colors.white),
-          onPressed: () {},
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.green.withOpacity(0.1),
-                blurRadius: 10,
-                offset: Offset(0, 4),
+          SizedBox(height: 20),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ProfilePage(token: widget.token ?? ''),
+                  ),
+                );
+              },
+              child: Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green[400]!, Colors.green[600]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.green[800],
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              'update profile?',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'To reflect your latest information, tap to Update Profile',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 20),
+                    Container(
+                      width: 80,
+                      height: 80,
+                      child: customerImageUrl != null && customerImageUrl!.isNotEmpty
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(40),
+                              child: Image.network(
+                                customerImageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  Icons.person,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              Icons.person,
+                              size: 80,
+                              color: Colors.white,
+                            ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          child: TextField(
-            controller: _searchController,
-            onChanged: (value) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: 'Search fresh produce...',
-              hintStyle: TextStyle(color: Colors.grey[500]),
-              prefixIcon: Icon(Icons.search, color: Colors.green[600]),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                icon: Icon(Icons.clear, color: Colors.grey[500]),
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() {});
-                },
-              )
-                  : Icon(Icons.mic, color: Colors.green[600]),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -717,7 +779,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
             blurRadius: 10,
             offset: Offset(0, -2),
           ),
@@ -725,52 +788,37 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
       ),
       child: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: Colors.green[600],
-        unselectedItemColor: Colors.grey[500],
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.blueGrey,
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+        ),
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-          // Handle navigation based on index
-          switch (index) {
-            case 0:
-            // Already on home page
-              break;
-            case 1:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CategoryPage()),
-              );
-              break;
-            case 2:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
-              );
-              break;
-            case 3:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => WishlistPage()),
-              );
-              break;
-            case 4:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token ?? '')),
-              );
-              break;
-          }
-        },
+        elevation: 0,
+        onTap: _onNavItemTapped,
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.category), label: 'Categories'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: 'Cart'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Wishlist'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home, size: 24),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.category, size: 24),
+            label: 'Categories',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart, size: 24),
+            label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline, size: 24),
+            label: 'Profile',
+          ),
         ],
       ),
     );
