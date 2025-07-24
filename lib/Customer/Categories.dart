@@ -1,7 +1,10 @@
+import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../Signin.dart';
+import 'Cart.dart';
 import 'customerhomepage.dart';
 
 // Enhanced Data Models (API Ready)
@@ -176,6 +179,255 @@ class ApiService {
   }
 }
 
+// --- Drawer and BottomNavBar Widgets copied from customerhomepage.dart ---
+
+class CustomerDrawer extends StatelessWidget {
+  final BuildContext parentContext;
+  final String? token;
+  final String? customerImageUrl;
+  final String? customerName;
+  const CustomerDrawer({
+    required this.parentContext,
+    this.token,
+    this.customerImageUrl,
+    this.customerName,
+    Key? key,
+  }) : super(key: key);
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.green[700]),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                CircleAvatar(
+                  backgroundColor: Colors.white,
+                  radius: 30,
+                  backgroundImage: (customerImageUrl != null && customerImageUrl!.isNotEmpty)
+                      ? NetworkImage(customerImageUrl!)
+                      : null,
+                  child: (customerImageUrl == null || customerImageUrl!.isEmpty)
+                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
+                      : null,
+                ),
+                SizedBox(height: 10),
+                Text(
+                  customerName != null && customerName!.isNotEmpty
+                      ? customerName!
+                      : 'Welcome!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'Explore Farm Fresh Products',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildDrawerItem(
+            icon: Icons.home,
+            title: 'Home',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.pushReplacement(
+                parentContext,
+                MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.category,
+            title: 'Categories',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => CategoryPage(token: token)),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.shopping_cart,
+            title: 'Cart',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.favorite,
+            title: 'Wishlist',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => WishlistPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.payment,
+            title: 'Orders',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => OrdersPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.person,
+            title: 'Profile',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => ProfilePage(token: token ?? '')),
+              );
+            },
+          ),
+          Divider(),
+          _buildDrawerItem(
+            icon: Icons.settings,
+            title: 'Settings',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+          ),
+          _buildDrawerItem(
+            icon: Icons.help,
+            title: 'Help & Support',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                parentContext,
+                MaterialPageRoute(builder: (context) => HelpPage()),
+              );
+            },
+          ),
+          Divider(),
+          _buildDrawerItem(
+            icon: Icons.logout,
+            title: 'Logout',
+            onTap: () {
+              Navigator.pushAndRemoveUntil(
+                parentContext,
+                MaterialPageRoute(builder: (context) => LoginPage()),
+                (Route<dynamic> route) => false,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CustomerBottomNavBar extends StatelessWidget {
+  final int currentIndex;
+  final Function(int) onTap;
+  const CustomerBottomNavBar({required this.currentIndex, required this.onTap, Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.blueGrey,
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+        ),
+        currentIndex: currentIndex,
+        elevation: 0,
+        onTap: onTap,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home, size: 24),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.category, size: 24),
+            label: 'Categories',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shopping_cart, size: 24),
+            label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline, size: 24),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- End Drawer and BottomNavBar Widgets ---
+
 class CategoryPage extends StatefulWidget {
   final String? token;
   const CategoryPage({Key? key, this.token}) : super(key: key);
@@ -236,6 +488,10 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   // Farmer names for filter
   List<Map<String, dynamic>> _farmerNames = [];
 
+  int _currentIndex = 1; // Categories tab
+  String? customerImageUrl;
+  String? customerName;
+
   @override
   void initState() {
     super.initState();
@@ -260,6 +516,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     }
     _fetchImages();
     _fetchFarmerNames();
+    _fetchCustomerProfile();
   }
 
   @override
@@ -478,9 +735,70 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     return farmer.name;
   }
 
+  // Fetch customer profile image using token
+  Future<void> _fetchCustomerProfile() async {
+    if (widget.token == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/customers/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          customerImageUrl = data['data']?['image_url'];
+          customerName = data['data']?['name'];
+        });
+      }
+    } catch (e) {
+      // ignore error
+    }
+  }
+
+  void _onNavItemTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        targetPage = CustomerHomePage(token: widget.token);
+        break;
+      case 1:
+        targetPage = CategoryPage(token: widget.token);
+        break;
+      case 2:
+        targetPage = CartPage(customerId: 1);
+        break;
+      case 3:
+        targetPage = ProfilePage(token: widget.token ?? '');
+        break;
+      default:
+        targetPage = CustomerHomePage(token: widget.token);
+    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => targetPage),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: CustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+        customerImageUrl: customerImageUrl,
+        customerName: customerName,
+      ),
+      bottomNavigationBar: CustomerBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavItemTapped,
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -532,9 +850,12 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         ),
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Color(0xFF2E7D32)),
-              onPressed: () => Navigator.pop(context),
+            // Removed the back button, replaced with a menu icon to open the drawer
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu, color: Color(0xFF2E7D32)),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
             ),
             const Expanded(
               child: Text(
