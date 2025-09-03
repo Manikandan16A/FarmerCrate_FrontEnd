@@ -85,26 +85,7 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  void _updateQuantity(int index, int newQuantity) {
-    setState(() {
-      _products[index] = CartProduct(
-        id: _products[index].id,
-        name: _products[index].name,
-        description: _products[index].description,
-        price: _products[index].price,
-        quantity: newQuantity,
-        images: _products[index].images,
-        category: _products[index].category,
-        status: _products[index].status,
-      );
-    });
-  }
 
-  void _removeItem(int index) {
-    setState(() {
-      _products.removeAt(index);
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -136,9 +117,7 @@ class _CartPageState extends State<CartPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_outline, color: Colors.black),
-            onPressed: () {
-              // Handle delete all
-            },
+            onPressed: () {},
           ),
         ],
       ),

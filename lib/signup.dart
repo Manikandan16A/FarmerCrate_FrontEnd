@@ -24,7 +24,6 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _ageController = TextEditingController();
   final _addressController = TextEditingController();
   final _zoneController = TextEditingController();
   final _districtController = TextEditingController();
@@ -257,7 +256,6 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _phoneController.dispose();
-    _ageController.dispose();
     _addressController.dispose();
     _zoneController.dispose();
     _districtController.dispose();
@@ -385,7 +383,6 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           'password': _passwordController.text,
           'mobileNumber': '+91${_phoneController.text.trim()}',
           'role': apiRole,
-          'age': _ageController.text.trim(),
           'address': _addressController.text.trim(),
           'zone': _zoneController.text.trim(),
           'district': _districtController.text.trim(),
@@ -798,26 +795,8 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your email';
                   }
-                  if (!RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$').hasMatch(value)) {
-                    return 'Please enter a valid email';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _ageController,
-                label: 'Age',
-                icon: Icons.cake_outlined,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your age';
-                  }
-                  final age = int.tryParse(value);
-                  if (age == null || age < 18) {
-                    return 'Age must be 18 or above';
+                  if (!RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$').hasMatch(value)) {
+                    return 'Please enter a valid Gmail address (@gmail.com)';
                   }
                   return null;
                 },
@@ -941,6 +920,22 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   if (value.length < 8) {
                     return 'Password must be at least 8 characters';
                   }
+                  
+                  // Check for mixed characters: numbers, alphabets, and symbols
+                  bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
+                  bool hasAlphabet = RegExp(r'[a-zA-Z]').hasMatch(value);
+                  bool hasSymbol = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value);
+                  
+                  if (!hasNumber) {
+                    return 'Password must contain at least one number';
+                  }
+                  if (!hasAlphabet) {
+                    return 'Password must contain at least one letter';
+                  }
+                  if (!hasSymbol) {
+                    return 'Password must contain at least one symbol (!@#\$%^&*(),.?":{}|<>)';
+                  }
+                  
                   return null;
                 },
               ),

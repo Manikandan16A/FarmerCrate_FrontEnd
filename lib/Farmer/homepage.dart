@@ -171,17 +171,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               );
             },
           ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.green[800]),
-            onPressed: () {
-              fetchProducts();
-            },
-            tooltip: 'Refresh Products',
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
-            onPressed: () {},
-          ),
         ],
       ),
       drawer: Drawer(
@@ -576,59 +565,85 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       String description,
       String? imageUrl,
     ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            child: imageUrl != null && imageUrl.startsWith('http')
-                ? Image.network(
-                    imageUrl,
-                    height: 120,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 120,
-                      color: Colors.grey[200],
-                      child: Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                    ),
-                  )
-                : Container(
-                    height: 120,
-                    color: Colors.grey[200],
-                    child: Icon(Icons.image, size: 40, color: Colors.grey),
-                  ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Text(
-                  price,
-                  style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailPage(
+              title: name,
+              price: price,
+              rating: '4.5',
+              bgColor: Colors.green[50]!,
+              emoji: '🌾',
             ),
           ),
-        ],
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.15),
+              spreadRadius: 1,
+              blurRadius: 15,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              child: imageUrl != null && imageUrl.startsWith('http')
+                  ? Image.network(
+                      imageUrl,
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        height: 120,
+                        color: Colors.green[50],
+                        child: Icon(Icons.broken_image, size: 40, color: Colors.green[300]),
+                      ),
+                    )
+                  : Container(
+                      height: 120,
+                      color: Colors.green[50],
+                      child: Icon(Icons.image, size: 40, color: Colors.green[300]),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    price,
+                    style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -640,6 +655,8 @@ class ProductDetailPage extends StatefulWidget {
   final String rating;
   final Color bgColor;
   final String emoji;
+  final String? imageUrl;
+  final String? description;
 
   const ProductDetailPage({
     Key? key,
@@ -648,6 +665,8 @@ class ProductDetailPage extends StatefulWidget {
     required this.rating,
     required this.bgColor,
     required this.emoji,
+    this.imageUrl,
+    this.description,
   }) : super(key: key);
 
   @override

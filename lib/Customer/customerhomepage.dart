@@ -215,7 +215,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
         },
         body: jsonEncode({
-          'product_id': product.id,
+          'productId': product.id,
           'quantity': 1,
         }),
       );
@@ -268,7 +268,12 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       backgroundColor: Color(0xFFF8FDF8),
       extendBodyBehindAppBar: true,
       appBar: _buildGlassmorphicAppBar(),
-      drawer: _buildModernSideNav(),
+      drawer: CustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+        customerImageUrl: customerImageUrl,
+        customerName: customerName,
+      ),
       body: _isLoading
           ? _buildLoadingScreen()
           : FadeTransition(
@@ -369,27 +374,6 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             },
           ),
         ),
-        Container(
-          margin: EdgeInsets.only(right: 16),
-          child: IconButton(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.notifications_outlined, color: Colors.green[800], size: 20),
-            ),
-            onPressed: () {},
-          ),
-        ),
       ],
     );
   }
@@ -462,7 +446,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome back,',
+                customerName ?? 'Welcome back,',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -475,7 +459,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   colors: [Colors.green[800]!, Colors.green[600]!],
                 ).createShader(bounds),
                 child: Text(
-                  customerName ?? 'Valued Customer',
+                  'Discover fresh, organic produce',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -485,7 +469,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               ),
               SizedBox(height: 8),
               Text(
-                'Discover fresh, organic produce from local farms',
+                'from local farms near you',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey[600],
@@ -1028,29 +1012,22 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                     ),
                   ),
                 ),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                Container(
+                  height: 140,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green[50]!, Colors.white],
+                      end: Alignment.bottomRight,
                     ),
-                    child: Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green[700],
-                      ),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Center(
+                    child: _buildProductImage(
+                      product.images,
+                      120,
+                      120,
+                      _getProductIcon(product.name),
+                      50,
                     ),
                   ),
                 ),
@@ -1283,305 +1260,6 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     );
   }
 
-  Widget _buildModernSideNav() {
-    return Drawer(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.green[50]!,
-              Colors.white,
-              Colors.green[50]!,
-            ],
-          ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            Container(
-              height: 280,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.green[600]!,
-                    Colors.green[700]!,
-                    Colors.green[800]!,
-                  ],
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
-                          ),
-                          child: customerImageUrl != null && customerImageUrl!.isNotEmpty
-                              ? ClipRRect(
-                            borderRadius: BorderRadius.circular(18),
-                            child: Image.network(
-                              customerImageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white,
-                              ),
-                            ),
-                          )
-                              : Icon(Icons.person, size: 40, color: Colors.white),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          customerName != null && customerName!.isNotEmpty
-                              ? customerName!
-                              : 'Welcome Back!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Explore Fresh Organic Products',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '🌱 Eco-Friendly',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-            _buildModernDrawerItem(
-              icon: Icons.home,
-              title: 'Home',
-              subtitle: 'Fresh products await',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => CustomerHomePage(token: widget.token)),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.category,
-              title: 'Categories',
-              subtitle: 'Browse by type',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CategoryPage()),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.shopping_cart,
-              title: 'My Cart',
-              subtitle: 'Review your items',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.favorite,
-              title: 'Wishlist',
-              subtitle: 'Saved favorites',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => WishlistPage()),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.receipt_long,
-              title: 'My Orders',
-              subtitle: 'Track your purchases',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => OrdersPage()),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.person,
-              title: 'Profile',
-              subtitle: 'Manage your account',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token ?? '')),
-                );
-              },
-            ),
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    Colors.green[200]!,
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.settings,
-              title: 'Settings',
-              subtitle: 'App preferences',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SettingsPage()),
-                );
-              },
-            ),
-            _buildModernDrawerItem(
-              icon: Icons.help_outline,
-              title: 'Help & Support',
-              subtitle: 'We\'re here to help',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => HelpPage()),
-                );
-              },
-            ),
-            SizedBox(height: 16),
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              child: _buildModernDrawerItem(
-                icon: Icons.logout,
-                title: 'Logout',
-                subtitle: 'Sign out securely',
-                isLogout: true,
-                onTap: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginPage()),
-                        (Route<dynamic> route) => false,
-                  );
-                },
-              ),
-            ),
-            SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildModernDrawerItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    bool isLogout = false,
-  }) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: isLogout ? Colors.red[50] : Colors.transparent,
-      ),
-      child: ListTile(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          padding: EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: isLogout
-                  ? [Colors.red[400]!, Colors.red[600]!]
-                  : [Colors.green[400]!, Colors.green[600]!],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: (isLogout ? Colors.red : Colors.green).withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isLogout ? Colors.red[700] : Colors.grey[800],
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 12,
-            color: isLogout ? Colors.red[500] : Colors.grey[600],
-          ),
-        ),
-        trailing: Icon(
-          Icons.arrow_forward_ios,
-          size: 16,
-          color: isLogout ? Colors.red[400] : Colors.grey[400],
-        ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-      ),
-    );
-  }
-
   IconData _getProductIcon(String productName) {
     final name = productName.toLowerCase();
     if (name.contains('tomato')) return Icons.local_florist;
@@ -1730,6 +1408,7 @@ class WishlistPage extends StatelessWidget {
       ),
       body: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.favorite, size: 64, color: Colors.grey[400]),
@@ -1756,6 +1435,7 @@ class OrdersPage extends StatelessWidget {
       ),
       body: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
@@ -1782,6 +1462,7 @@ class SettingsPage extends StatelessWidget {
       ),
       body: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.settings, size: 64, color: Colors.grey[400]),
@@ -1808,6 +1489,7 @@ class HelpPage extends StatelessWidget {
       ),
       body: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.help_outline, size: 64, color: Colors.grey[400]),
@@ -1822,3 +1504,4 @@ class HelpPage extends StatelessWidget {
     );
   }
 }
+

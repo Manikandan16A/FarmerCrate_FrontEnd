@@ -322,26 +322,6 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
             ),
           ],
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.notifications_outlined, color: Colors.green[700]),
-              onPressed: () {},
-            ),
-          ),
-        ],
       ),
       drawer: Drawer(
         child: Container(

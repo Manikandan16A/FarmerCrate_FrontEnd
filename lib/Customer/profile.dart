@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../Signin.dart';
-import 'Categories.dart';
+import 'Categories.dart'; // For CustomerDrawer and CustomerBottomNavBar
 import 'Cart.dart';
 import 'customerhomepage.dart';
 
@@ -23,8 +23,12 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   int _currentIndex = 3;
   late AnimationController _fadeController;
   late AnimationController _slideController;
+  late AnimationController _scaleController;
+  late AnimationController _rotationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
 
   // Controllers for each field
   final TextEditingController _nameController = TextEditingController();
@@ -40,20 +44,35 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   void initState() {
     super.initState();
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
     _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _rotationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.5),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutBack));
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.elasticOut));
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotationController, curve: Curves.linear),
+    );
 
     _fetchProfile();
   }
@@ -62,6 +81,8 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   void dispose() {
     _fadeController.dispose();
     _slideController.dispose();
+    _scaleController.dispose();
+    _rotationController.dispose();
     super.dispose();
   }
 
@@ -92,6 +113,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
         _fadeController.forward();
         _slideController.forward();
+        _scaleController.forward();
       } else {
         _error = 'Failed to load profile (${response.statusCode})';
       }
@@ -105,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
   Future<void> _updateProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() {
       _updating = true;
       _error = null;
@@ -131,28 +153,41 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
       );
 
       if (response.statusCode == 200) {
-        // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text('Profile updated successfully!'),
-                ],
+              content: Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.check_circle, color: Colors.white, size: 20),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Profile updated successfully!',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              backgroundColor: Colors.green[700],
+              backgroundColor: Colors.green[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(16),
               duration: Duration(seconds: 3),
             ),
           );
-          
-          // Refresh the profile data to ensure consistency
+
           await _fetchProfile();
-          
-          // Exit edit mode
+
           if (mounted) {
             setState(() {
               _isEditing = false;
@@ -160,30 +195,30 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
           }
         }
       } else {
-        // Handle API error
         final errorData = json.decode(response.body);
         final errorMessage = errorData['message'] ?? 'Failed to update profile';
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
-              backgroundColor: Colors.red[700],
+              backgroundColor: Colors.red[600],
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              margin: EdgeInsets.all(16),
             ),
           );
         }
       }
     } catch (e) {
-      // Handle network or other errors
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red[700],
+            backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            margin: EdgeInsets.all(16),
           ),
         );
       }
@@ -230,37 +265,124 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
 
     bool? confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green[100],
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.edit, color: Colors.green[700]),
-            ),
-            SizedBox(width: 12),
-            Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
+      barrierDismissible: false,
+      builder: (context) => Theme(
+        data: Theme.of(context).copyWith(
+          dialogBackgroundColor: Colors.transparent,
         ),
-        content: Text('You can now edit your profile information. Make sure to save your changes when done.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[700],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.green[50]!,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.3),
+                  blurRadius: 30,
+                  offset: Offset(0, 10),
+                ),
+              ],
             ),
-            child: Text('Continue', style: TextStyle(color: Colors.white)),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green[400]!, Colors.green[600]!],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(Icons.edit, color: Colors.white, size: 32),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey[800],
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'You can now edit your profile information. Make sure to save your changes when done.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          elevation: 8,
+                          shadowColor: Colors.green.withOpacity(0.4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Continue',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
 
@@ -275,291 +397,485 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            floating: false,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Colors.green[700],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.green[700]!,
-                      Colors.green[600]!,
-                      Colors.green[500]!,
-                    ],
-                  ),
-                ),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(height: 40),
-                      Hero(
-                        tag: 'profile_avatar',
-                        child: Container(
-                          padding: EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 10,
-                                offset: Offset(0, 5),
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 45,
-                            backgroundColor: Colors.white,
-                            child: Icon(Icons.person, size: 50, color: Colors.green[700]),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Text(
-                          _nameController.text.isNotEmpty ? _nameController.text : 'User Profile',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+      extendBodyBehindAppBar: true,
+      appBar: _buildGlassmorphicAppBar(),
+      drawer: CustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+        customerImageUrl: null,
+        customerName: _nameController.text,
+      ),
+      bottomNavigationBar: CustomerBottomNavBar(
+        currentIndex: _currentIndex,
+        onTap: _onNavItemTapped,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.green[50]!.withOpacity(0.3),
+              Colors.white,
+              Colors.green[50]!.withOpacity(0.1),
+            ],
+          ),
+        ),
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: SizedBox(height: 120), // Space for app bar
             ),
-            leading: Builder(
-              builder: (context) => Container(
-                margin: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.menu, color: Colors.white),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
-              ),
+            SliverToBoxAdapter(
+              child: _loading
+                  ? _buildLoadingWidget()
+                  : _error != null
+                  ? _buildErrorWidget()
+                  : _buildProfileContent(),
             ),
-            actions: [
-              Container(
-                margin: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    _isEditing ? Icons.check : Icons.edit,
-                    color: Colors.white,
-                  ),
-                  onPressed: _isEditing
-                      ? () {
-                    if (_formKey.currentState!.validate()) {
-                      _updateProfile();
-                    }
-                  }
-                      : _showEditConfirmation,
-                ),
+          ],
+        ),
+      ),
+      floatingActionButton: !_loading && _error == null && !_isEditing
+          ? ScaleTransition(
+        scale: _scaleAnimation,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green[400]!, Colors.green[600]!],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.4),
+                blurRadius: 20,
+                offset: Offset(0, 8),
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: _loading
-                ? Container(
-              height: 400,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: Colors.green[700]),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading profile...',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-                : _error != null
-                ? Container(
-              height: 400,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.red),
-                    SizedBox(height: 16),
-                    Text(
-                      _error!,
-                      style: TextStyle(color: Colors.red, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: _fetchProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[700],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text('Retry', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              ),
-            )
-                : SlideTransition(
-              position: _slideAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  margin: EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        _buildSectionCard(
-                          'Personal Information',
-                          Icons.person_outline,
-                          [
-                            _buildTextField(_nameController, 'Full Name', Icons.person, validator: (v) => v!.isEmpty ? 'Enter name' : null),
-                            _buildTextField(_emailController, 'Email Address', Icons.email, keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? 'Enter email' : null),
-                            _buildTextField(_mobileController, 'Mobile Number', Icons.phone, keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Enter mobile number' : null),
-                            _buildTextField(_ageController, 'Age', Icons.cake, keyboardType: TextInputType.number, validator: (v) => v!.isEmpty ? 'Enter age' : null),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        _buildSectionCard(
-                          'Address Information',
-                          Icons.location_on_outlined,
-                          [
-                            _buildTextField(_addressController, 'Street Address', Icons.home, maxLines: 2, validator: (v) => v!.isEmpty ? 'Enter address' : null),
-                            _buildTextField(_districtController, 'District', Icons.location_city, validator: (v) => v!.isEmpty ? 'Enter district' : null),
-                            _buildTextField(_zoneController, 'Zone', Icons.map, validator: (v) => v!.isEmpty ? 'Enter zone' : null),
-                            _buildTextField(_stateController, 'State', Icons.flag, validator: (v) => v!.isEmpty ? 'Enter state' : null),
-                          ],
-                        ),
-                        if (_isEditing) ...[
-                          SizedBox(height: 24),
-                          _buildActionButtons(),
-                        ],
-                        SizedBox(height: 100), // Space for bottom nav
-                      ],
-                    ),
-                  ),
-                ),
+          child: FloatingActionButton.extended(
+            onPressed: _showEditConfirmation,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            icon: Icon(Icons.edit, color: Colors.white),
+            label: Text(
+              'Edit Profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
           ),
-        ],
-      ),
-      drawer: _buildModernDrawer(),
-      bottomNavigationBar: _buildModernBottomNav(),
+        ),
+      )
+          : null,
     );
   }
 
-  Widget _buildSectionCard(String title, IconData icon, List<Widget> children) {
-    return Card(
-      elevation: 8,
-      shadowColor: Colors.black26,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Colors.white, Colors.grey[50]!],
-          ),
-        ),
+  Widget _buildLoadingWidget() {
+    return Container(
+      height: 500,
+      child: Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: Colors.green[700], size: 24),
+            Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green[100]!, Colors.green[200]!],
                 ),
-                SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: Offset(0, 8),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: CircularProgressIndicator(
+                color: Colors.green[700],
+                strokeWidth: 3,
+              ),
             ),
-            SizedBox(height: 20),
-            ...children,
+            SizedBox(height: 24),
+            Text(
+              'Loading your profile...',
+              style: TextStyle(
+                color: Colors.grey[700],
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'This might take a moment',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildErrorWidget() {
+    return Container(
+      height: 500,
+      margin: EdgeInsets.all(20),
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withOpacity(0.1),
+                blurRadius: 30,
+                offset: Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline, size: 48, color: Colors.red[600]),
+              ),
+              SizedBox(height: 24),
+              Text(
+                'Oops! Something went wrong',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                _error!,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _fetchProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  elevation: 8,
+                  shadowColor: Colors.green.withOpacity(0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: Icon(Icons.refresh, color: Colors.white),
+                label: Text(
+                  'Try Again',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileContent() {
+    return SlideTransition(
+      position: _slideAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Container(
+          margin: EdgeInsets.all(16),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                _buildProfileHeader(),
+                SizedBox(height: 24),
+                _buildSectionCard(
+                  'Personal Information',
+                  Icons.person_outline,
+                  Colors.blue,
+                  [
+                    _buildTextField(_nameController, 'Full Name', Icons.person, validator: (v) => v!.isEmpty ? 'Enter name' : null),
+                    _buildTextField(_emailController, 'Email Address', Icons.email, keyboardType: TextInputType.emailAddress, validator: (v) => v!.isEmpty ? 'Enter email' : null),
+                    _buildTextField(_mobileController, 'Mobile Number', Icons.phone, keyboardType: TextInputType.phone, validator: (v) => v!.isEmpty ? 'Enter mobile number' : null),
+                    _buildTextField(_ageController, 'Age', Icons.cake, keyboardType: TextInputType.number, validator: (v) => v!.isEmpty ? 'Enter age' : null),
+                  ],
+                ),
+                SizedBox(height: 20),
+                _buildSectionCard(
+                  'Address Information',
+                  Icons.location_on_outlined,
+                  Colors.orange,
+                  [
+                    _buildTextField(_addressController, 'Street Address', Icons.home, maxLines: 2, validator: (v) => v!.isEmpty ? 'Enter address' : null),
+                    _buildTextField(_districtController, 'District', Icons.location_city, validator: (v) => v!.isEmpty ? 'Enter district' : null),
+                    _buildTextField(_zoneController, 'Zone', Icons.map, validator: (v) => v!.isEmpty ? 'Enter zone' : null),
+                    _buildTextField(_stateController, 'State', Icons.flag, validator: (v) => v!.isEmpty ? 'Enter state' : null),
+                  ],
+                ),
+                if (_isEditing) ...[
+                  SizedBox(height: 32),
+                  _buildActionButtons(),
+                ],
+                SizedBox(height: 120), // Space for bottom nav and FAB
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Container(
+        padding: EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.green[400]!,
+              Colors.green[600]!,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.4),
+              blurRadius: 30,
+              offset: Offset(0, 15),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.white, Colors.green[50]!],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.person,
+                    size: 60,
+                    color: Colors.green[600],
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.orange[400]!, Colors.orange[600]!],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.4),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(Icons.verified_user, color: Colors.white, size: 16),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Text(
+              _nameController.text.isNotEmpty ? _nameController.text : 'Welcome User',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(String title, IconData icon, MaterialColor color, List<Widget> children) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(25),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                color[50]!.withOpacity(0.3),
+              ],
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [color[400]!, color[600]!],
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 15,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 28),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Container(
+                          height: 3,
+                          width: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [color[400]!, color[600]!],
+                            ),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              ...children,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextField(TextEditingController controller, String label, IconData icon, {TextInputType keyboardType = TextInputType.text, int maxLines = 1, String? Function(String?)? validator}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
         controller: controller,
         enabled: _isEditing,
         readOnly: !_isEditing,
         decoration: InputDecoration(
           prefixIcon: Container(
-            margin: EdgeInsets.only(right: 12),
-            padding: EdgeInsets.all(8),
+            margin: EdgeInsets.all(8),
+            padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _isEditing ? Colors.green[100] : Colors.grey[200],
-              borderRadius: BorderRadius.circular(8),
+              gradient: _isEditing
+                  ? LinearGradient(colors: [Colors.green[400]!, Colors.green[600]!])
+                  : LinearGradient(colors: [Colors.grey[300]!, Colors.grey[400]!]),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: (_isEditing ? Colors.green : Colors.grey).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-            child: Icon(icon, color: _isEditing ? Colors.green[700] : Colors.grey[600], size: 20),
+            child: Icon(icon, color: Colors.white, size: 20),
           ),
           labelText: label,
           labelStyle: TextStyle(
             color: _isEditing ? Colors.green[700] : Colors.grey[600],
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: Colors.grey[200]!, width: 2),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.green[700]!, width: 2),
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: Colors.green[600]!, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide(color: Colors.red[400]!, width: 2),
           ),
           filled: true,
-          fillColor: _isEditing ? Colors.white : Colors.grey[100],
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          fillColor: _isEditing ? Colors.white : Colors.grey[50],
+          contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         ),
         keyboardType: keyboardType,
         maxLines: maxLines,
@@ -567,210 +883,255 @@ class _ProfilePageState extends State<ProfilePage> with TickerProviderStateMixin
         style: TextStyle(
           color: _isEditing ? Colors.black87 : Colors.grey[700],
           fontSize: 16,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 
   Widget _buildActionButtons() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          height: 56,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green[700],
-              elevation: 8,
-              shadowColor: Colors.green[300],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+    return Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, Colors.grey[50]!],
+        ),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: 60,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.green[500]!, Colors.green[700]!],
               ),
-            ),
-            onPressed: _updating ? null : _updateProfile,
-            child: _updating
-                ? Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.4),
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
                 ),
-                SizedBox(width: 12),
-                Text('Saving...', style: TextStyle(fontSize: 16, color: Colors.white)),
-              ],
-            )
-                : Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.save, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Save Changes', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
               ],
             ),
-          ),
-        ),
-        SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          height: 56,
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.grey[700],
-              side: BorderSide(color: Colors.grey[400]!, width: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            onPressed: () {
-              setState(() {
-                _isEditing = false;
-                _fetchProfile();
-              });
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.cancel_outlined),
-                SizedBox(width: 8),
-                Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModernDrawer() {
-    return Drawer(
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.green[700]!, Colors.green[800]!],
-          ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[600]!, Colors.green[700]!],
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              onPressed: _updating ? null : _updateProfile,
+              child: _updating
+                  ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Hero(
-                    tag: 'drawer_avatar',
-                    child: CircleAvatar(
-                      radius: 35,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, size: 45, color: Colors.green[700]),
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.5,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(width: 16),
                   Text(
-                    'Welcome Back!',
+                    'Saving Changes...',
                     style: TextStyle(
+                      fontSize: 18,
                       color: Colors.white,
-                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                ],
+              )
+                  : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.save, color: Colors.white, size: 20),
+                  ),
+                  SizedBox(width: 12),
                   Text(
-                    _nameController.text.isNotEmpty ? _nameController.text : 'User',
+                    'Save Changes',
                     style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
-            _buildDrawerItem(Icons.home, 'Home', 0),
-            _buildDrawerItem(Icons.category, 'Categories', 1),
-            _buildDrawerItem(Icons.shopping_cart, 'Cart', 2),
-            _buildDrawerItem(Icons.person, 'Profile', 3),
-            Divider(color: Colors.white30),
-            _buildDrawerItem(Icons.settings, 'Settings', -1),
-            _buildDrawerItem(Icons.help, 'Help & Support', -1),
-            _buildDrawerItem(Icons.logout, 'Logout', -2),
+          ),
+          SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            height: 60,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey[400]!, width: 2),
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [Colors.white, Colors.grey[50]!],
+              ),
+            ),
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.grey[700],
+                backgroundColor: Colors.transparent,
+                side: BorderSide.none,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: () {
+                setState(() {
+                  _isEditing = false;
+                  _fetchProfile();
+                });
+              },
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.cancel_outlined, color: Colors.grey[600], size: 20),
+                  ),
+                  SizedBox(width: 12),
+                  Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildGlassmorphicAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.95),
+              Colors.green[50]!.withOpacity(0.95),
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.1),
+              blurRadius: 20,
+              offset: Offset(0, 5),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDrawerItem(IconData icon, String title, int index) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: ListTile(
-        leading: Icon(icon, color: Colors.white),
-        title: Text(title, style: TextStyle(color: Colors.white)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        onTap: () {
-          if (index == -2) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => LoginPage()),
-                  (route) => false,
-            );
-          } else if (index >= 0) {
-            _onNavItemTapped(index);
-          }
-        },
+      leading: Builder(
+        builder: (context) => Container(
+          margin: EdgeInsets.all(8),
+          child: IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white, Colors.green[50]!],
+                ),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.menu, color: Colors.green[800], size: 22),
+            ),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
       ),
-    );
-  }
-
-  Widget _buildModernBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, -5),
+      title: Container(
+        child: ShaderMask(
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [Colors.green[700]!, Colors.green[900]!],
+          ).createShader(bounds),
+          child: Text(
+            'My Profile',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
           ),
-        ],
+        ),
       ),
-      child: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green[700],
-        unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+      actions: [
+        Container(
+          margin: EdgeInsets.symmetric(horizontal: 4),
+          child: IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white, Colors.green[50]!],
+                ),
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.shopping_cart_outlined, color: Colors.green[800], size: 22),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+            },
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.category_outlined),
-            activeIcon: Icon(Icons.category),
-            label: 'Categories',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
-            activeIcon: Icon(Icons.shopping_cart),
-            label: 'Cart',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

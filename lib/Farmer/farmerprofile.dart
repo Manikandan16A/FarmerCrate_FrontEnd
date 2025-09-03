@@ -23,14 +23,68 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _zoneController = TextEditingController();
-  final _stateController = TextEditingController();
-  final _districtController = TextEditingController();
   final _ageController = TextEditingController();
 
   bool _isLoading = false;
   String? _farmerImageUrl;
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
+
+  // Dropdown values
+  String? _selectedState;
+  String? _selectedDistrict;
+
+  // South Indian States
+  final List<String> _southStates = [
+    'Tamil Nadu',
+    'Kerala',
+    'Karnataka',
+    'Andhra Pradesh',
+    'Telangana',
+    'Puducherry',
+  ];
+
+  // Tamil Nadu Districts
+  final List<String> _tamilNaduDistricts = [
+    'Ariyalur',
+    'Chengalpattu',
+    'Chennai',
+    'Coimbatore',
+    'Cuddalore',
+    'Dharmapuri',
+    'Dindigul',
+    'Erode',
+    'Kallakurichi',
+    'Kanchipuram',
+    'Kanyakumari',
+    'Karur',
+    'Krishnagiri',
+    'Madurai',
+    'Mayiladuthurai',
+    'Nagapattinam',
+    'Namakkal',
+    'Nilgiris',
+    'Perambalur',
+    'Pudukkottai',
+    'Ramanathapuram',
+    'Ranipet',
+    'Salem',
+    'Sivaganga',
+    'Tenkasi',
+    'Thanjavur',
+    'Theni',
+    'Thoothukudi',
+    'Tiruchirappalli',
+    'Tirunelveli',
+    'Tirupathur',
+    'Tiruppur',
+    'Tiruvallur',
+    'Tiruvannamalai',
+    'Tiruvarur',
+    'Vellore',
+    'Viluppuram',
+    'Virudhunagar',
+  ];
 
   @override
   void initState() {
@@ -58,10 +112,18 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
           _phoneController.text = farmer['mobile_number'] ?? '';
           _addressController.text = farmer['address'] ?? '';
           _zoneController.text = farmer['zone'] ?? '';
-          _stateController.text = farmer['state'] ?? '';
-          _districtController.text = farmer['district'] ?? '';
+          _selectedState = farmer['state'] ?? '';
+          _selectedDistrict = farmer['district'] ?? '';
           _ageController.text = farmer['age']?.toString() ?? '';
           _farmerImageUrl = farmer['image_url'];
+
+          // Ensure selected values are in the lists
+          if (_selectedState != null && !_southStates.contains(_selectedState)) {
+            _selectedState = null;
+          }
+          if (_selectedDistrict != null && !_tamilNaduDistricts.contains(_selectedDistrict)) {
+            _selectedDistrict = null;
+          }
         });
       }
     } catch (e) {
@@ -78,8 +140,6 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
     _emailController.dispose();
     _addressController.dispose();
     _zoneController.dispose();
-    _stateController.dispose();
-    _districtController.dispose();
     _ageController.dispose();
     super.dispose();
   }
@@ -106,8 +166,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
         'email': _emailController.text.trim(),
         'address': _addressController.text.trim(),
         'zone': _zoneController.text.trim(),
-        'state': _stateController.text.trim(),
-        'district': _districtController.text.trim(),
+        'state': _selectedState ?? '',
+        'district': _selectedDistrict ?? '',
         'age': int.tryParse(_ageController.text.trim()) ?? 0,
         'image_url': imageUrl,
       };
@@ -154,145 +214,161 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.all(20.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Stack(
                   children: [
-                    Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.white,
-                            backgroundImage: _profileImage != null
-                                ? FileImage(_profileImage!)
-                                : (_farmerImageUrl != null && _farmerImageUrl!.isNotEmpty)
-                                    ? NetworkImage(_farmerImageUrl!) as ImageProvider
-                                    : null,
-                            child: (_profileImage == null && (_farmerImageUrl == null || _farmerImageUrl!.isEmpty))
-                                ? const Icon(Icons.person, size: 60, color: Color(0xFF2E7D32))
-                                : null,
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.white,
+                      backgroundImage: _profileImage != null
+                          ? FileImage(_profileImage!)
+                          : (_farmerImageUrl != null && _farmerImageUrl!.isNotEmpty)
+                          ? NetworkImage(_farmerImageUrl!) as ImageProvider
+                          : null,
+                      child: (_profileImage == null && (_farmerImageUrl == null || _farmerImageUrl!.isEmpty))
+                          ? const Icon(Icons.person, size: 60, color: Color(0xFF2E7D32))
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
+                            ],
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: GestureDetector(
-                              onTap: _pickImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2)),
-                                  ],
-                                ),
-                                child: const Icon(Icons.camera_alt, size: 20, color: Color(0xFF000000)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextFormField(
-                      controller: _nameController,
-                      label: 'Full Name',
-                      icon: Icons.person_outline,
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter your full name' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _emailController,
-                      label: 'Email Address',
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter your email address';
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Please enter a valid email address';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _phoneController,
-                      label: 'Phone Number',
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter your phone number';
-                        if (!RegExp(r'^\+?[1-9]\d{1,14}$').hasMatch(value)) return 'Please enter a valid phone number';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _addressController,
-                      label: 'Address',
-                      icon: Icons.location_city,
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter your address' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _zoneController,
-                      label: 'Zone',
-                      icon: Icons.map,
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter your zone' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _stateController,
-                      label: 'State',
-                      icon: Icons.flag,
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter your state' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _districtController,
-                      label: 'District',
-                      icon: Icons.location_on,
-                      validator: (value) => value == null || value.isEmpty ? 'Please enter your district' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextFormField(
-                      controller: _ageController,
-                      label: 'Age',
-                      icon: Icons.cake,
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.isEmpty) return 'Please enter your age';
-                        if (int.tryParse(value) == null || int.parse(value) <= 0) return 'Please enter a valid age';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56.0,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          elevation: 8,
-                          shadowColor: Colors.green.withOpacity(0.3),
+                          child: const Icon(Icons.camera_alt, size: 20, color: Color(0xFF000000)),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                              )
-                            : const Text('Save Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 24),
+              _buildTextFormField(
+                controller: _nameController,
+                label: 'Full Name',
+                icon: Icons.person_outline,
+                validator: (value) => value == null || value.isEmpty ? 'Please enter your full name' : null,
+              ),
+              const SizedBox(height: 20),
+              _buildTextFormField(
+                controller: _emailController,
+                label: 'Email Address',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter your email address';
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) return 'Please enter a valid email address';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildTextFormField(
+                controller: _phoneController,
+                label: 'Phone Number',
+                icon: Icons.phone,
+                keyboardType: TextInputType.phone,
+                maxLength: 10,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter your phone number';
+                  if (value.length != 10) return 'Phone number must be exactly 10 digits';
+                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) return 'Phone number must contain only digits';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildTextFormField(
+                controller: _addressController,
+                label: 'Address',
+                icon: Icons.location_city,
+                validator: (value) => value == null || value.isEmpty ? 'Please enter your address' : null,
+              ),
+              const SizedBox(height: 20),
+              _buildTextFormField(
+                controller: _zoneController,
+                label: 'Zone',
+                icon: Icons.map,
+                validator: (value) => value == null || value.isEmpty ? 'Please enter your zone' : null,
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                value: _selectedState,
+                items: _southStates,
+                label: 'State',
+                icon: Icons.flag,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedState = newValue;
+                  });
+                },
+                validator: (value) => value == null || value.isEmpty ? 'Please select your state' : null,
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                value: _selectedDistrict,
+                items: _tamilNaduDistricts,
+                label: 'District',
+                icon: Icons.location_on,
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedDistrict = newValue;
+                  });
+                },
+                validator: (value) => value == null || value.isEmpty ? 'Please select your district' : null,
+              ),
+              const SizedBox(height: 20),
+              _buildTextFormField(
+                controller: _ageController,
+                label: 'Age',
+                icon: Icons.cake,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Please enter your age';
+                  int? age = int.tryParse(value);
+                  if (age == null) return 'Please enter a valid age';
+                  if (age < 18 || age > 80) return 'Age must be between 18 and 80';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 56.0,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveProfile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 8,
+                    shadowColor: Colors.green.withOpacity(0.3),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                      : const Text('Save Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
@@ -303,10 +379,60 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
     required IconData icon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    int? maxLength,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      validator: validator,
+      maxLength: maxLength,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: const Color(0xFF2E7D32)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        labelStyle: const TextStyle(
+          color: Color(0xFF2E7D32),
+          fontWeight: FontWeight.w600,
+        ),
+        counterText: maxLength != null ? null : "",
+      ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String? value,
+    required List<String> items,
+    required String label,
+    required IconData icon,
+    required void Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items.map((String item) {
+        return DropdownMenuItem<String>(
+          value: item,
+          child: Text(item),
+        );
+      }).toList(),
+      onChanged: onChanged,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
@@ -334,6 +460,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
           fontWeight: FontWeight.w600,
         ),
       ),
+      isExpanded: true,
+      icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2E7D32)),
     );
   }
 
@@ -414,7 +542,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => LoginPage()),
-                (Route<dynamic> route) => false,
+                    (Route<dynamic> route) => false,
               );
             },
           ),
@@ -474,7 +602,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
                 MaterialPageRoute(builder: (context) => FarmerProfilePage(token: widget.token)),
               );
               break;
-            // Add more cases for other farmer pages if needed
+          // Add more cases for other farmer pages if needed
           }
         },
         items: [
