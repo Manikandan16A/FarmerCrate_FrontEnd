@@ -789,6 +789,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: _buildGlassmorphicAppBar(),
       drawer: CustomerDrawer(
         parentContext: context,
         token: widget.token,
@@ -814,7 +815,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         child: SafeArea(
           child: Column(
             children: [
-              _buildHeader(),
+              // Remove _buildHeader(), as the AppBar is now used
               _buildStaticImageContainer(),
               _buildSearchAndSort(),
               _buildFiltersSection(),
@@ -826,62 +827,83 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     );
   }
 
-  Widget _buildHeader() {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, -1),
-        end: Offset.zero,
-      ).animate(_slideAnimation),
-      child: Container(
-        padding: const EdgeInsets.all(16.0),
+  PreferredSizeWidget _buildGlassmorphicAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white.withOpacity(0.9),
+      elevation: 0,
+      flexibleSpace: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: const BorderRadius.only(
-            bottomLeft: Radius.circular(24),
-            bottomRight: Radius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.green[50]!.withOpacity(0.9),
+            ],
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Removed the back button, replaced with a menu icon to open the drawer
-            Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(Icons.menu, color: Color(0xFF2E7D32)),
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-            ),
-            const Expanded(
-              child: Text(
-                'Farm Fresh Categories',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E7D32),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            IconButton(
-              icon: Icon(
-                _isGridView ? Icons.view_list : Icons.grid_view,
-                color: const Color(0xFF2E7D32),
-              ),
-              onPressed: () {
-                setState(() {
-                  _isGridView = !_isGridView;
-                });
-              },
-            ),
-          ],
         ),
       ),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.menu, color: Colors.green[800], size: 20),
+          ),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      title: ShaderMask(
+        shaderCallback: (bounds) => LinearGradient(
+          colors: [Colors.green[800]!, Colors.green[600]!],
+        ).createShader(bounds),
+        child: Text(
+          'Farm Fresh Categories',
+          style: TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      actions: [
+        Container(
+          margin: EdgeInsets.only(right: 8),
+          child: IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 20),
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

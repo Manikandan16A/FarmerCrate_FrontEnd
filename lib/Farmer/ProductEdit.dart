@@ -62,7 +62,7 @@ class Product {
 
 class FarmerProductsPage extends StatefulWidget {
   final String? token;
-  
+
   const FarmerProductsPage({Key? key, this.token}) : super(key: key);
 
   @override
@@ -111,12 +111,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
 
     try {
       final uri = Uri.parse('https://farmercrate.onrender.com/api/products/farmer/me');
-      
+
       Map<String, String> headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
-      
+
       if (widget.token != null && widget.token!.isNotEmpty) {
         headers['Authorization'] = 'Bearer ${widget.token}';
         print('Token being used: ${widget.token!.substring(0, widget.token!.length > 20 ? 20 : widget.token!.length)}...'); // Debug print
@@ -141,7 +141,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       );
 
       print('Response status code: ${response.statusCode}'); // Debug print
-      
+
       if (response.body.isNotEmpty) {
         print('Response body: ${response.body}'); // Debug print - show full response
       }
@@ -151,15 +151,15 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           final dynamic responseData = jsonDecode(response.body);
           print('Parsed response data type: ${responseData.runtimeType}'); // Debug print
           print('Parsed response data: $responseData'); // Debug print
-          
+
           List<dynamic> productsData = [];
-          
+
           if (responseData is Map && responseData.containsKey('data')) {
             productsData = responseData['data'] ?? [];
           }
-          
+
           print('Final products data: $productsData'); // Debug print
-          
+
           if (productsData.isNotEmpty) {
             setState(() {
               products = productsData.map((json) {
@@ -170,7 +170,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               isLoading = false;
             });
             _applyFiltersAndSort();
-            
+
             print('Successfully loaded ${products.length} products'); // Debug print
           } else {
             print('No products found in response'); // Debug print
@@ -270,12 +270,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       }
 
       final uri = Uri.parse('https://farmercrate.onrender.com/api/products/${product.id}');
-      
+
       Map<String, String> headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
-      
+
       if (widget.token != null && widget.token!.isNotEmpty) {
         headers['Authorization'] = 'Bearer ${widget.token}';
       } else {
@@ -371,7 +371,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         } catch (e) {
           errorMessage = 'Failed to update product in database. Status: ${response.statusCode}';
         }
-        
+
         setState(() {
           this.errorMessage = errorMessage;
           isLoading = false;
@@ -539,9 +539,16 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                     TextField(
                       controller: priceController,
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      enabled: false, // Disable price editing
                       decoration: InputDecoration(
                         labelText: 'Price (₹)',
                         border: OutlineInputBorder(),
+                        fillColor: Colors.grey[100],
+                        filled: true,
+                        disabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.grey[400]!),
+                        ),
+                        suffixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
                       ),
                     ),
                     SizedBox(height: 16),
@@ -587,78 +594,78 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         borderRadius: BorderRadius.circular(8),
                         child: imagePath!.startsWith('http')
                             ? Image.network(
-                                imagePath!,
-                                height: 100,
-                                width: 100,
-                                fit: BoxFit.cover,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    height: 100,
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Center(
-                                      child: CircularProgressIndicator(
-                                        value: loadingProgress.expectedTotalBytes != null
-                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                            : null,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                                      ),
-                                    ),
-                                  );
-                                },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    height: 100,
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.error_outline,
-                                          size: 24,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Error',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              )
-                            : File(imagePath!).existsSync()
-                                ? Image.file(
-                                    File(imagePath!),
-                                    height: 100,
-                                    width: 100,
-                                    fit: BoxFit.cover,
-                                  )
-                                : Container(
-                                    height: 100,
-                                    width: 100,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      Icons.image,
-                                      size: 30,
+                          imagePath!,
+                          height: 100,
+                          width: 100,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              height: 100,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 100,
+                              width: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    size: 24,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'Error',
+                                    style: TextStyle(
                                       color: Colors.grey.shade600,
+                                      fontSize: 10,
                                     ),
                                   ),
+                                ],
+                              ),
+                            );
+                          },
+                        )
+                            : File(imagePath!).existsSync()
+                            ? Image.file(
+                          File(imagePath!),
+                          height: 100,
+                          width: 100,
+                          fit: BoxFit.cover,
+                        )
+                            : Container(
+                          height: 100,
+                          width: 100,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.image,
+                            size: 30,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
                       ),
                       SizedBox(height: 8),
                       TextButton(
@@ -687,9 +694,9 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         descriptionController.text.isNotEmpty &&
                         quantityController.text.isNotEmpty &&
                         priceController.text.isNotEmpty) {
-                      
+
                       Navigator.of(context).pop();
-                      
+
                       if (isEdit && product != null) {
                         // Update existing product
                         final updatedProduct = Product(
@@ -767,50 +774,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     );
   }
 
-  void _showDebugInfo() {
-    String tokenInfo = widget.token != null && widget.token!.isNotEmpty 
-        ? 'Token: ${widget.token!.substring(0, widget.token!.length > 30 ? 30 : widget.token!.length)}...'
-        : 'No token available';
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Debug Information'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Token Status: $tokenInfo'),
-              SizedBox(height: 16),
-              Text('Products loaded: ${products.length}'),
-              SizedBox(height: 8),
-              Text('Filtered products: ${filteredProducts.length}'),
-              SizedBox(height: 8),
-              Text('Loading: $isLoading'),
-              SizedBox(height: 8),
-              if (errorMessage != null)
-                Text('Error: $errorMessage'),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Close'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await fetchProducts();
-              },
-              child: Text('Refresh Products'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showImagePreview(String imageUrl) {
     showDialog(
       context: context,
@@ -828,66 +791,66 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                     ),
                     child: imageUrl.startsWith('http')
                         ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                height: 200,
-                                width: 200,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.error_outline,
-                                      size: 40,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Image not available',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          )
-                        : File(imageUrl).existsSync()
-                            ? Image.file(
-                                File(imageUrl),
-                                fit: BoxFit.contain,
-                              )
-                            : Container(
-                                height: 200,
-                                width: 200,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Icon(
-                                  Icons.image,
-                                  size: 50,
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          width: 200,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                size: 40,
+                                color: Colors.grey.shade600,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Image not available',
+                                style: TextStyle(
                                   color: Colors.grey.shade600,
+                                  fontSize: 14,
                                 ),
                               ),
+                            ],
+                          ),
+                        );
+                      },
+                    )
+                        : File(imageUrl).existsSync()
+                        ? Image.file(
+                      File(imageUrl),
+                      fit: BoxFit.contain,
+                    )
+                        : Container(
+                      height: 200,
+                      width: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.image,
+                        size: 50,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
                   ),
                   Positioned(
                     top: 8,
@@ -933,26 +896,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.green[800]),
-            onPressed: () {
-              fetchProducts();
-            },
-            tooltip: 'Refresh Products',
-          ),
-          IconButton(
-            icon: Icon(Icons.bug_report, color: Colors.orange[800]),
-            onPressed: () {
-              _showDebugInfo();
-            },
-            tooltip: 'Debug Info',
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
-            onPressed: () {},
-          ),
-        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -1150,7 +1093,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               ],
             ),
           ),
-          
+
           // Loading Indicator
           if (isLoading)
             Container(
@@ -1173,7 +1116,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                 ),
               ),
             ),
-          
+
           // Error Message
           if (errorMessage != null && !isLoading)
             Container(
@@ -1228,7 +1171,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                 ],
               ),
             ),
-          
+
           if (!isLoading && errorMessage == null) ...[
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1247,246 +1190,246 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             Expanded(
               child: filteredProducts.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 64,
-                            color: Colors.grey.shade400,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            'No products found',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey.shade600,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Pull down to refresh or add your first product',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey.shade500,
-                            ),
-                          ),
-                        ],
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 64,
+                      color: Colors.grey.shade400,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No products found',
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey.shade600,
                       ),
-                    )
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Pull down to refresh or add your first product',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
                   : RefreshIndicator(
-                      onRefresh: fetchProducts,
-                      child: ListView.builder(
-                        padding: EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: filteredProducts.length,
-                        itemBuilder: (context, index) {
-                          final product = filteredProducts[index];
-                          return Card(
-                            margin: EdgeInsets.only(bottom: 12),
-                            elevation: 2,
-                            child: Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (product.images != null)
-                                    GestureDetector(
-                                      onTap: () => _showImagePreview(product.images!),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: product.images!.startsWith('http')
-                                            ? Image.network(
-                                                product.images!,
-                                                height: 150,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                                loadingBuilder: (context, child, loadingProgress) {
-                                                  if (loadingProgress == null) return child;
-                                                  return Container(
-                                                    height: 150,
-                                                    width: double.infinity,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey.shade200,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Center(
-                                                      child: CircularProgressIndicator(
-                                                        value: loadingProgress.expectedTotalBytes != null
-                                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                                            : null,
-                                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                errorBuilder: (context, error, stackTrace) {
-                                                  return Container(
-                                                    height: 150,
-                                                    width: double.infinity,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey.shade200,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Column(
-                                                      mainAxisAlignment: MainAxisAlignment.center,
-                                                      children: [
-                                                        Icon(
-                                                          Icons.error_outline,
-                                                          size: 40,
-                                                          color: Colors.grey.shade600,
-                                                        ),
-                                                        SizedBox(height: 8),
-                                                        Text(
-                                                          'Image not available',
-                                                          style: TextStyle(
-                                                            color: Colors.grey.shade600,
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                },
-                                              )
-                                            : File(product.images!).existsSync()
-                                                ? Image.file(
-                                                    File(product.images!),
-                                                    height: 150,
-                                                    width: double.infinity,
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                : Container(
-                                                    height: 150,
-                                                    width: double.infinity,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey.shade200,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.image,
-                                                      size: 50,
-                                                      color: Colors.grey.shade600,
-                                                    ),
-                                                  ),
-                                      ),
-                                    )
-                                  else
-                                    Container(
-                                      height: 150,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade200,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(
-                                        Icons.image,
-                                        size: 50,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  SizedBox(height: 12),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
+                onRefresh: fetchProducts,
+                child: ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = filteredProducts[index];
+                    return Card(
+                      margin: EdgeInsets.only(bottom: 12),
+                      elevation: 2,
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (product.images != null)
+                              GestureDetector(
+                                onTap: () => _showImagePreview(product.images!),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: product.images!.startsWith('http')
+                                      ? Image.network(
+                                    product.images!,
+                                    height: 150,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        height: 150,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade200,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                : null,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        height: 150,
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade200,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            Text(
-                                              product.name,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                            Icon(
+                                              Icons.error_outline,
+                                              size: 40,
+                                              color: Colors.grey.shade600,
                                             ),
-                                            SizedBox(height: 4),
+                                            SizedBox(height: 8),
                                             Text(
-                                              product.description,
+                                              'Image not available',
                                               style: TextStyle(
                                                 color: Colors.grey.shade600,
-                                                fontSize: 14,
+                                                fontSize: 12,
                                               ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
                                             ),
                                           ],
                                         ),
+                                      );
+                                    },
+                                  )
+                                      : File(product.images!).existsSync()
+                                      ? Image.file(
+                                    File(product.images!),
+                                    height: 150,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  )
+                                      : Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(
+                                      Icons.image,
+                                      size: 50,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 150,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.image,
+                                  size: 50,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        product.description,
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 14,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 12),
-                                  Row(
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(Icons.category, size: 16, color: Colors.grey.shade600),
-                                                SizedBox(width: 4),
-                                                Text(product.category),
-                                              ],
-                                            ),
-                                            SizedBox(height: 4),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
-                                                SizedBox(width: 4),
-                                                Text('${product.quantity} units'),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                      Row(
                                         children: [
-                                          Text(
-                                            '₹${product.price.toStringAsFixed(2)}',
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green.shade700,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Price',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                          ),
+                                          Icon(Icons.category, size: 16, color: Colors.grey.shade600),
+                                          SizedBox(width: 4),
+                                          Text(product.category),
+                                        ],
+                                      ),
+                                      SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
+                                          SizedBox(width: 4),
+                                          Text('${product.quantity} units'),
                                         ],
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        product.createdAt != null 
-                                            ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
-                                            : 'Date not available',
-                                        style: TextStyle(color: Colors.grey.shade600),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '₹${product.price.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade700,
                                       ),
-                                      Spacer(),
-                                      IconButton(
-                                        onPressed: () => _showAddEditDialog(product: product),
-                                        icon: Icon(Icons.edit, color: Colors.blue),
-                                        tooltip: 'Edit Product',
+                                    ),
+                                    Text(
+                                      'Price',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
                                       ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          );
-                        },
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                                SizedBox(width: 4),
+                                Text(
+                                  product.createdAt != null
+                                      ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
+                                      : 'Date not available',
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                ),
+                                Spacer(),
+                                IconButton(
+                                  onPressed: () => _showAddEditDialog(product: product),
+                                  icon: Icon(Icons.edit, color: Colors.blue),
+                                  tooltip: 'Edit Product',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    );
+                  },
+                ),
+              ),
             ),
           ],
         ],
@@ -1550,12 +1493,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddEditDialog(),
-        backgroundColor: Colors.green.shade700,
-        child: Icon(Icons.add, color: Colors.white),
-        tooltip: 'Add New Product',
       ),
     );
   }
