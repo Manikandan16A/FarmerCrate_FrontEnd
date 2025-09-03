@@ -291,7 +291,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter your username';
                                       }
-                                      if (value.length > 8) {
+                                      if (value.length > 20) {
                                         return 'Username must be 8 or fewer characters';
                                       }
                                       if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {

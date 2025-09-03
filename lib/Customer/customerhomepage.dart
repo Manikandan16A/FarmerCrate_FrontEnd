@@ -38,6 +38,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
 
   String? customerImageUrl;
   String? customerName;
+  bool _isLoadingProfile = true;
 
   final List<String> categories = [
     'All', 'Vegetables', 'Fruits', 'Herbs'
@@ -158,7 +159,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         targetPage = CartPage(customerId: 1);
         break;
       case 3:
-        targetPage = ProfilePage(token: widget.token ?? '');
+        targetPage = CustomerProfilePage(token: widget.token ?? '');
         break;
       default:
         targetPage = CustomerHomePage(token: widget.token);
@@ -185,10 +186,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   Future<void> _fetchCustomerProfile() async {
-    if (widget.token == null) return;
+    if (widget.token == null) {
+      setState(() {
+        _isLoadingProfile = false;
+      });
+      return;
+    }
+    
+    setState(() {
+      _isLoadingProfile = true;
+    });
+    
     try {
       final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/customers/me'),
+        Uri.parse('https://farmercrate.onrender.com/api/customer/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
@@ -198,11 +209,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         final data = jsonDecode(response.body);
         setState(() {
           customerImageUrl = data['data']?['image_url'];
-          customerName = data['data']?['name'];
+          customerName = data['data']?['customer_name'] ?? data['data']?['name'];
+          _isLoadingProfile = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingProfile = false;
         });
       }
     } catch (e) {
       // ignore error, fallback to default icon
+      print('Error fetching customer profile: $e');
+      setState(() {
+        _isLoadingProfile = false;
+      });
     }
   }
 
@@ -273,6 +293,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         token: widget.token,
         customerImageUrl: customerImageUrl,
         customerName: customerName,
+        isLoadingProfile: _isLoadingProfile,
       ),
       body: _isLoading
           ? _buildLoadingScreen()
@@ -553,7 +574,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ProfilePage(token: widget.token ?? ''),
+                  builder: (context) => CustomerProfilePage(token: widget.token ?? ''),
                 ),
               );
             },
@@ -630,24 +651,48 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
                     ),
-                    child: customerImageUrl != null && customerImageUrl!.isNotEmpty
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Image.network(
-                        customerImageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.person,
-                          size: 40,
-                          color: Colors.white,
-                        ),
-                      ),
-                    )
-                        : Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.white,
-                    ),
+                    child: _isLoadingProfile
+                        ? Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                          )
+                        : customerImageUrl != null && customerImageUrl!.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: Image.network(
+                                  customerImageUrl!,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) => Icon(
+                                    Icons.person,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                Icons.person,
+                                size: 40,
+                                color: Colors.white,
+                              ),
                   ),
                 ],
               ),

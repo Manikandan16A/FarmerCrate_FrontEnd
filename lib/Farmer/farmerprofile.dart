@@ -587,7 +587,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> {
         elevation: 0,
         selectedItemColor: Colors.green[600],
         unselectedItemColor: Colors.grey[500],
-        currentIndex: 1, // Profile is selected
+        currentIndex: 1,
         onTap: (index) {
           switch (index) {
             case 0:

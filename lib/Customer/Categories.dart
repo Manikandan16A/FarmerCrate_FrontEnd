@@ -186,11 +186,13 @@ class CustomerDrawer extends StatelessWidget {
   final String? token;
   final String? customerImageUrl;
   final String? customerName;
+  final bool isLoadingProfile;
   const CustomerDrawer({
     required this.parentContext,
     this.token,
     this.customerImageUrl,
     this.customerName,
+    this.isLoadingProfile = false,
     Key? key,
   }) : super(key: key);
 
@@ -236,9 +238,18 @@ class CustomerDrawer extends StatelessWidget {
                   backgroundImage: (customerImageUrl != null && customerImageUrl!.isNotEmpty)
                       ? NetworkImage(customerImageUrl!)
                       : null,
-                  child: (customerImageUrl == null || customerImageUrl!.isEmpty)
-                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
-                      : null,
+                  child: isLoadingProfile
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+                          ),
+                        )
+                      : (customerImageUrl == null || customerImageUrl!.isEmpty)
+                          ? Icon(Icons.person, size: 40, color: Colors.green[700])
+                          : null,
                 ),
                 SizedBox(height: 10),
                 Text(
@@ -323,7 +334,7 @@ class CustomerDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (context) => ProfilePage(token: token ?? '')),
+                MaterialPageRoute(builder: (context) => CustomerProfilePage(token: token ?? '')),
               );
             },
           ),
@@ -774,7 +785,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         targetPage = CartPage(customerId: 1);
         break;
       case 3:
-        targetPage = ProfilePage(token: widget.token ?? '');
+        targetPage = CustomerProfilePage(token: widget.token ?? '');
         break;
       default:
         targetPage = CustomerHomePage(token: widget.token);
@@ -795,6 +806,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         token: widget.token,
         customerImageUrl: customerImageUrl,
         customerName: customerName,
+        isLoadingProfile: false,
       ),
       bottomNavigationBar: CustomerBottomNavBar(
         currentIndex: _currentIndex,

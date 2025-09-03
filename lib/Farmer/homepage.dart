@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import '../Signin.dart';
 import '../Customer/Cart.dart';
 import 'Addproduct.dart';
+import 'contact_admin.dart';
 import 'farmerprofile.dart';
 import 'ProductEdit.dart';
 import 'package:http/http.dart' as http;
@@ -240,7 +241,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const FarmersHomePage(),
+                    builder: (context) => const ContactAdminPage(),
                   ),
                 );
               },
