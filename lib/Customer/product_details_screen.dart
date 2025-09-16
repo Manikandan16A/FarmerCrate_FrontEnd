@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'navigation_utils.dart';
+import 'Cart.dart';
+import 'payment.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -21,6 +24,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
   late Animation<Offset> _slideAnimation;
   bool isFavorite = false;
   int quantity = 1;
+  bool isAddingToCart = false;
 
   @override
   void initState() {
@@ -84,10 +88,151 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     return value.toString();
   }
 
+  Future<void> _addToCart() async {
+    if (productData == null || widget.token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Unable to add to cart. Please try again.'),
+            ],
+          ),
+          backgroundColor: Colors.orange[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      isAddingToCart = true;
+    });
+
+    try {
+      print('Adding product ${productData!['id']} to cart with quantity $quantity');
+      
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/cart'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          'productId': productData!['id'],
+          'quantity': quantity,
+        }),
+      );
+
+      print('Add to cart response status: ${response.statusCode}');
+      print('Add to cart response body: ${response.body}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Added $quantity item(s) to cart!'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            action: SnackBarAction(
+              label: 'View Cart',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartPage(token: widget.token),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      } else {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['message'] ?? 'Failed to add to cart';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Text(errorMessage),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Add to cart error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Network error. Please try again.'),
+            ],
+          ),
+          backgroundColor: Colors.red[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      setState(() {
+        isAddingToCart = false;
+      });
+    }
+  }
+
+  void _buyNow() {
+    if (productData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Product information not available. Please try again.'),
+            ],
+          ),
+          backgroundColor: Colors.orange[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    // Navigate to payment page
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FarmerCratePaymentPage(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
+      drawer: CustomerNavigationUtils.buildCustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+      ),
       body: isLoading
           ? _buildLoadingState()
           : error != null
@@ -97,7 +242,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
           : _buildProductDetail(),
       bottomNavigationBar: !isLoading && error == null && productData != null
           ? _buildBottomActionBar()
-          : null,
+          : CustomerNavigationUtils.buildCustomerBottomNav(
+              currentIndex: 0, // Product details is not in bottom nav, use home
+              onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
+            ),
     );
   }
 
@@ -793,77 +941,140 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
         ],
       ),
       child: SafeArea(
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: quantity > 1 ? () => setState(() => quantity--) : null,
-                    icon: Icon(Icons.remove, color: quantity > 1 ? Colors.grey[700] : Colors.grey[400]),
-                  ),
-                  Container(
-                    width: 40,
-                    child: Text(
-                      '$quantity',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => setState(() => quantity++),
-                    icon: Icon(Icons.add, color: Colors.grey[700]),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  // Add to cart functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Added $quantity item(s) to cart!'),
-                      backgroundColor: Colors.green[600],
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[600],
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
+            // Quantity selector
+            Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 0,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.shopping_cart, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Add to Cart - ₹${(double.tryParse(getField(productData!['price'])) ?? 0.0) * quantity}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: quantity > 1 ? () => setState(() => quantity--) : null,
+                        icon: Icon(Icons.remove, color: quantity > 1 ? Colors.grey[700] : Colors.grey[400]),
                       ),
-                    ),
-                  ],
+                      Container(
+                        width: 40,
+                        child: Text(
+                          '$quantity',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => setState(() => quantity++),
+                        icon: Icon(Icons.add, color: Colors.grey[700]),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Total: ₹${(double.tryParse(getField(productData!['price'])) ?? 0.0) * quantity}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 16),
+            // Action buttons
+            Row(
+              children: [
+                // Add to Cart button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: isAddingToCart ? null : _addToCart,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isAddingToCart
+                        ? Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                'Adding...',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.shopping_cart, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Add to Cart',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                // Buy Now button
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _buyNow,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber[600],
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.flash_on, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Buy Now',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

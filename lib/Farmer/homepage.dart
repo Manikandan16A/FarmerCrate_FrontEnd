@@ -22,7 +22,6 @@ class FarmersHomePage extends StatefulWidget {
 class _FarmersHomePageState extends State<FarmersHomePage> {
   final TextEditingController _searchController = TextEditingController();
   int _currentIndex = 0;
-  String? _selectedCategory; // Track selected category (null for "All")
   List<Product> products = [];
   bool isLoading = false;
   String? errorMessage;
@@ -58,12 +57,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     });
   }
 
-  void _onCategoryTapped(String category) {
-    setState(() {
-      _selectedCategory = category == 'All' ? null : _selectedCategory == category ? null : category;
-      _onSearchChanged(); // Re-filter products
-    });
-  }
 
   void _onNavItemTapped(int index) {
     setState(() {
@@ -73,7 +66,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     Widget targetPage;
     switch (index) {
       case 0:
-        targetPage = const FarmersHomePage();
+        targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
         targetPage = AddProductPage(token: widget.token);
@@ -241,7 +234,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const ContactAdminPage(),
+                    builder: (context) => ContactAdminPage(token: widget.token),
                   ),
                 );
               },
@@ -386,35 +379,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
               child: Text(
-                'Categories',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[800],
-                ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Container(
-              height: 90, // Adjust as needed
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 3,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: EdgeInsets.only(right: 16),
-                    child: _buildCategoryItem(context, index, _selectedCategory, iconSize: 28, boxSize: 60),
-                  );
-                },
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text(
                 'Your Products',
                 style: TextStyle(
                   fontSize: 18,
@@ -501,63 +465,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     );
   }
 
-  Widget _buildCategoryItem(BuildContext context, int index, String? selectedCategory, {double iconSize = 32, double boxSize = 70}) {
-    String emoji = '';
-    String title = '';
-    bool isSelected = false;
-
-    switch (index) {
-      case 0:
-        emoji = '🍃';
-        title = 'Fruits';
-        isSelected = selectedCategory == 'Fruits';
-        break;
-      case 1:
-        emoji = '🌾';
-        title = 'Grains';
-        isSelected = selectedCategory == 'Grains';
-        break;
-      case 2:
-        emoji = '🥬';
-        title = 'Veg';
-        isSelected = selectedCategory == 'Veg';
-        break;
-    }
-
-    return GestureDetector(
-      onTap: () => _onCategoryTapped(title),
-      child: Column(
-        children: [
-          Container(
-            width: boxSize,
-            height: boxSize,
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.green[200] : Colors.green[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? Colors.green[600]! : Colors.green[200]!,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                emoji,
-                style: TextStyle(fontSize: iconSize),
-              ),
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              color: isSelected ? Colors.green[700] : Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildProductCard(
       BuildContext context,
@@ -834,7 +741,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => CartPage(customerId: 0,), // Adjust customerId as needed
+                            builder: (context) => CartPage(token: null), // No token for farmer view
                           ),
                         );
                       },

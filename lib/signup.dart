@@ -520,6 +520,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           await prefs.setString('email', (userData['email'] ?? '').toString());
           await prefs.setString('role', (userData['role'] ?? apiRole).toString());
           await prefs.setInt('user_id', userData['id'] ?? 0);
+          await prefs.setInt('customer_id', userData['id'] ?? 0); // For backward compatibility
 
           // Determine success message based on role
           String title = "Account Created!";

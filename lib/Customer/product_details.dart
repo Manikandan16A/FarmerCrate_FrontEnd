@@ -7,8 +7,9 @@ import 'product_details_screen.dart';
 
 class ProductDetailsPage extends StatefulWidget {
   final customer.Product product;
+  final String? token;
 
-  const ProductDetailsPage({Key? key, required this.product}) : super(key: key);
+  const ProductDetailsPage({Key? key, required this.product, this.token}) : super(key: key);
 
   @override
   State<ProductDetailsPage> createState() => _ProductDetailsPageState();

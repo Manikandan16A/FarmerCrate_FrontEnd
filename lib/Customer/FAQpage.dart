@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'navigation_utils.dart';
 
 class FAQPage extends StatefulWidget {
-  const FAQPage({super.key});
+  final String? token;
+  const FAQPage({super.key, this.token});
 
   @override
   State<FAQPage> createState() => _FAQPageState();
@@ -30,6 +32,10 @@ class _FAQPageState extends State<FAQPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      drawer: CustomerNavigationUtils.buildCustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+      ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16.0),
         itemCount: faqs.length,
@@ -53,6 +59,10 @@ class _FAQPageState extends State<FAQPage> {
             ),
           );
         },
+      ),
+      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
+        currentIndex: 3, // FAQ is index 3
+        onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:farmer_crate/Customer/profile.dart';
+import 'package:farmer_crate/Customer/FAQpage.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -301,18 +302,7 @@ class CustomerDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.favorite,
-            title: 'Wishlist',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => WishlistPage()),
+                MaterialPageRoute(builder: (context) => CartPage(token: token)),
               );
             },
           ),
@@ -338,26 +328,14 @@ class CustomerDrawer extends StatelessWidget {
               );
             },
           ),
-          Divider(),
           _buildDrawerItem(
-            icon: Icons.settings,
-            title: 'Settings',
+            icon: Icons.quiz,
+            title: 'FAQ',
             onTap: () {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (context) => SettingsPage()),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.help,
-            title: 'Help & Support',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => HelpPage()),
+                MaterialPageRoute(builder: (context) => FAQPage(token: token)),
               );
             },
           ),
@@ -426,6 +404,10 @@ class CustomerBottomNavBar extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.shopping_cart, size: 24),
             label: 'Cart',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.help_outline, size: 24),
+            label: 'FAQ',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline, size: 24),
@@ -782,9 +764,12 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         targetPage = CategoryPage(token: widget.token);
         break;
       case 2:
-        targetPage = CartPage(customerId: 1);
+        targetPage = CartPage(token: widget.token);
         break;
       case 3:
+        targetPage = FAQPage(token: widget.token);
+        break;
+      case 4:
         targetPage = CustomerProfilePage(token: widget.token ?? '');
         break;
       default:
@@ -827,8 +812,6 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         child: SafeArea(
           child: Column(
             children: [
-              // Remove _buildHeader(), as the AppBar is now used
-              _buildStaticImageContainer(),
               _buildSearchAndSort(),
               _buildFiltersSection(),
               _buildProductsSection(),
@@ -910,7 +893,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
               );
             },
           ),
@@ -919,37 +902,6 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     );
   }
 
-  Widget _buildStaticImageContainer() {
-    return Container(
-      height: 180,
-      width: double.infinity,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: _selectedProduct != null
-          ? ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.network(
-          _selectedProduct!.imageUrl,
-          fit: BoxFit.cover,
-          width: double.infinity,
-          errorBuilder: (context, error, stackTrace) => Icon(Icons.broken_image, size: 80),
-        ),
-      )
-          : Center(
-        child: Icon(Icons.image, size: 80, color: Colors.grey[400]),
-      ),
-    );
-  }
 
   Widget _buildSearchAndSort() {
     return Container(

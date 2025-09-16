@@ -218,13 +218,13 @@ class PostDetailsModal extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: Colors.green[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(color: Colors.green[200]!),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.phone, color: Colors.blue[600]),
+                    Icon(Icons.phone, color: Colors.green[600]),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -234,7 +234,7 @@ class PostDetailsModal extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => _copyToClipboard(context, contact),
-                      icon: Icon(Icons.copy, color: Colors.blue[600], size: 20),
+                      icon: Icon(Icons.copy, color: Colors.green[600], size: 20),
                       tooltip: 'Copy phone number',
                     ),
                   ],

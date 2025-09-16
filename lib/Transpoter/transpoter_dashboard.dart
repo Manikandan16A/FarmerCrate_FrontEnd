@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-void main() {
-  runApp(const TransporterApp());
-}
+
 
 class TransporterApp extends StatelessWidget {
-  const TransporterApp({Key? key}) : super(key: key);
+  final String? token;
+  
+  const TransporterApp({Key? key, this.token, required int customerId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +17,7 @@ class TransporterApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         fontFamily: 'Inter',
       ),
-      home: const TransporterDashboard(),
+      home: TransporterDashboard(token: token),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -50,7 +50,9 @@ class DeliveryPerson {
 }
 
 class TransporterDashboard extends StatefulWidget {
-  const TransporterDashboard({Key? key}) : super(key: key);
+  final String? token;
+  
+  const TransporterDashboard({Key? key, this.token}) : super(key: key);
 
   @override
   State<TransporterDashboard> createState() => _TransporterDashboardState();

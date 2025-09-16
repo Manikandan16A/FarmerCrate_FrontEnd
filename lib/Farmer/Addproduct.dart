@@ -456,21 +456,21 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue[50],
+                  color: Colors.green[50],
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue[200]!),
+                  border: Border.all(color: Colors.green[200]!),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[600]!),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
                     ),
                     const SizedBox(width: 16),
                     Text(
                       'Adding Product...',
                       style: TextStyle(
-                        color: Colors.blue[800],
+                        color: Colors.green[800],
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),

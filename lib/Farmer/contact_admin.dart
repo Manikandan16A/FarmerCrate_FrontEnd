@@ -48,8 +48,9 @@ class UserService {
 
 class ContactAdminPage extends StatefulWidget {
   final UserModel? user; // Optional user parameter
+  final String? token; // Add token parameter
 
-  const ContactAdminPage({Key? key, this.user}) : super(key: key);
+  const ContactAdminPage({Key? key, this.user, this.token}) : super(key: key);
 
   @override
   State<ContactAdminPage> createState() => _ContactAdminPageState();

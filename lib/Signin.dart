@@ -3,10 +3,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'Admin/requstaccept.dart';
+import 'Forget.dart';
 import 'Signup.dart';
-import 'Customer/Forget.dart';
+
 import 'Customer/customerhomepage.dart';
 import 'Farmer/homepage.dart';
+import 'Transpoter/transpoter_dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -84,9 +86,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           final token = responseData['token'];
           final user = responseData['user'];
 
+          // Debug: Print user role for troubleshooting
+          print('User role: ${user['role']}');
+          print('User data: $user');
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Login Successful!'),
+              content: Text('Login Successful! Welcome, ${user['role']?.toUpperCase()}'),
               backgroundColor: Colors.green,
             ),
           );
@@ -105,20 +111,45 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 builder: (context) => CustomerHomePage(token: token),
               ),
             );
-          } else {
+          } else if (user['role'] == 'transporter') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (context) => AdminFarmerPage(user: user, token: token),
+                builder: (context) => TransporterDashboard(token: token),
               ),
             );
+          } else if (user['role'] == 'admin') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AdminManagementPage(user: user, token: token),
+              ),
+            );
+          } else {
+            // Unknown role - show error and stay on login page
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Unknown user role: ${user['role']}. Please contact support.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 5),
+              ),
+            );
+            print('Unknown user role: ${user['role']}');
           }
         } else {
-          final errorMessage = jsonDecode(response.body)['message'] ?? 'Invalid credentials';
+          String errorMessage = 'Invalid credentials';
+          try {
+            final errorData = jsonDecode(response.body);
+            errorMessage = errorData['message'] ?? errorData['error'] ?? 'Invalid credentials';
+          } catch (e) {
+            errorMessage = 'Login failed. Please try again.';
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
               backgroundColor: Colors.red,
+              duration: Duration(seconds: 4),
             ),
           );
         }

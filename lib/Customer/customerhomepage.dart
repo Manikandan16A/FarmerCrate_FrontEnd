@@ -2,12 +2,15 @@ import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../Transpoter/transpoter_dashboard.dart';
 import 'Categories.dart';
 import '../Signin.dart';
 import 'Cart.dart';
 import '../utils/cloudinary_upload.dart';
+import 'FAQpage.dart';
 import 'product_details.dart';
 import 'product_details_screen.dart';
+import 'wishlist.dart';
 
 class CustomerHomePage extends StatefulWidget {
   final String? token;
@@ -112,6 +115,25 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             if (data['images'] != null && data['images'].toString().isNotEmpty) {
               imageUrl = data['images'].toString();
             }
+
+            // Extract rating and review data
+            double rating = 0.0;
+            int reviewCount = 0;
+            List<ProductReview> reviews = [];
+
+            if (data['reviews'] != null && data['reviews'] is List) {
+              reviews = (data['reviews'] as List)
+                  .map((review) => ProductReview.fromJson(review))
+                  .toList();
+              reviewCount = reviews.length;
+              if (reviewCount > 0) {
+                rating = reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviewCount;
+              }
+            } else if (data['rating'] != null) {
+              rating = (data['rating'] ?? 0.0).toDouble();
+              reviewCount = data['review_count'] ?? data['reviewCount'] ?? 0;
+            }
+
             return Product(
               data['id'] ?? 0,
               data['name'] ?? 'Unknown Product',
@@ -120,6 +142,9 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               data['quantity'] ?? 0,
               imageUrl,
               data['category'] ?? 'General',
+              rating,
+              reviewCount,
+              reviews,
             );
           }).toList();
 
@@ -153,23 +178,27 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         targetPage = CustomerHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = CategoryPage();
+        targetPage = CategoryPage(token: widget.token);
         break;
       case 2:
-        targetPage = CartPage(customerId: 1);
+        targetPage = CartPage(token: widget.token);
         break;
       case 3:
-        targetPage = CustomerProfilePage(token: widget.token ?? '');
+        targetPage = FAQPage(token: widget.token);
+        break;
+
+      case 4:
+        targetPage = CustomerProfilePage(token: widget.token);
         break;
       default:
         targetPage = CustomerHomePage(token: widget.token);
     }
 
-    Navigator.pushAndRemoveUntil(
+    Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
-          (route) => false,
     );
+
   }
 
   List<Product> get filteredProducts {
@@ -192,14 +221,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       });
       return;
     }
-    
+
     setState(() {
       _isLoadingProfile = true;
     });
-    
+
     try {
       final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/customer/me'),
+        Uri.parse('https://farmercrate.onrender.com/api/customers/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
@@ -207,12 +236,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('Profile API Response: $data');
         setState(() {
-          customerImageUrl = data['data']?['image_url'];
-          customerName = data['data']?['customer_name'] ?? data['data']?['name'];
+          customerImageUrl = data['data']?['image_url'] ?? data['data']?['imageUrl'] ?? data['data']?['profile_image'];
+          customerName = data['data']?['customer_name'] ?? 
+                        data['data']?['name'] ?? 
+                        data['data']?['username'] ?? 
+                        data['data']?['full_name'] ?? 
+                        data['data']?['first_name'];
+          print('Customer Image URL: $customerImageUrl');
+          print('Customer Name: $customerName');
           _isLoadingProfile = false;
         });
       } else {
+        print('Profile API Error: ${response.statusCode} - ${response.body}');
         setState(() {
           _isLoadingProfile = false;
         });
@@ -226,19 +263,447 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     }
   }
 
-  Future<void> _addToCart(Product product) async {
+  Future<List<ProductReview>> _fetchProductReviews(int productId) async {
     try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/products/$productId/reviews'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> reviewsData = jsonDecode(response.body)['data'] ?? [];
+        return reviewsData.map((review) => ProductReview.fromJson(review)).toList();
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching reviews: $e');
+      return [];
+    }
+  }
+
+  Future<void> _refreshProductReviews(Product product) async {
+    final reviews = await _fetchProductReviews(product.id);
+    setState(() {
+      final productIndex = products.indexWhere((p) => p.id == product.id);
+      if (productIndex != -1) {
+        final updatedProduct = Product(
+          product.id,
+          product.name,
+          product.description,
+          product.price,
+          product.quantity,
+          product.images,
+          product.category,
+          reviews.isNotEmpty ? reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length : 0.0,
+          reviews.length,
+          reviews,
+        );
+        products[productIndex] = updatedProduct;
+
+        // Update topBuys if this product is in it
+        final topBuyIndex = topBuys.indexWhere((p) => p.id == product.id);
+        if (topBuyIndex != -1) {
+          topBuys[topBuyIndex] = updatedProduct;
+        }
+      }
+    });
+  }
+
+  Widget _buildRatingStars(double rating, {double size = 16.0}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        if (index < rating.floor()) {
+          return Icon(Icons.star, color: Colors.amber[600], size: size);
+        } else if (index < rating) {
+          return Icon(Icons.star_half, color: Colors.amber[600], size: size);
+        } else {
+          return Icon(Icons.star_border, color: Colors.grey[400], size: size);
+        }
+      }),
+    );
+  }
+
+  Widget _buildReviewSection(Product product) {
+    return GestureDetector(
+      onTap: () => _showAllReviews(product),
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildRatingStars(product.rating, size: 14),
+                SizedBox(width: 6),
+                Text(
+                  '${product.rating.toStringAsFixed(1)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  '(${product.reviewCount})',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                Spacer(),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  size: 10,
+                  color: Colors.grey[400],
+                ),
+              ],
+            ),
+            if (product.reviews.isNotEmpty) ...[
+              SizedBox(height: 4),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green[200]!, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.person, size: 12, color: Colors.green[600]),
+                    SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        product.reviews.first.comment,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactReviewSection(Product product) {
+    return GestureDetector(
+      onTap: () => _showAllReviews(product),
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          children: [
+            _buildRatingStars(product.rating, size: 12),
+            SizedBox(width: 4),
+            Text(
+              '${product.rating.toStringAsFixed(1)}',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            SizedBox(width: 2),
+            Text(
+              '(${product.reviewCount})',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.grey[500],
+              ),
+            ),
+            Spacer(),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 8,
+              color: Colors.grey[400],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailedReviewCard(ProductReview review) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.green[100],
+                backgroundImage: review.customerImage != null && review.customerImage!.isNotEmpty
+                    ? NetworkImage(review.customerImage!)
+                    : null,
+                child: review.customerImage == null || review.customerImage!.isEmpty
+                    ? Icon(Icons.person, size: 16, color: Colors.green[600])
+                    : null,
+              ),
+              SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      review.customerName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                    Text(
+                      _formatDate(review.createdAt),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildRatingStars(review.rating, size: 16),
+            ],
+          ),
+          if (review.comment.isNotEmpty) ...[
+            SizedBox(height: 8),
+            Text(
+              review.comment,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey[700],
+                height: 1.4,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else if (difference.inDays < 30) {
+        return '${(difference.inDays / 7).floor()} weeks ago';
+      } else {
+        return '${(difference.inDays / 30).floor()} months ago';
+      }
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  void _showAllReviews(Product product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.8,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green[50],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _buildRatingStars(product.rating, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          '${product.rating.toStringAsFixed(1)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '(${product.reviewCount} reviews)',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Spacer(),
+                        IconButton(
+                          onPressed: () async {
+                            await _refreshProductReviews(product);
+                            setModalState(() {});
+                          },
+                          icon: Icon(Icons.refresh, color: Colors.green[600]),
+                          tooltip: 'Refresh reviews',
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      product.name,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: product.reviews.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.reviews, size: 64, color: Colors.grey[400]),
+                            SizedBox(height: 16),
+                            Text(
+                              'No reviews yet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Be the first to review this product!',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                // TODO: Navigate to review form
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Review form coming soon!'),
+                                    backgroundColor: Colors.green[600],
+                                  ),
+                                );
+                              },
+                              icon: Icon(Icons.rate_review, size: 16),
+                              label: Text('Write Review'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green[600],
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: EdgeInsets.all(16),
+                        itemCount: product.reviews.length,
+                        itemBuilder: (context, index) {
+                          return _buildDetailedReviewCard(product.reviews[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addToCart(Product product) async {
+    if (widget.token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Please login to add items to cart'),
+            ],
+          ),
+          backgroundColor: Colors.orange[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      print('Adding product ${product.id} to cart with token: ${widget.token!.substring(0, 10)}...');
+      
       final response = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
           'Content-Type': 'application/json',
-          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
+          'Authorization': 'Bearer ${widget.token}',
         },
         body: jsonEncode({
           'productId': product.id,
           'quantity': 1,
         }),
       );
+
+      print('Add to cart response status: ${response.statusCode}');
+      print('Add to cart response body: ${response.body}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -247,22 +712,36 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Added to cart successfully!'),
+                Text('${product.name} added to cart!'),
               ],
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            action: SnackBarAction(
+              label: 'View Cart',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartPage(token: widget.token),
+                  ),
+                );
+              },
+            ),
           ),
         );
       } else {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['message'] ?? 'Failed to add to cart';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white),
                 SizedBox(width: 8),
-                Text('Failed to add to cart'),
+                Text(errorMessage),
               ],
             ),
             backgroundColor: Colors.red[600],
@@ -274,9 +753,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $e'),
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Network error. Please try again.'),
+            ],
+          ),
           backgroundColor: Colors.red[600],
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
     }
@@ -325,14 +811,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       elevation: 0,
       flexibleSpace: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.9),
-              Colors.green[50]!.withOpacity(0.9),
-            ],
-          ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withOpacity(0.9),
+            Colors.green[50]!.withOpacity(0.9),
+          ],
+        ),
         ),
       ),
       leading: Builder(
@@ -390,7 +876,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => CartPage(customerId: 1)),
+                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
               );
             },
           ),
@@ -467,7 +953,9 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                customerName ?? 'Welcome back,',
+                customerName != null && customerName!.isNotEmpty 
+                    ? ' $customerName'
+                    : 'Welcome!',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[600],
@@ -817,6 +1305,13 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   Widget _buildPremiumHorizontalCard(Product product, int index) {
+    final responsiveValues = _getResponsiveValues(context);
+    final imageHeight = (responsiveValues['imageHeight'] as double) * 0.7; // Smaller for horizontal cards
+    final padding = responsiveValues['padding'] as double;
+    final titleFontSize = (responsiveValues['titleFontSize'] as double) * 0.9;
+    final descriptionFontSize = (responsiveValues['descriptionFontSize'] as double) * 0.9;
+    final priceFontSize = (responsiveValues['priceFontSize'] as double) * 0.9;
+    
     return Container(
       width: 170,
       margin: EdgeInsets.only(right: 12),
@@ -837,7 +1332,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           Stack(
             children: [
               Container(
-                height: 100,
+                height: imageHeight,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -893,15 +1388,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: EdgeInsets.symmetric(horizontal: padding * 0.75, vertical: padding * 0.25),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     product.name,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: titleFontSize,
                       color: Colors.grey[800],
                     ),
                     maxLines: 1,
@@ -911,29 +1407,31 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   Text(
                     product.category,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: descriptionFontSize,
                       color: Colors.grey[500],
                     ),
                   ),
                   SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.inventory, color: Colors.blue[400], size: 14),
+                      Icon(Icons.inventory, color: Colors.green[400], size: 14),
                       SizedBox(width: 4),
                       Text(
                         '${product.quantity}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: descriptionFontSize, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                   SizedBox(height: 2),
+                  _buildCompactReviewSection(product),
+                  SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       '₹${product.price.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: priceFontSize,
                         color: Colors.green[700],
                       ),
                     ),
@@ -965,7 +1463,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             ),
             SizedBox(width: 12),
             Text(
-              'Suggested for You',
+              'Products',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -987,12 +1485,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     return SliverPadding(
       padding: EdgeInsets.symmetric(horizontal: 20),
       sliver: SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.75,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-        ),
+        gridDelegate: _getResponsiveGridDelegate(context),
         delegate: SliverChildBuilderDelegate(
               (context, index) {
             final product = filteredProducts[index];
@@ -1004,7 +1497,130 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     );
   }
 
+  SliverGridDelegate _getResponsiveGridDelegate(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    // Calculate responsive values based on screen size
+    int crossAxisCount;
+    double childAspectRatio;
+    double crossAxisSpacing;
+    double mainAxisSpacing;
+    
+    if (screenWidth < 320) {
+      // Very small screens (old phones)
+      crossAxisCount = 1;
+      childAspectRatio = 1.2;
+      crossAxisSpacing = 12;
+      mainAxisSpacing = 12;
+    } else if (screenWidth < 375) {
+      // Small screens (iPhone SE, etc.)
+      crossAxisCount = 1;
+      childAspectRatio = 1.1;
+      crossAxisSpacing = 16;
+      mainAxisSpacing = 16;
+    } else if (screenWidth < 414) {
+      // Medium screens (iPhone 12, etc.)
+      crossAxisCount = 2;
+      childAspectRatio = 0.8;
+      crossAxisSpacing = 12;
+      mainAxisSpacing = 12;
+    } else if (screenWidth < 480) {
+      // Large screens (iPhone 12 Pro Max, etc.)
+      crossAxisCount = 2;
+      childAspectRatio = 0.75;
+      crossAxisSpacing = 16;
+      mainAxisSpacing = 16;
+    } else {
+      // Very large screens (tablets in portrait)
+      crossAxisCount = 2;
+      childAspectRatio = 0.7;
+      crossAxisSpacing = 20;
+      mainAxisSpacing = 20;
+    }
+    
+    // Adjust aspect ratio based on screen height to prevent overflow
+    if (screenHeight < 600) {
+      childAspectRatio = childAspectRatio * 1.1; // Make cards taller on short screens
+    } else if (screenHeight > 800) {
+      childAspectRatio = childAspectRatio * 0.9; // Make cards shorter on tall screens
+    }
+    
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: crossAxisCount,
+      childAspectRatio: childAspectRatio,
+      crossAxisSpacing: crossAxisSpacing,
+      mainAxisSpacing: mainAxisSpacing,
+    );
+  }
+
+  // Helper method to get responsive values
+  Map<String, dynamic> _getResponsiveValues(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    
+    double titleFontSize;
+    double descriptionFontSize;
+    double priceFontSize;
+    double padding;
+    double imageHeight;
+    
+    if (screenWidth < 320) {
+      // Very small screens
+      titleFontSize = 14;
+      descriptionFontSize = 10;
+      priceFontSize = 16;
+      padding = 6;
+      imageHeight = 120;
+    } else if (screenWidth < 375) {
+      // Small screens
+      titleFontSize = 15;
+      descriptionFontSize = 11;
+      priceFontSize = 17;
+      padding = 8;
+      imageHeight = 130;
+    } else if (screenWidth < 414) {
+      // Medium screens
+      titleFontSize = 16;
+      descriptionFontSize = 12;
+      priceFontSize = 18;
+      padding = 8;
+      imageHeight = 140;
+    } else {
+      // Large screens
+      titleFontSize = 16;
+      descriptionFontSize = 12;
+      priceFontSize = 18;
+      padding = 8;
+      imageHeight = 140;
+    }
+    
+    // Adjust for very short screens
+    if (screenHeight < 600) {
+      titleFontSize *= 0.9;
+      descriptionFontSize *= 0.9;
+      priceFontSize *= 0.9;
+      padding *= 0.8;
+      imageHeight *= 0.9;
+    }
+    
+    return {
+      'titleFontSize': titleFontSize,
+      'descriptionFontSize': descriptionFontSize,
+      'priceFontSize': priceFontSize,
+      'padding': padding,
+      'imageHeight': imageHeight,
+    };
+  }
+
   Widget _buildPremiumProductCard(Product product) {
+    final responsiveValues = _getResponsiveValues(context);
+    final imageHeight = responsiveValues['imageHeight'] as double;
+    final padding = responsiveValues['padding'] as double;
+    final titleFontSize = responsiveValues['titleFontSize'] as double;
+    final descriptionFontSize = responsiveValues['descriptionFontSize'] as double;
+    final priceFontSize = responsiveValues['priceFontSize'] as double;
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -1032,89 +1648,34 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.green[100]!,
-                        Colors.green[50]!,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Center(
-                    child: _buildProductImage(
-                      product.images,
-                      110,
-                      110,
-                      _getProductIcon(product.name),
-                      55,
-                    ),
-                  ),
+            Container(
+              height: imageHeight,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                child: _buildProductImage(
+                  product.images,
+                  double.infinity,
+                  imageHeight,
+                  _getProductIcon(product.name),
+                  55,
                 ),
-                Container(
-                  height: 140,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green[50]!, Colors.white],
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Center(
-                    child: _buildProductImage(
-                      product.images,
-                      120,
-                      120,
-                      _getProductIcon(product.name),
-                      50,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.favorite_border,
-                        color: Colors.red[400],
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.75),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: titleFontSize,
                         color: Colors.grey[800],
                       ),
                       maxLines: 2,
@@ -1124,7 +1685,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                     Text(
                       product.description,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: descriptionFontSize,
                         color: Colors.grey[500],
                       ),
                       maxLines: 2,
@@ -1136,19 +1697,19 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: Colors.green[50],
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.inventory, color: Colors.blue[600], size: 12),
+                              Icon(Icons.inventory, color: Colors.green[600], size: 12),
                               SizedBox(width: 2),
                               Text(
                                 '${product.quantity}',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.blue[600],
+                                  color: Colors.green[600],
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1158,13 +1719,15 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       ],
                     ),
                     SizedBox(height: 6),
+                    _buildReviewSection(product),
+                    SizedBox(height: 8),
                     Row(
                       children: [
                         Text(
                           '₹${product.price.toStringAsFixed(2)}',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: priceFontSize,
                             color: Colors.green[700],
                           ),
                         ),
@@ -1172,7 +1735,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                         Text(
                           'per kg',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: descriptionFontSize * 0.8,
                             color: Colors.grey[500],
                           ),
                         ),
@@ -1232,11 +1795,11 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           selectedItemColor: Colors.green[700],
           unselectedItemColor: Colors.grey[400],
           selectedLabelStyle: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
           ),
           unselectedLabelStyle: TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w500,
           ),
           currentIndex: _currentIndex,
@@ -1245,56 +1808,70 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           items: [
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _currentIndex == 0 ? Colors.green[50] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _currentIndex == 0 ? Icons.home : Icons.home_outlined,
-                  size: 24,
+                  size: 22,
                 ),
               ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _currentIndex == 1 ? Colors.green[50] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _currentIndex == 1 ? Icons.category : Icons.category_outlined,
-                  size: 24,
+                  size: 22,
                 ),
               ),
               label: 'Categories',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _currentIndex == 2 ? Colors.green[50] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   _currentIndex == 2 ? Icons.shopping_cart : Icons.shopping_cart_outlined,
-                  size: 24,
+                  size: 22,
                 ),
               ),
               label: 'Cart',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(8),
+                padding: EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: _currentIndex == 3 ? Colors.green[50] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  _currentIndex == 3 ? Icons.person : Icons.person_outline,
-                  size: 24,
+                  _currentIndex == 3 ? Icons.help : Icons.help_outline,
+                  size: 22,
+                ),
+              ),
+              label: 'FAQ',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 4 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 4 ? Icons.person : Icons.person_outline,
+                  size: 22,
                 ),
               ),
               label: 'Profile',
@@ -1327,7 +1904,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   Widget _buildProductImage(String imageUrl, double width, double height, IconData fallbackIcon, double iconSize) {
     if (imageUrl.isEmpty || imageUrl == 'null') {
       return Container(
-        width: width,
+        width: width == double.infinity ? null : width,
         height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1344,13 +1921,13 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
           imageUrl,
-          width: width,
+          width: width == double.infinity ? null : width,
           height: height,
           fit: BoxFit.cover,
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return Container(
-              width: width,
+              width: width == double.infinity ? null : width,
               height: height,
               decoration: BoxDecoration(
                 color: Colors.grey[100],
@@ -1369,7 +1946,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           },
           errorBuilder: (context, error, stackTrace) {
             return Container(
-              width: width,
+              width: width == double.infinity ? null : width,
               height: height,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1387,12 +1964,12 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         borderRadius: BorderRadius.circular(12),
         child: Image.asset(
           imageUrl,
-          width: width,
+          width: width == double.infinity ? null : width,
           height: height,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(
-              width: width,
+              width: width == double.infinity ? null : width,
               height: height,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1407,7 +1984,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       );
     } else {
       return Container(
-        width: width,
+        width: width == double.infinity ? null : width,
         height: height,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1429,6 +2006,9 @@ class Product {
   final int quantity;
   final String images;
   final String category;
+  final double rating;
+  final int reviewCount;
+  final List<ProductReview> reviews;
 
   Product(
       this.id,
@@ -1438,36 +2018,43 @@ class Product {
       this.quantity,
       this.images,
       this.category,
+      this.rating,
+      this.reviewCount,
+      this.reviews,
       );
 }
 
-// Placeholder pages - you'll need to create these separately
-class WishlistPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Wishlist'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.favorite, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
-            Text(
-              'Your Wishlist is Empty',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
+class ProductReview {
+  final int id;
+  final String customerName;
+  final double rating;
+  final String comment;
+  final String createdAt;
+  final String? customerImage;
+
+  ProductReview({
+    required this.id,
+    required this.customerName,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+    this.customerImage,
+  });
+
+  factory ProductReview.fromJson(Map<String, dynamic> json) {
+    return ProductReview(
+      id: json['id'] ?? 0,
+      customerName: json['customer_name'] ?? json['customerName'] ?? 'Anonymous',
+      rating: (json['rating'] ?? 0.0).toDouble(),
+      comment: json['comment'] ?? json['review'] ?? '',
+      createdAt: json['created_at'] ?? json['createdAt'] ?? '',
+      customerImage: json['customer_image'] ?? json['customerImage'],
     );
   }
 }
+
+// Placeholder pages - you'll need to create these separately
+
 
 class OrdersPage extends StatelessWidget {
   @override
