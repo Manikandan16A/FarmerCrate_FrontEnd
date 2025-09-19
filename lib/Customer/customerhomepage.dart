@@ -632,7 +632,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                             ElevatedButton.icon(
                               onPressed: () {
                                 Navigator.pop(context);
-                                // TODO: Navigate to review form
+                              
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('Review form coming soon!'),

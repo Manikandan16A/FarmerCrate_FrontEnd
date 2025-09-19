@@ -1,12 +1,13 @@
 import 'package:farmer_crate/Admin/adminreport.dart';
+import 'package:farmer_crate/Admin/total_order.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../Signin.dart';
 import 'ConsumerManagement.dart';
 import 'Farmeruser.dart';
+
 
 class AdminManagementPage extends StatefulWidget {
   final dynamic user;
@@ -909,6 +910,21 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 );
               },
             ),
+            ListTile(
+              leading: Icon(Icons.shopping_cart, color: Colors.green[600]),
+              title: const Text('Total Orders'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OrdersManagementPage(
+                      user: widget.user,
+                      token: widget.token,
+                    ),
+                  ),
+                );
+              },
+            ),
             const Divider(),
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red[600]),
@@ -1110,6 +1126,19 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
             setState(() {
               _currentIndex = index;
             });
+            
+            // Handle navigation based on selected index
+            if (index == 2) { // Orders tab
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrdersManagementPage(
+                    user: widget.user,
+                    token: widget.token,
+                  ),
+                ),
+              );
+            }
           },
           items: const [
             BottomNavigationBarItem(
@@ -1119,6 +1148,10 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
             BottomNavigationBarItem(
               icon: Icon(Icons.pending_actions, size: 24),
               label: 'Requests',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart, size: 24),
+              label: 'Orders',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline, size: 24),

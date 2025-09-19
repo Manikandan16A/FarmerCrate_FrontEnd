@@ -211,7 +211,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               _selectedDistrict = null;
             }
           });
-          _showSnackBar('Profile loaded successfully!', const Color(0xFF2E7D32));
+          _showSnackBar('Profile loaded successfully!', const Color(0xFF1976D2));
           return; // Success, exit the loop
         } else if (response.statusCode == 404) {
           print('Endpoint $endpoint not found (404), trying next...');
@@ -304,7 +304,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                      colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -363,7 +363,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           _enableEditMode();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
+                          backgroundColor: const Color(0xFF1976D2),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -573,7 +573,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                      colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -632,7 +632,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           _saveProfile();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2E7D32),
+                          backgroundColor: const Color(0xFF1976D2),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -771,7 +771,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -889,7 +889,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 ],
               ),
               child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
                 strokeWidth: 3,
               ),
             ),
@@ -934,7 +934,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               const SizedBox(height: 32),
               _buildSaveButton(),
             ],
-            const SizedBox(height: 100), // Extra space for bottom navigation
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -964,8 +964,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF2E7D32).withOpacity(0.1),
-                      const Color(0xFF4CAF50).withOpacity(0.1),
+                      const Color(0xFF1976D2).withOpacity(0.1),
+                      const Color(0xFF2196F3).withOpacity(0.1),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -987,7 +987,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                        colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -1007,14 +1007,14 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                        colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                             shape: BoxShape.circle,
                             boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2E7D32).withOpacity(0.3),
+                          color: const Color(0xFF1976D2).withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1195,11 +1195,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            gradient: const LinearGradient(
+                colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: Colors.white, size: 24),
@@ -1262,15 +1262,15 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF2E7D32).withOpacity(0.2),
-                  const Color(0xFF4CAF50).withOpacity(0.2),
+                  const Color(0xFF1976D2).withOpacity(0.2),
+                  const Color(0xFF2196F3).withOpacity(0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
+            child: Icon(icon, color: const Color(0xFF1976D2), size: 20),
           ),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1282,7 +1282,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         ),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
         ),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1295,7 +1295,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         filled: true,
           fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
           labelStyle: TextStyle(
-            color: _isEditMode ? const Color(0xFF2E7D32) : Colors.grey[600],
+            color: _isEditMode ? const Color(0xFF1976D2) : Colors.grey[600],
           fontWeight: FontWeight.w600,
             fontSize: 14,
         ),
@@ -1351,15 +1351,15 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF2E7D32).withOpacity(0.2),
-                  const Color(0xFF4CAF50).withOpacity(0.2),
+                  const Color(0xFF1976D2).withOpacity(0.2),
+                  const Color(0xFF2196F3).withOpacity(0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFF2E7D32), size: 20),
+            child: Icon(icon, color: const Color(0xFF1976D2), size: 20),
           ),
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1371,7 +1371,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         ),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF2E7D32), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
         ),
         errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1384,7 +1384,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         filled: true,
           fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
           labelStyle: TextStyle(
-            color: _isEditMode ? const Color(0xFF2E7D32) : Colors.grey[600],
+            color: _isEditMode ? const Color(0xFF1976D2) : Colors.grey[600],
           fontWeight: FontWeight.w600,
             fontSize: 14,
         ),
@@ -1407,13 +1407,13 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
-          colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+          colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2E7D32).withOpacity(0.4),
+            color: const Color(0xFF1976D2).withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1473,22 +1473,22 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     return Drawer(
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green[50]!, Colors.white],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+            gradient: LinearGradient(
+              colors: [Colors.blue[50]!, Colors.white],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
         ),
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             DrawerHeader(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[400]!, Colors.green[700]!],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                  gradient: LinearGradient(
+                    colors: [Colors.blue[400]!, Colors.blue[700]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1524,7 +1524,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                             ? NetworkImage(_farmerImageUrl!)
                             : null,
                         child: (_farmerImageUrl == null || _farmerImageUrl!.isEmpty)
-                            ? Icon(Icons.person, size: 24, color: Colors.green[700])
+                            ? Icon(Icons.person, size: 24, color: Colors.blue[700])
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -1561,7 +1561,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               );
             }),
             _buildDrawerItem(icon: Icons.person, title: 'Profile', onTap: () => _onNavItemTapped(3)),
-            const Divider(color: Colors.green, thickness: 1),
+            const Divider(color: Colors.blue, thickness: 1),
             _buildDrawerItem(icon: Icons.logout, title: 'Logout', onTap: () {
               Navigator.pushAndRemoveUntil(
                 context,
@@ -1591,12 +1591,12 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isLogout ? Colors.red[100] : Colors.green[100],
+            color: isLogout ? Colors.red[100] : Colors.blue[100],
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(
             icon,
-            color: isLogout ? Colors.red[600] : Colors.green[600],
+            color: isLogout ? Colors.red[600] : Colors.blue[600],
             size: 20,
           ),
         ),
@@ -1640,7 +1640,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         child: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           backgroundColor: Colors.white,
-          selectedItemColor: Colors.green[600],
+          selectedItemColor: Colors.blue[600],
           unselectedItemColor: Colors.grey[400],
           selectedLabelStyle: const TextStyle(
             fontSize: 12,
@@ -1658,7 +1658,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _currentIndex == 0 ? Colors.green[100] : Colors.transparent,
+                  color: _currentIndex == 0 ? Colors.blue[100] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.home, size: 24),
@@ -1669,7 +1669,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _currentIndex == 1 ? Colors.green[100] : Colors.transparent,
+                  color: _currentIndex == 1 ? Colors.blue[100] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.add_circle, size: 24),
@@ -1680,7 +1680,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _currentIndex == 2 ? Colors.green[100] : Colors.transparent,
+                  color: _currentIndex == 2 ? Colors.blue[100] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.edit, size: 24),
@@ -1691,7 +1691,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _currentIndex == 3 ? Colors.green[100] : Colors.transparent,
+                  color: _currentIndex == 3 ? Colors.blue[100] : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.person, size: 24),
