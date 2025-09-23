@@ -157,10 +157,21 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         setState(() {
           _isLoading = false;
         });
+        
+        // Check if it's a network error
+        String errorMessage = 'Error: $e';
+        if (e.toString().contains('SocketException') || 
+            e.toString().contains('HandshakeException') ||
+            e.toString().contains('Connection refused') ||
+            e.toString().contains('Network is unreachable')) {
+          errorMessage = 'Please use network to login';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
           ),
         );
       }

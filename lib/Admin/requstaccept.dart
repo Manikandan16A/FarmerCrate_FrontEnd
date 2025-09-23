@@ -1,5 +1,6 @@
 import 'package:farmer_crate/Admin/adminreport.dart';
 import 'package:farmer_crate/Admin/total_order.dart';
+import 'package:farmer_crate/Admin/transpoter_mang.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -37,11 +38,11 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     final token = widget.token;
 
     print('=== Admin Access Check ===');
-    print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+    print('Token: Present (${token.length} chars)');
     print('Role: $role');
     print('User: ${widget.user}');
 
-    if (token == null || token.isEmpty) {
+    if (token.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('No authentication token found'),
@@ -89,10 +90,10 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
       final role = widget.user['role'];
 
       print('=== Fetching Farmers ===');
-      print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+      print('Token: Present (${token.length} chars)');
       print('Role: $role');
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
@@ -195,9 +196,9 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
       final token = widget.token;
 
       print('=== Fetching Transporters ===');
-      print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+      print('Token: Present (${token.length} chars)');
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
@@ -316,7 +317,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 try {
                   final token = widget.token;
 
-                  if (token == null || token.isEmpty) {
+                  if (token.isEmpty) {
                     throw Exception('No authentication token found. Please login again.');
                   }
 
@@ -452,7 +453,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     try {
       final token = widget.token;
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
@@ -690,7 +691,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     try {
       final token = widget.token;
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
@@ -1009,7 +1010,10 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AdminUserManagementPage(),
+                    builder: (context) => AdminUserManagementPage(
+                      token: widget.token,
+                      user: widget.user,
+                    ),
                   ),
                 );
               },
@@ -1021,7 +1025,10 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => CustomerManagementScreen(),
+                    builder: (context) => CustomerManagementScreen(
+                      token: widget.token,
+                      user: widget.user,
+                    ),
                   ),
                 );
               },
@@ -1033,7 +1040,22 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ReportsPage(),
+                    builder: (context) => ReportsPage(token: widget.token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.analytics, color: Colors.green[600]),
+              title: const Text('Transpoter Management'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TransporterManagementPage(
+                      token: widget.token,
+                      user: widget.user,
+                    ),
                   ),
                 );
               },
@@ -1275,11 +1297,11 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.pending_actions, size: 24),
-              label: 'Requests',
+              label: 'Total Orders',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart, size: 24),
-              label: 'Orders',
+              icon: Icon(Icons.pin_invoke_sharp, size: 24),
+              label: 'Report',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline, size: 24),
@@ -1459,61 +1481,21 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      gradient: farmer.isVerified
-                          ? const LinearGradient(
-                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                          : const LinearGradient(
-                        colors: [Color(0xFF8BC34A), Color(0xFF2E7D32)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () => _approveItem(farmer.id, 'Farmer'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: farmer.isVerified ? const Color(0xFF4CAF50) : const Color(0xFF8BC34A),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        ),
+                        elevation: 2,
+                        minimumSize: Size(screenWidth * 0.12, screenHeight * 0.04),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
                       ),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (farmer.isVerified
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFFFF9800))
-                              .withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                        onTap: () => _approveItem(farmer.id, 'Farmer'),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.01,
-                            vertical: screenWidth * 0.015,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                farmer.isVerified ? Icons.verified : Icons.pending_actions,
-                                size: screenWidth * 0.035,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: screenWidth * 0.008),
-                              Text(
-                                farmer.isVerified ? 'Verified' : 'Verify',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.028,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: Text(
+                        farmer.isVerified ? 'Verified' : 'Verify',
+                        style: TextStyle(fontSize: screenWidth * 0.028),
                       ),
                     ),
                   ),
@@ -1544,52 +1526,21 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () => _showFarmerDetailsDialog(farmer),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        ),
+                        elevation: 2,
+                        minimumSize: Size(screenWidth * 0.12, screenHeight * 0.04),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
                       ),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF2196F3).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                        onTap: () => _showFarmerDetailsDialog(farmer),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.01,
-                            vertical: screenWidth * 0.015,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: screenWidth * 0.035,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: screenWidth * 0.008),
-                              Text(
-                                'Details',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.028,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: Text(
+                        'Details',
+                        style: TextStyle(fontSize: screenWidth * 0.028),
                       ),
                     ),
                   ),
@@ -1740,61 +1691,21 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      gradient: transporter.isVerified
-                          ? const LinearGradient(
-                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                          : const LinearGradient(
-                        colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () => _approveItem(transporter.id, 'Transporter'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: transporter.isVerified ? const Color(0xFF4CAF50) : const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        ),
+                        elevation: 2,
+                        minimumSize: Size(screenWidth * 0.12, screenHeight * 0.04),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
                       ),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (transporter.isVerified
-                              ? const Color(0xFF4CAF50)
-                              : const Color(0xFF2196F3))
-                              .withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                        onTap: () => _approveItem(transporter.id, 'Transporter'),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.01,
-                            vertical: screenWidth * 0.015,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                transporter.isVerified ? Icons.verified : Icons.pending_actions,
-                                size: screenWidth * 0.035,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: screenWidth * 0.008),
-                              Text(
-                                transporter.isVerified ? 'Verified' : 'Verify',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.028,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: Text(
+                        transporter.isVerified ? 'Verified' : 'Verify',
+                        style: TextStyle(fontSize: screenWidth * 0.028),
                       ),
                     ),
                   ),
@@ -1825,52 +1736,21 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFF9800), Color(0xFFE65100)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () => _showTransporterDetailsDialog(transporter),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF9800),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(screenWidth * 0.02),
+                        ),
+                        elevation: 2,
+                        minimumSize: Size(screenWidth * 0.12, screenHeight * 0.04),
+                        padding: EdgeInsets.symmetric(vertical: screenWidth * 0.015),
                       ),
-                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF9800).withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(screenWidth * 0.03),
-                        onTap: () => _showTransporterDetailsDialog(transporter),
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: screenWidth * 0.01,
-                            vertical: screenWidth * 0.015,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: screenWidth * 0.035,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: screenWidth * 0.008),
-                              Text(
-                                'Details',
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.028,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      child: Text(
+                        'Details',
+                        style: TextStyle(fontSize: screenWidth * 0.028),
                       ),
                     ),
                   ),
@@ -1964,7 +1844,6 @@ class _TransporterDetailsFullScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Container(
@@ -2336,7 +2215,6 @@ class _FarmerDetailsFullScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Container(

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'common_navigation.dart';
 
 class ReportsPage extends StatefulWidget {
-  const ReportsPage({super.key});
+  final dynamic user;
+  final String token;
+  const ReportsPage({super.key, this.user, required this.token});
 
   @override
   State<ReportsPage> createState() => _ReportsPageState();
@@ -13,6 +16,7 @@ class _ReportsPageState extends State<ReportsPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   bool _isWeeklyView = false;
+  int _currentIndex = 2; // Reports tab is selected
 
   // Sample order data - replace with API call
   final Map<DateTime, int> _orderData = {
@@ -133,19 +137,9 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F3FF),
-      appBar: AppBar(
-        title: const Text(
-          'Reports',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        backgroundColor: const Color(0xFF4CAF50),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      backgroundColor: Colors.white,
+      appBar: AdminNavigation.buildAppBar(context, 'Reports'),
+      drawer: AdminNavigation.buildDrawer(context, widget.user, widget.token),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -507,6 +501,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ],
         ),
       ),
+      bottomNavigationBar: AdminNavigation.buildBottomNavigationBar(context, _currentIndex, widget.user, widget.token),
     );
   }
 

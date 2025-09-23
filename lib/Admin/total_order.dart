@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import '../Signin.dart';
-import 'ConsumerManagement.dart';
-import 'Farmeruser.dart';
-import 'adminreport.dart';
-import 'requstaccept.dart';
+import 'common_navigation.dart';
 
 class OrdersManagementPage extends StatefulWidget {
   final dynamic user;
@@ -38,75 +34,125 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
     try {
       final token = widget.token;
 
-      print('=== Fetching Orders ===');
-      print('Token: ${token != null ? 'Present (${token.length} chars)' : 'Not found'}');
+      print('=== Fetching Orders from Database ===');
+      print('API Endpoint: https://farmercrate.onrender.com/api/orders/all');
+      print('Token: Present (${token.length} chars)');
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
+      // Make GET request to fetch orders from database
       final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/admin/orders'),
+        Uri.parse('https://farmercrate.onrender.com/api/orders/all'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
       );
 
+      print('=== API Response Details ===');
       print('Response status: ${response.statusCode}');
+      print('Response headers: ${response.headers}');
+      print('Response body length: ${response.body.length}');
       print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final dynamic decodedJson = jsonDecode(response.body);
+        print('=== JSON Parsing ===');
+        print('Decoded JSON structure: ${decodedJson.runtimeType}');
+        print('Decoded JSON keys: ${decodedJson is Map ? decodedJson.keys.toList() : 'Not a Map'}');
+
+        List<dynamic> ordersData = [];
 
         if (decodedJson is Map<String, dynamic>) {
-          if (decodedJson.containsKey('orders') || decodedJson.containsKey('data')) {
-            final List<dynamic> data = decodedJson['orders'] ?? decodedJson['data'] ?? [];
-            setState(() {
-              allOrders = data.map((json) => Order.fromJson(json)).toList();
-              _filterOrders();
-              isLoading = false;
-            });
-            print('Successfully loaded ${allOrders.length} orders');
-          } else if (decodedJson.containsKey('success') && decodedJson['success'] == true) {
-            final List<dynamic> data = decodedJson['data'] ?? [];
-            setState(() {
-              allOrders = data.map((json) => Order.fromJson(json)).toList();
-              _filterOrders();
-              isLoading = false;
-            });
+          if (decodedJson.containsKey('data')) {
+            ordersData = decodedJson['data'] ?? [];
+            print('Found orders in "data" key: ${ordersData.length} items');
           } else {
-            throw Exception('Unexpected response structure: ${response.body}');
+            throw Exception('Expected "data" key in response: ${response.body}');
           }
-        } else if (decodedJson is List) {
-          setState(() {
-            allOrders = decodedJson.map((json) => Order.fromJson(json)).toList();
-            _filterOrders();
-            isLoading = false;
-          });
-          print('Successfully loaded ${allOrders.length} orders from direct array');
         } else {
           throw Exception('Unexpected response format: ${response.body}');
         }
+
+        print('=== Processing Database Records ===');
+        print('Found ${ordersData.length} orders to parse from database');
+
+        if (ordersData.isEmpty) {
+          print('No orders found in database response');
+          setState(() {
+            allOrders = [];
+            filteredOrders = [];
+            isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('No orders found in database'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          // Parse each order from database
+          List<Order> parsedOrders = [];
+          for (int i = 0; i < ordersData.length; i++) {
+            try {
+              print('Parsing order ${i + 1}: ${ordersData[i]}');
+              Order order = Order.fromJson(ordersData[i]);
+              parsedOrders.add(order);
+              print('Successfully parsed order ${i + 1}: ${order.id}');
+            } catch (e) {
+              print('Error parsing order ${i + 1}: $e');
+              print('Order data: ${ordersData[i]}');
+            }
+          }
+
+          setState(() {
+            allOrders = parsedOrders;
+            _filterOrders();
+            isLoading = false;
+          });
+          print('=== Database Records Loaded ===');
+          print('Successfully loaded ${allOrders.length} orders from database');
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Loaded ${allOrders.length} orders from database'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Authentication failed. Please login again.');
+      } else if (response.statusCode == 403) {
+        throw Exception('Access denied. You do not have permission to view orders.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Orders endpoint not found. Please check the API configuration.');
       } else {
-        throw Exception('Failed to load orders. Status: ${response.statusCode}');
+        throw Exception('Failed to load orders from database. Status: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         isLoading = false;
       });
+      print('=== Error Details ===');
+      print('Error type: ${e.runtimeType}');
+      print('Error message: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error fetching orders: $e'),
+          content: Text('Error fetching orders from database: $e'),
           backgroundColor: Colors.red,
           duration: const Duration(seconds: 5),
         ),
       );
-      print('Error details: $e');
     }
   }
 
   void _filterOrders() {
+    // Include all orders, regardless of status
     if (selectedCategory == 'All') {
       filteredOrders = allOrders;
     } else {
@@ -120,7 +166,7 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
     try {
       final token = widget.token;
 
-      if (token == null || token.isEmpty) {
+      if (token.isEmpty) {
         throw Exception('No authentication token found. Please login again.');
       }
 
@@ -161,11 +207,11 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'successful':
       case 'completed':
         return const Color(0xFF4CAF50);
+      case 'successful':
+        return const Color(0xFF4CAF50);
       case 'cancelled':
-      case 'canceled':
         return const Color(0xFFD32F2F);
       case 'pending':
         return const Color(0xFFFF9800);
@@ -176,7 +222,7 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
 
   Widget _buildCategorySelector() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final categories = ['All', 'Pending', 'Successful', 'Cancelled'];
+    final categories = ['All', 'Pending', 'Completed', 'Successful', 'Cancelled'];
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
@@ -251,6 +297,8 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
         return Icons.list_alt;
       case 'pending':
         return Icons.pending_actions;
+      case 'completed':
+        return Icons.check_circle;
       case 'successful':
         return Icons.check_circle;
       case 'cancelled':
@@ -265,152 +313,28 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
+    // Use all orders for statistics
     final pendingCount = allOrders.where((order) => order.status.toLowerCase() == 'pending').length;
-    final successfulCount = allOrders.where((order) => order.status.toLowerCase() == 'successful' || order.status.toLowerCase() == 'completed').length;
-    final cancelledCount = allOrders.where((order) => order.status.toLowerCase() == 'cancelled' || order.status.toLowerCase() == 'canceled').length;
+    final completedCount = allOrders.where((order) => order.status.toLowerCase() == 'completed').length;
+    final cancelledCount = allOrders.where((order) => order.status.toLowerCase() == 'cancelled').length;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 5,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.green[800]),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: Text(
-          'Orders Management',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.green[800]),
-            onPressed: () {
-              _fetchOrders();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Refreshing orders list...'),
-                  backgroundColor: Colors.blue,
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.filter_list, color: Colors.green[800]),
-            onPressed: () {},
-          ),
-        ],
+      appBar: AdminNavigation.buildAppBar(
+        context,
+        'Orders Management',
+        onRefresh: () {
+          _fetchOrders();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Refreshing orders list...'),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 1),
+            ),
+          );
+        },
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[600],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'FarmerCrate Admin',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Welcome, Admin!',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.green[600]),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdminManagementPage(
-                      user: widget.user,
-                      token: widget.token,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.pending_actions, color: Colors.green[600]),
-              title: const Text('User Management'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AdminUserManagementPage(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.people, color: Colors.green[600]),
-              title: const Text('Consumer Management'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CustomerManagementScreen(),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_cart, color: Colors.green[600]),
-              title: const Text('Total Orders'),
-              onTap: () {
-                Navigator.pop(context); // Close drawer
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.analytics, color: Colors.green[600]),
-              title: const Text('Reports'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportsPage(),
-                  ),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                      (route) => false,
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: AdminNavigation.buildDrawer(context, widget.user, widget.token),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -482,8 +406,8 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
                       color: const Color(0xFFE0E0E0),
                     ),
                     _buildStatItem(
-                      'Successful',
-                      successfulCount.toString(),
+                      'Completed',
+                      completedCount.toString(),
                       Icons.check_circle,
                     ),
                     Container(
@@ -514,39 +438,11 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
                 child: Container(
                   margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
                   child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? _buildLoadingState(screenWidth, screenHeight)
                       : filteredOrders.isEmpty
                       ? RefreshIndicator(
                     onRefresh: _fetchOrders,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.shopping_cart_outlined,
-                            size: screenWidth * 0.2,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: screenHeight * 0.02),
-                          Text(
-                            'No orders found',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.045,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: screenHeight * 0.01),
-                          Text(
-                            'Pull down to refresh',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.035,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: _buildEmptyState(screenWidth, screenHeight),
                   )
                       : RefreshIndicator(
                     onRefresh: _fetchOrders,
@@ -565,81 +461,7 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.blueGrey,
-          selectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          currentIndex: _currentIndex,
-          elevation: 0,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            
-
-            if (index == 0) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AdminManagementPage(
-                    user: widget.user,
-                    token: widget.token,
-                  ),
-                ),
-              );
-            } else if (index == 1) {
-              // Already on orders page, do nothing
-            } else if (index == 2) { // Reports tab
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReportsPage(),
-                ),
-              );
-            }
-
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 24),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart, size: 24),
-              label: 'Orders',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.pending_actions, size: 24),
-              label: 'Requests',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics, size: 24),
-              label: 'Reports',
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: AdminNavigation.buildBottomNavigationBar(context, _currentIndex, widget.user, widget.token),
     );
   }
 
@@ -673,9 +495,133 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
     );
   }
 
+  Widget _buildLoadingState(double screenWidth, double screenHeight) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.08),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(screenWidth * 0.08),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF2E7D32)),
+                  strokeWidth: 3,
+                ),
+                SizedBox(height: screenHeight * 0.03),
+                Text(
+                  'Loading orders from database...',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.045,
+                    color: const Color(0xFF1B5E20),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.01),
+                Text(
+                  'Please wait while we fetch your data',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: const Color(0xFF757575),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(double screenWidth, double screenHeight) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.08),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(screenWidth * 0.08),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  size: screenWidth * 0.2,
+                  color: const Color(0xFF2E7D32),
+                ),
+                SizedBox(height: screenHeight * 0.03),
+                Text(
+                  'No orders found in database',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.05,
+                    color: const Color(0xFF1B5E20),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.01),
+                Text(
+                  'There are currently no orders in the database',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.04,
+                    color: const Color(0xFF757575),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: screenHeight * 0.02),
+                Text(
+                  'Pull down to refresh and check again',
+                  style: TextStyle(
+                    fontSize: screenWidth * 0.035,
+                    color: const Color(0xFF9E9E9E),
+                  ),
+                ),
+                SizedBox(height: screenHeight * 0.02),
+                ElevatedButton.icon(
+                  onPressed: _fetchOrders,
+                  icon: Icon(Icons.refresh, size: screenWidth * 0.04),
+                  label: Text('Refresh Database'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(screenWidth * 0.03),
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.06,
+                      vertical: screenWidth * 0.03,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildOrderCard(Order order) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -725,14 +671,6 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Order #${order.id}',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.045,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF1B5E20),
-                            ),
-                          ),
                           Spacer(),
                           Container(
                             padding: EdgeInsets.symmetric(
@@ -789,20 +727,65 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
                       Icon(Icons.shopping_bag, size: screenWidth * 0.04, color: const Color(0xFF757575)),
                       SizedBox(width: screenWidth * 0.02),
                       Text(
-                        'Items: ${order.itemCount}',
+                        'Product: ${order.product.name}',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: const Color(0xFF424242),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Spacer(),
+                      Text(
+                        'Qty: ${order.quantity}',
                         style: TextStyle(
                           fontSize: screenWidth * 0.035,
                           color: const Color(0xFF424242),
                         ),
                       ),
-                      Spacer(),
+                    ],
+                  ),
+                  SizedBox(height: screenWidth * 0.02),
+                  Row(
+                    children: [
                       Icon(Icons.currency_rupee, size: screenWidth * 0.04, color: const Color(0xFF2E7D32)),
+                      SizedBox(width: screenWidth * 0.02),
                       Text(
-                        '${order.totalAmount}',
+                        'Total: ₹${order.totalAmount}',
                         style: TextStyle(
                           fontSize: screenWidth * 0.04,
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF2E7D32),
+                        ),
+                      ),
+                      Spacer(),
+                      Text(
+                        'Commission: ₹${order.commission}',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: const Color(0xFF757575),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: screenWidth * 0.02),
+                  Row(
+                    children: [
+                      Icon(Icons.payment, size: screenWidth * 0.04, color: const Color(0xFF757575)),
+                      SizedBox(width: screenWidth * 0.02),
+                      Text(
+                        'Payment: ${order.paymentStatus.toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: order.paymentStatus == 'completed' ? Colors.green : Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Spacer(),
+                      Text(
+                        'Transport: ₹${order.transportCharge}',
+                        style: TextStyle(
+                          fontSize: screenWidth * 0.035,
+                          color: const Color(0xFF757575),
                         ),
                       ),
                     ],
@@ -813,7 +796,7 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
                       Icon(Icons.access_time, size: screenWidth * 0.04, color: const Color(0xFF757575)),
                       SizedBox(width: screenWidth * 0.02),
                       Text(
-                        'Ordered: ${order.createdAt}',
+                        'Ordered: ${_formatDate(order.createdAt)}',
                         style: TextStyle(
                           fontSize: screenWidth * 0.035,
                           color: const Color(0xFF757575),
@@ -911,16 +894,25 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
 
   IconData _getStatusIcon(String status) {
     switch (status.toLowerCase()) {
-      case 'successful':
       case 'completed':
         return Icons.check_circle;
+      case 'successful':
+        return Icons.check_circle;
       case 'cancelled':
-      case 'canceled':
         return Icons.cancel;
       case 'pending':
         return Icons.access_time;
       default:
         return Icons.help_outline;
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      DateTime date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateString;
     }
   }
 
@@ -946,8 +938,7 @@ class _OrdersManagementPageState extends State<OrdersManagementPage> {
   }
 }
 
-// Order Details Full Screen
-class _OrderDetailsFullScreen extends StatelessWidget {
+class _OrderDetailsFullScreen extends StatefulWidget {
   final Order order;
 
   const _OrderDetailsFullScreen({
@@ -955,9 +946,14 @@ class _OrderDetailsFullScreen extends StatelessWidget {
   });
 
   @override
+  State<_OrderDetailsFullScreen> createState() => _OrderDetailsFullScreenState();
+}
+
+class _OrderDetailsFullScreenState extends State<_OrderDetailsFullScreen> {
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       body: Container(
@@ -1032,26 +1028,17 @@ class _OrderDetailsFullScreen extends StatelessWidget {
                         ),
                         child: Column(
                           children: [
-                            Text(
-                              'Order #${order.id}',
-                              style: TextStyle(
-                                fontSize: screenWidth * 0.06,
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF1B5E20),
-                              ),
-                            ),
-                            SizedBox(height: screenWidth * 0.02),
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: screenWidth * 0.04,
                                 vertical: screenWidth * 0.02,
                               ),
                               decoration: BoxDecoration(
-                                color: _getStatusColor(order.status),
+                                color: _getStatusColor(widget.order.status),
                                 borderRadius: BorderRadius.circular(screenWidth * 0.05),
                               ),
                               child: Text(
-                                order.status.toUpperCase(),
+                                widget.order.status.toUpperCase(),
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: screenWidth * 0.035,
@@ -1067,20 +1054,46 @@ class _OrderDetailsFullScreen extends StatelessWidget {
                         'Customer Information',
                         Icons.person,
                         [
-                          _buildOrderInfoTile(Icons.person_outline, 'Customer Name', order.customerName),
-                          _buildOrderInfoTile(Icons.email_outlined, 'Email', order.customerEmail),
-                          _buildOrderInfoTile(Icons.phone_outlined, 'Phone', order.customerPhone),
+                          _buildOrderInfoTileWithImage(Icons.person_outline, 'Customer Name', widget.order.customerName, widget.order.consumer.profileImage),
+                          _buildOrderInfoTile(Icons.email_outlined, 'Email', widget.order.customerEmail),
+                          _buildOrderInfoTile(Icons.phone_outlined, 'Phone', widget.order.customerPhone),
                         ],
                         screenWidth,
                       ),
                       SizedBox(height: screenWidth * 0.05),
                       _buildOrderInfoSection(
-                        'Order Information',
+                        'Product Information',
                         Icons.shopping_cart,
                         [
-                          _buildOrderInfoTile(Icons.shopping_bag_outlined, 'Items Count', '${order.itemCount}'),
-                          _buildOrderInfoTile(Icons.currency_rupee, 'Total Amount', '₹${order.totalAmount}'),
-                          _buildOrderInfoTile(Icons.access_time, 'Order Date', order.createdAt),
+                          _buildOrderInfoTileWithImage(Icons.shopping_bag_outlined, 'Product Name', widget.order.product.name, widget.order.product.images),
+                          _buildOrderInfoTile(Icons.currency_rupee, 'Product Price', '₹${widget.order.product.price}'),
+                          _buildOrderInfoTile(Icons.inventory, 'Quantity', '${widget.order.quantity}'),
+                          _buildOrderInfoTile(Icons.currency_rupee, 'Total Amount', '₹${widget.order.totalAmount}'),
+                          _buildOrderInfoTile(Icons.access_time, 'Order Date', _formatDate(widget.order.createdAt)),
+                        ],
+                        screenWidth,
+                      ),
+                      SizedBox(height: screenWidth * 0.05),
+                      _buildOrderInfoSection(
+                        'Financial Information',
+                        Icons.account_balance_wallet,
+                        [
+                          _buildOrderInfoTile(Icons.currency_rupee, 'Total Amount', '₹${widget.order.totalAmount}'),
+                          _buildOrderInfoTile(Icons.percent, 'Commission', '₹${widget.order.commission}'),
+                          _buildOrderInfoTile(Icons.person, 'Farmer Amount', '₹${widget.order.farmerAmount}'),
+                          _buildOrderInfoTile(Icons.local_shipping, 'Transport Charge', '₹${widget.order.transportCharge}'),
+                          _buildOrderInfoTile(Icons.payment, 'Payment Status', widget.order.paymentStatus.toUpperCase()),
+                        ],
+                        screenWidth,
+                      ),
+                      SizedBox(height: screenWidth * 0.05),
+                      _buildOrderInfoSection(
+                        'Farmer Information',
+                        Icons.agriculture,
+                        [
+                          _buildOrderInfoTileWithImage(Icons.person_outline, 'Farmer Name', widget.order.farmer.name, widget.order.farmer.profileImage),
+                          _buildOrderInfoTile(Icons.email_outlined, 'Farmer Email', widget.order.farmer.email),
+                          _buildOrderInfoTile(Icons.phone_outlined, 'Farmer Phone', widget.order.farmer.mobileNumber),
                         ],
                         screenWidth,
                       ),
@@ -1089,18 +1102,20 @@ class _OrderDetailsFullScreen extends StatelessWidget {
                         'Delivery Information',
                         Icons.local_shipping,
                         [
-                          _buildOrderInfoTile(Icons.location_on_outlined, 'Delivery Address', order.deliveryAddress),
-                          _buildOrderInfoTile(Icons.schedule, 'Delivery Date', order.deliveryDate.isNotEmpty ? order.deliveryDate : 'Not scheduled'),
+                          _buildOrderInfoTile(Icons.location_on_outlined, 'Delivery Address', widget.order.deliveryAddress),
+                          _buildOrderInfoTileWithImage(Icons.person_outline, 'Delivery Person', widget.order.deliveryPerson.name, widget.order.deliveryPerson.profileImage),
+                          _buildOrderInfoTile(Icons.phone_outlined, 'Delivery Phone', widget.order.deliveryPerson.mobileNumber),
+                          _buildOrderInfoTile(Icons.directions_car, 'Vehicle Number', widget.order.deliveryPerson.vehicleNumber),
                         ],
                         screenWidth,
                       ),
-                      if (order.notes.isNotEmpty) ...[
+                      if (widget.order.notes.isNotEmpty) ...[
                         SizedBox(height: screenWidth * 0.05),
                         _buildOrderInfoSection(
                           'Additional Notes',
                           Icons.notes,
                           [
-                            _buildOrderInfoTile(Icons.note_outlined, 'Notes', order.notes),
+                            _buildOrderInfoTile(Icons.note_outlined, 'Notes', widget.order.notes),
                           ],
                           screenWidth,
                         ),
@@ -1119,16 +1134,25 @@ class _OrderDetailsFullScreen extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'successful':
       case 'completed':
         return const Color(0xFF4CAF50);
+      case 'successful':
+        return const Color(0xFF4CAF50);
       case 'cancelled':
-      case 'canceled':
         return const Color(0xFFD32F2F);
       case 'pending':
         return const Color(0xFFFF9800);
       default:
         return const Color(0xFF757575);
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      DateTime date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return dateString;
     }
   }
 
@@ -1239,21 +1263,125 @@ class _OrderDetailsFullScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildOrderInfoTileWithImage(IconData icon, String label, String value, String imageUrl) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE0E0E0),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          // Profile/Product Image
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: const Color(0xFF2E7D32),
+                width: 2,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(25),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                imageUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    child: Icon(
+                      icon,
+                      color: const Color(0xFF2E7D32),
+                      size: 24,
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: const Color(0xFF2E7D32).withOpacity(0.1),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+                      ),
+                    ),
+                  );
+                },
+              )
+                  : Container(
+                color: const Color(0xFF2E7D32).withOpacity(0.1),
+                child: Icon(
+                  icon,
+                  color: const Color(0xFF2E7D32),
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF757575),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value.isEmpty ? 'Not provided' : value,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: value.isEmpty ? const Color(0xFF9E9E9E) : const Color(0xFF424242),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-// Order Model
 class Order {
   final String id;
   final String customerName;
   final String customerEmail;
   final String customerPhone;
   final String status;
-  final int itemCount;
+  final int quantity;
   final double totalAmount;
+  final double commission;
+  final double farmerAmount;
   final String deliveryAddress;
-  final String deliveryDate;
+  final String paymentStatus;
+  final String farmerId;
+  final String consumerId;
+  final String productId;
+  final String deliveryPersonId;
+  final double transportCharge;
   final String createdAt;
-  final String notes;
+  final String updatedAt;
+  final Product product;
+  final Farmer farmer;
+  final Consumer consumer;
+  final DeliveryPerson deliveryPerson;
 
   Order({
     required this.id,
@@ -1261,48 +1389,194 @@ class Order {
     required this.customerEmail,
     required this.customerPhone,
     required this.status,
-    required this.itemCount,
+    required this.quantity,
     required this.totalAmount,
+    required this.commission,
+    required this.farmerAmount,
     required this.deliveryAddress,
-    required this.deliveryDate,
+    required this.paymentStatus,
+    required this.farmerId,
+    required this.consumerId,
+    required this.productId,
+    required this.deliveryPersonId,
+    required this.transportCharge,
     required this.createdAt,
-    required this.notes,
+    required this.updatedAt,
+    required this.product,
+    required this.farmer,
+    required this.consumer,
+    required this.deliveryPerson,
   });
+
+  int get itemCount => quantity;
+  String get deliveryDate => '';
+  String get notes => '';
 
   factory Order.fromJson(Map<String, dynamic> json) {
     try {
       print('Parsing order JSON: $json');
 
+      String orderId = json['id']?.toString() ?? '';
+      String status = json['status']?.toString() ?? 'pending';
+      int quantity = json['quantity']?.toInt() ?? 0;
+      double totalAmount = double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0;
+      double commission = double.tryParse(json['commission']?.toString() ?? '0') ?? 0.0;
+      double farmerAmount = double.tryParse(json['farmer_amount']?.toString() ?? '0') ?? 0.0;
+      String deliveryAddress = json['delivery_address']?.toString() ?? '';
+      String paymentStatus = json['payment_status']?.toString() ?? 'pending';
+      String farmerId = json['farmer_id']?.toString() ?? '';
+      String consumerId = json['consumer_id']?.toString() ?? '';
+      String productId = json['product_id']?.toString() ?? '';
+      String deliveryPersonId = json['delivery_person_id']?.toString() ?? '';
+      double transportCharge = double.tryParse(json['transport_charge']?.toString() ?? '0') ?? 0.0;
+      String createdAt = json['created_at']?.toString() ?? '';
+      String updatedAt = json['updated_at']?.toString() ?? '';
+
+      Product product = Product.fromJson(json['product'] ?? {});
+      Farmer farmer = Farmer.fromJson(json['farmer'] ?? {});
+      Consumer consumer = Consumer.fromJson(json['consumer'] ?? {});
+      DeliveryPerson deliveryPerson = DeliveryPerson.fromJson(json['delivery_person'] ?? {});
+
       return Order(
-        id: json['id']?.toString() ?? json['order_id']?.toString() ?? '',
-        customerName: json['customer_name'] ?? json['customerName'] ?? json['user_name'] ?? '',
-        customerEmail: json['customer_email'] ?? json['customerEmail'] ?? json['user_email'] ?? '',
-        customerPhone: json['customer_phone'] ?? json['customerPhone'] ?? json['user_phone'] ?? '',
-        status: json['status'] ?? json['order_status'] ?? 'pending',
-        itemCount: json['item_count'] ?? json['itemCount'] ?? json['items_count'] ?? 1,
-        totalAmount: (json['total_amount'] ?? json['totalAmount'] ?? json['amount'] ?? 0).toDouble(),
-        deliveryAddress: json['delivery_address'] ?? json['deliveryAddress'] ?? json['address'] ?? '',
-        deliveryDate: json['delivery_date'] ?? json['deliveryDate'] ?? '',
-        createdAt: json['created_at'] ?? json['createdAt'] ?? json['order_date'] ?? '',
-        notes: json['notes'] ?? json['special_instructions'] ?? '',
+        id: orderId,
+        customerName: consumer.customerName,
+        customerEmail: consumer.email,
+        customerPhone: consumer.mobileNumber,
+        status: status,
+        quantity: quantity,
+        totalAmount: totalAmount,
+        commission: commission,
+        farmerAmount: farmerAmount,
+        deliveryAddress: deliveryAddress,
+        paymentStatus: paymentStatus,
+        farmerId: farmerId,
+        consumerId: consumerId,
+        productId: productId,
+        deliveryPersonId: deliveryPersonId,
+        transportCharge: transportCharge,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+        product: product,
+        farmer: farmer,
+        consumer: consumer,
+        deliveryPerson: deliveryPerson,
       );
     } catch (e) {
       print('Error parsing order JSON: $e');
       print('JSON data: $json');
-      // Return a default order object if parsing fails
       return Order(
-        id: '0',
-        customerName: 'Error parsing order data',
-        customerEmail: '',
-        customerPhone: '',
-        status: 'unknown',
-        itemCount: 0,
+        id: json['id']?.toString() ?? 'Unknown',
+        customerName: 'Unknown Customer',
+        customerEmail: 'unknown@email.com',
+        customerPhone: 'Unknown',
+        status: 'pending',
+        quantity: 0,
         totalAmount: 0.0,
-        deliveryAddress: '',
-        deliveryDate: '',
-        createdAt: '',
-        notes: '',
+        commission: 0.0,
+        farmerAmount: 0.0,
+        deliveryAddress: 'Address not provided',
+        paymentStatus: 'pending',
+        farmerId: '',
+        consumerId: '',
+        productId: '',
+        deliveryPersonId: '',
+        transportCharge: 0.0,
+        createdAt: DateTime.now().toIso8601String(),
+        updatedAt: DateTime.now().toIso8601String(),
+        product: Product(name: 'Unknown', price: 0.0, images: ''),
+        farmer: Farmer(name: 'Unknown', email: '', mobileNumber: '', profileImage: ''),
+        consumer: Consumer(customerName: 'Unknown', email: '', mobileNumber: '', profileImage: ''),
+        deliveryPerson: DeliveryPerson(name: 'Unknown', mobileNumber: '', vehicleNumber: '', profileImage: ''),
       );
     }
+  }
+}
+
+class Product {
+  final String name;
+  final double price;
+  final String images;
+
+  Product({
+    required this.name,
+    required this.price,
+    required this.images,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      name: json['name']?.toString() ?? 'Unknown Product',
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      images: json['images']?.toString() ?? '',
+    );
+  }
+}
+
+class Farmer {
+  final String name;
+  final String email;
+  final String mobileNumber;
+  final String profileImage;
+
+  Farmer({
+    required this.name,
+    required this.email,
+    required this.mobileNumber,
+    required this.profileImage,
+  });
+
+  factory Farmer.fromJson(Map<String, dynamic> json) {
+    return Farmer(
+      name: json['name']?.toString() ?? 'Unknown Farmer',
+      email: json['email']?.toString() ?? '',
+      mobileNumber: json['mobile_number']?.toString() ?? '',
+      profileImage: json['image_url']?.toString() ?? '',
+    );
+  }
+}
+
+class Consumer {
+  final String customerName;
+  final String email;
+  final String mobileNumber;
+  final String profileImage;
+
+  Consumer({
+    required this.customerName,
+    required this.email,
+    required this.mobileNumber,
+    required this.profileImage,
+  });
+
+  factory Consumer.fromJson(Map<String, dynamic> json) {
+    return Consumer(
+      customerName: json['customer_name']?.toString() ?? 'Unknown Customer',
+      email: json['email']?.toString() ?? '',
+      mobileNumber: json['mobile_number']?.toString() ?? '',
+      profileImage: json['image_url']?.toString() ?? '',
+    );
+  }
+}
+
+class DeliveryPerson {
+  final String name;
+  final String mobileNumber;
+  final String vehicleNumber;
+  final String profileImage;
+
+  DeliveryPerson({
+    required this.name,
+    required this.mobileNumber,
+    required this.vehicleNumber,
+    required this.profileImage,
+  });
+
+  factory DeliveryPerson.fromJson(Map<String, dynamic> json) {
+    return DeliveryPerson(
+      name: json['name']?.toString() ?? 'Unknown Delivery Person',
+      mobileNumber: json['mobile_number']?.toString() ?? '',
+      vehicleNumber: json['vehicle_number']?.toString() ?? '',
+      profileImage: json['profile_image']?.toString() ?? '',
+    );
   }
 }

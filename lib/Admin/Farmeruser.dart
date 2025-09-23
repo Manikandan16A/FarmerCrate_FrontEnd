@@ -1,123 +1,355 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'common_navigation.dart';
 
 class AdminUserManagementPage extends StatefulWidget {
-  const AdminUserManagementPage({Key? key}) : super(key: key);
+  final String token;
+  final dynamic user;
+
+  const AdminUserManagementPage({Key? key, required this.token, this.user}) : super(key: key);
 
   @override
   State<AdminUserManagementPage> createState() => _AdminUserManagementPageState();
 }
 
 class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
-  // Sample user data - replace with your actual data source
-  List<UserData> users = [
-    UserData(
-      id: 'USR001',
-      name: 'John Farmer',
-      email: 'john.farmer@email.com',
-      phone: '+1234567890',
-      role: 'Farmer',
-      location: 'California, USA',
-      joinDate: '2024-01-15',
-      status: 'Active',
-    ),
-    UserData(
-      id: 'USR004',
-      name: 'Emma Farmer',
-      email: 'emma.farmer@email.com',
-      phone: '+1234567893',
-      role: 'Farmer',
-      location: 'Florida, USA',
-      joinDate: '2024-01-25',
-      status: 'Active',
-    ),
-  ];
+  String _searchQuery = '';
+  List<UserData> users = [];
+  bool _isLoading = true; // Add loading state
+  String _filterStatus = 'All'; // Add filter state: All, Verified, Pending
+  int _currentIndex = 0; // Home tab is selected
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUsers();
+  }
+
+  Future<void> _fetchUsers() async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/farmers/all'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            users = (data['data'] as List).map((json) => UserData.fromJson(json)).toList();
+            _isLoading = false; // Set loading to false when data is loaded
+          });
+        }
+      } else {
+        throw Exception('Failed to load users');
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
+      setState(() {
+        _isLoading = false; // Set loading to false on error
+      });
+    }
+  }
+
+  Future<void> _deleteUser(String userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$userId'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            users.removeWhere((user) => user.id == userId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Farmer deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          throw Exception(data['message'] ?? 'Failed to delete farmer');
+        }
+      } else if (response.statusCode == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication failed. Please login again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        throw Exception('Failed to delete farmer');
+      }
+    } catch (e) {
+      print('Error deleting user: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting farmer: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showDeleteConfirmation(UserData user) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Farmer'),
+          content: Text('Are you sure you want to delete farmer "${user.name}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteUser(user.id);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AdminNavigation.buildAppBar(context, 'Farmer Management', onRefresh: _fetchUsers),
+      drawer: AdminNavigation.buildDrawer(context, widget.user ?? {}, widget.token),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF2E7D32), // Dark green
-              Color(0xFF4CAF50), // Medium green
-              Color(0xFF66BB6A), // Light green
-              Color(0xFF81C784), // Lighter green
+              Color(0xFFE8F5E8),
+              Color(0xFFC8E6C9),
+              Color(0xFFA5D6A7),
+              Color(0xFF81C784),
             ],
+            stops: [0.0, 0.3, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              _buildHeader(),
+              _buildSearchSection(),
               Expanded(
-                child: _buildUserList(),
+                child: _isLoading ? _buildLoadingWidget() : _buildUserList(), // Show loading or content
               ),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: AdminNavigation.buildBottomNavigationBar(context, _currentIndex, widget.user ?? {}, widget.token),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildLoadingWidget() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(top: 10),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Loading animation with agriculture theme
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.agriculture,
+                size: 60,
+                color: Color(0xFF4CAF50),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Loading Farmers...',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E7D32),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Please wait while we fetch farmer details',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Circular progress indicator with green color
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              strokeWidth: 3,
+            ),
+            const SizedBox(height: 20),
+            // Optional: Add a refresh button in case of loading issues
+            TextButton.icon(
+              onPressed: _fetchUsers,
+              icon: const Icon(Icons.refresh, color: Color(0xFF4CAF50)),
+              label: const Text(
+                'Refresh',
+                style: TextStyle(color: Color(0xFF4CAF50)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Widget _buildSearchSection() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: Column(
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(
-                  Icons.arrow_back_ios,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'Farmer Management',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
+          // Search bar
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.people, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Total Users: ${users.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            child: TextField(
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+              decoration: const InputDecoration(
+                hintText: 'Search farmers...',
+                prefixIcon: Icon(Icons.search, color: Color(0xFF4CAF50)),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Filter chips
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFilterChip('All', _filterStatus == 'All'),
+              const SizedBox(width: 12),
+              _buildFilterChip('Verified', _filterStatus == 'Verified'),
+              const SizedBox(width: 12),
+              _buildFilterChip('Pending', _filterStatus == 'Pending'),
+            ],
           ),
         ],
       ),
     );
   }
 
+  Widget _buildFilterChip(String label, bool isSelected) {
+    Color backgroundColor;
+    Color textColor;
+
+    switch (label) {
+      case 'Verified':
+        backgroundColor = isSelected ? Colors.green : Colors.green[100]!;
+        textColor = isSelected ? Colors.white : Colors.green[700]!;
+        break;
+      case 'Pending':
+        backgroundColor = isSelected ? Colors.orange : Colors.orange[100]!;
+        textColor = isSelected ? Colors.white : Colors.orange[700]!;
+        break;
+      default:
+        backgroundColor = isSelected ? Colors.grey[600]! : Colors.grey[200]!;
+        textColor = isSelected ? Colors.white : Colors.grey[700]!;
+    }
+
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _filterStatus = label;
+        });
+      },
+      backgroundColor: backgroundColor,
+      selectedColor: backgroundColor,
+      labelStyle: TextStyle(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isSelected ? backgroundColor : Colors.transparent,
+          width: 1,
+        ),
+      ),
+    );
+  }
+
   Widget _buildUserList() {
+    final filteredUsers = users.where((user) {
+      // Apply search filter
+      final matchesSearch = _searchQuery.isEmpty ||
+          user.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.email.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.zone.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.state.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          user.district.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      // Apply status filter
+      bool matchesFilter = true;
+      if (_filterStatus == 'Verified') {
+        matchesFilter = user.verifiedStatus == true;
+      } else if (_filterStatus == 'Pending') {
+        matchesFilter = user.verifiedStatus == false;
+      }
+      // If _filterStatus is 'All', matchesFilter remains true
+
+      return matchesSearch && matchesFilter;
+    }).toList();
+
     return Container(
       margin: const EdgeInsets.only(top: 10),
       decoration: const BoxDecoration(
@@ -139,16 +371,68 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             ),
           ),
           const SizedBox(height: 20),
+          // Show filter status and count
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _filterStatus == 'All' ? 'All Farmers' : '${_filterStatus} Farmers',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+                Text(
+                  '${filteredUsers.length} farmer${filteredUsers.length != 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Expanded(
-            child: ListView.builder(
+            child: filteredUsers.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: users.length,
+              itemCount: filteredUsers.length,
               itemBuilder: (context, index) {
-                return _buildUserCard(users[index]);
+                return _buildUserCard(filteredUsers[index]);
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 20),
+            Text(
+              'No farmers found',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Try adjusting your search',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -158,145 +442,78 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(
-          color: Colors.green.withOpacity(0.2),
-          width: 1,
-        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          backgroundImage: NetworkImage(user.imageUrl),
+          radius: 25,
+          backgroundColor: Colors.green[100],
+          child: user.imageUrl.isEmpty
+              ? Icon(Icons.person, color: Colors.green[700], size: 30)
+              : null,
+        ),
+        title: Text(
+          user.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: _getRoleColor(user.role),
-                  child: Text(
-                    user.name.split(' ').map((e) => e[0]).join(''),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
+            const SizedBox(height: 4),
+            Text(user.email, style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(height: 2),
+            Text('${user.zone}, ${user.state}', style: TextStyle(color: Colors.grey[600])),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: user.verifiedStatus ? Colors.green[100] : Colors.orange[100],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                user.verifiedStatus ? 'Verified' : 'Pending',
+                style: TextStyle(
+                  color: user.verifiedStatus ? Colors.green[700] : Colors.orange[700],
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.name,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ID: ${user.id}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _getRoleColor(user.role).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    user.role,
-                    style: TextStyle(
-                      color: _getRoleColor(user.role),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showUserInfoDialog(user),
-                    icon: const Icon(Icons.info_outline, size: 18),
-                    label: const Text('User Info'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showDeleteConfirmation(user),
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('Delete'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red[400],
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _showDeleteConfirmation(user),
             ),
           ],
         ),
+        onTap: () => _showUserDetails(user),
       ),
     );
   }
 
-  Color _getRoleColor(String role) {
-    switch (role.toLowerCase()) {
-      case 'farmer':
-        return const Color(0xFF4CAF50);
-      case 'customer':
-        return const Color(0xFF2196F3);
-      case 'transport':
-        return const Color(0xFFFF9800);
-      default:
-        return const Color(0xFF9E9E9E);
-    }
-  }
-
-  void _showUserInfoDialog(UserData user) {
+  void _showUserDetails(UserData user) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Container(
             padding: const EdgeInsets.all(24),
@@ -307,16 +524,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                 Row(
                   children: [
                     CircleAvatar(
+                      backgroundImage: NetworkImage(user.imageUrl),
                       radius: 30,
-                      backgroundColor: _getRoleColor(user.role),
-                      child: Text(
+                      backgroundColor: Colors.green[100],
+                      child: user.imageUrl.isEmpty
+                          ? Text(
                         user.name.split(' ').map((e) => e[0]).join(''),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                        style: TextStyle(
+                          color: Colors.green[700],
                           fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ),
+                      )
+                          : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -325,18 +545,17 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                         children: [
                           Text(
                             user.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF2E7D32),
+                              color: Colors.green[700],
                             ),
                           ),
                           Text(
-                            user.role,
+                            'Farmer',
                             style: TextStyle(
-                              fontSize: 16,
-                              color: _getRoleColor(user.role),
-                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: Colors.green[600],
                             ),
                           ),
                         ],
@@ -345,35 +564,39 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                _buildInfoRow(Icons.perm_identity, 'User ID', user.id),
-                _buildInfoRow(Icons.email, 'Email', user.email),
-                _buildInfoRow(Icons.phone, 'Phone', user.phone),
-                _buildInfoRow(Icons.location_on, 'Location', user.location),
-                _buildInfoRow(Icons.calendar_today, 'Join Date', user.joinDate),
-                _buildInfoRow(
-                  user.status == 'Active' ? Icons.check_circle : Icons.cancel,
-                  'Status',
-                  user.status,
-                  statusColor: user.status == 'Active' ? Colors.green : Colors.red,
-                ),
-                const SizedBox(height: 24),
+                _buildInfoRow(Icons.person, 'User ID:', user.uniqueId),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.email, 'Email:', user.email),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.phone, 'Phone:', user.mobileNumber),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.location_on, 'Address:', user.address),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.map, 'Zone:', user.zone),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.location_city, 'State:', user.state),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.location_on, 'District:', user.district),
+                const SizedBox(height: 16),
+                _buildInfoRow(Icons.verified, 'Status:', user.verifiedStatus ? 'Verified' : 'Pending'),
+                const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.of(context).pop(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: const Text(
                       'Close',
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -386,150 +609,92 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {Color? statusColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 20,
-            color: statusColor ?? const Color(0xFF4CAF50),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '$label: ',
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF2E7D32),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                color: statusColor ?? Colors.grey[700],
-                fontWeight: statusColor != null ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteConfirmation(UserData user) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Delete User',
-            style: TextStyle(
-              color: Color(0xFF2E7D32),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                size: 50,
-                color: Colors.orange,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Are you sure you want to delete user "${user.name}"?',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'This action cannot be undone.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  color: Color(0xFF4CAF50),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _deleteUser(user);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[400],
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Delete',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _deleteUser(UserData user) {
-    setState(() {
-      users.removeWhere((u) => u.id == user.id);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('User "${user.name}" has been deleted'),
-        backgroundColor: const Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: Colors.green[600],
+          size: 20,
         ),
-      ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+                TextSpan(
+                  text: ' $value',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
 class UserData {
   final String id;
+  final String uniqueId;
   final String name;
   final String email;
-  final String phone;
-  final String role;
-  final String location;
-  final String joinDate;
-  final String status;
+  final String mobileNumber;
+  final String address;
+  final String zone;
+  final String state;
+  final String district;
+  final bool verifiedStatus;
+  final int? age;
+  final String accountNumber;
+  final String ifscCode;
+  final String imageUrl;
 
   UserData({
     required this.id,
+    required this.uniqueId,
     required this.name,
     required this.email,
-    required this.phone,
-    required this.role,
-    required this.location,
-    required this.joinDate,
-    required this.status,
+    required this.mobileNumber,
+    required this.address,
+    required this.zone,
+    required this.state,
+    required this.district,
+    required this.verifiedStatus,
+    this.age,
+    required this.accountNumber,
+    required this.ifscCode,
+    required this.imageUrl,
   });
+
+  factory UserData.fromJson(Map<String, dynamic> json) {
+    return UserData(
+      id: json['id'].toString(),
+      uniqueId: json['unique_id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+      mobileNumber: json['mobile_number'] ?? '',
+      address: json['address'] ?? '',
+      zone: json['zone'] ?? '',
+      state: json['state'] ?? '',
+      district: json['district'] ?? '',
+      verifiedStatus: json['verified_status'] ?? false,
+      age: json['age'],
+      accountNumber: json['account_number'] ?? '',
+      ifscCode: json['ifsc_code'] ?? '',
+      imageUrl: json['image_url'] ?? '',
+    );
+  }
 }
