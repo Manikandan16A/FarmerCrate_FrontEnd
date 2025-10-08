@@ -67,7 +67,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   String _searchQuery = '';
   List<Customer> customers = [];
   bool _isLoading = true;
-  int _currentIndex = 3; // Consumers tab is selected
+  int _currentIndex = 0; // Home tab is selected
 
   @override
   void initState() {
@@ -76,7 +76,14 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   }
 
   Future<void> _fetchCustomers() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
+      print('=== Fetching Customers ===');
+      print('Token: ${widget.token}');
+      
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/customers/all'),
         headers: {
@@ -85,21 +92,39 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
         },
       );
 
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('Parsed data: $data');
+        
         if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> customerList = data['data'] as List;
+          print('Found ${customerList.length} customers');
+          
           setState(() {
-            customers = (data['data'] as List)
+            customers = customerList
                 .map((customerJson) => Customer.fromJson(customerJson))
                 .toList();
             _isLoading = false;
           });
+          
+          print('Successfully loaded ${customers.length} customers');
+
         } else {
+          print('API returned success: false or no data');
           setState(() {
+            customers = [];
             _isLoading = false;
           });
-          _showErrorSnackBar('Failed to load customer data');
+          _showErrorSnackBar('No customer data available');
         }
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar('Authentication failed. Please login again.');
       } else {
         setState(() {
           _isLoading = false;
@@ -107,6 +132,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
         _showErrorSnackBar('Server error: ${response.statusCode}');
       }
     } catch (e) {
+      print('Error fetching customers: $e');
       setState(() {
         _isLoading = false;
       });
@@ -194,7 +220,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(16),
+        margin: const EdgeInsets.all(16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
@@ -205,7 +231,19 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AdminNavigation.buildAppBar(context, 'Consumer Management', onRefresh: _fetchCustomers),
+      appBar: AppBar(
+        title: const Text('Consumer Management'),
+        backgroundColor: Colors.green[600],
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchCustomers,
+            tooltip: 'Refresh',
+          ),
+        ],
+      ),
       drawer: AdminNavigation.buildDrawer(context, widget.user ?? {}, widget.token),
       body: Container(
         decoration: const BoxDecoration(
@@ -377,6 +415,31 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
             ),
           ),
           const SizedBox(height: 20),
+          // Show count and filter status
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'All Customers',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green[700],
+                  ),
+                ),
+                Text(
+                  '${filteredCustomers.length} customer${filteredCustomers.length != 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Expanded(
             child: filteredCustomers.isEmpty
                 ? _buildEmptyState()
@@ -504,7 +567,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                         )
                             : null,
                       ),
-                      SizedBox(width: 16),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,37 +592,37 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
                       ),
                     ],
                   ),
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
                   _buildInfoRow(Icons.person, 'Customer ID:', 'CUST${customer.id.toString().padLeft(3, '0')}'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.email, 'Email:', customer.email),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.phone, 'Phone:', customer.mobileNumber),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.location_on, 'Address:', customer.address),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.map, 'Zone:', customer.zone),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.location_city, 'State:', customer.state),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.home, 'District:', customer.district),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.cake, 'Age:', customer.age != null ? '${customer.age} years' : 'Not specified'),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildInfoRow(Icons.calendar_today, 'Member Since:', _formatDate(customer.createdAt)),
-                  SizedBox(height: 32),
+                  const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
-                        padding: EdgeInsets.symmetric(vertical: 16),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Close',
                         style: TextStyle(
                           fontSize: 16,
@@ -596,7 +659,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
           color: Colors.green[600],
           size: 20,
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Expanded(
           child: RichText(
             text: TextSpan(

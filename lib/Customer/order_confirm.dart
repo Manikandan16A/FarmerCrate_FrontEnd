@@ -239,7 +239,7 @@ class _OrderConfirmPageState extends State<OrderConfirmPage> {
         token: widget.token,
       ),
       bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
-        currentIndex: 0, // Order confirm is not in bottom nav, use home
+        currentIndex: 2, // Cart tab is most relevant for order confirmation
         onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
       ),
     );

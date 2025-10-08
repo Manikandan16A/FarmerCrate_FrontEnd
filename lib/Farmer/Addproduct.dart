@@ -32,6 +32,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   bool _isLoading = false;
   String? _errorMessage;
   bool _showSuccessMessage = false;
+  DateTime? _harvestDate;
+  DateTime? _expiryDate;
 
   final List<String> _categories = [
     'Fruits',
@@ -134,6 +136,21 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       return;
     }
 
+    if (_harvestDate == null) {
+      _showErrorSnackBar('Please select harvest date');
+      return;
+    }
+
+    if (_expiryDate == null) {
+      _showErrorSnackBar('Please select expiry date');
+      return;
+    }
+
+    if (_expiryDate!.isBefore(_harvestDate!)) {
+      _showErrorSnackBar('Expiry date must be after harvest date');
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -169,10 +186,12 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
         body: jsonEncode({
           'name': _nameController.text.trim(),
           'description': _descriptionController.text.trim(),
-          'price': price,
+          'current_price': price,
           'quantity': _quantity,
           'category': _selectedCategory,
           'images': imageUrl,
+          'harvest_date': _harvestDate!.toIso8601String().split('T')[0],
+          'expiry_date': _expiryDate!.toIso8601String().split('T')[0],
         }),
       ).timeout(
         const Duration(seconds: 5),
@@ -190,17 +209,25 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       });
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _resetForm();
-        setState(() {
-          _showSuccessMessage = true;
-        });
-        Future.delayed(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              _showSuccessMessage = false;
-            });
-          }
-        });
+        final responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          _resetForm();
+          setState(() {
+            _showSuccessMessage = true;
+          });
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) {
+              setState(() {
+                _showSuccessMessage = false;
+              });
+            }
+          });
+        } else {
+          final errorMessage = responseData['message'] ?? 'Failed to add product. Please try again.';
+          setState(() {
+            _errorMessage = errorMessage;
+          });
+        }
       } else {
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['message'] ?? 'Failed to add product. Please try again.';
@@ -258,6 +285,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       _quantity = 0;
       _selectedCategory = 'Fruits';
       _selectedImage = null;
+      _harvestDate = null;
+      _expiryDate = null;
       _showResetMessage = true;
     });
 
@@ -948,6 +977,42 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
                       ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+
+                  // Date Fields
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildEnhancedLabel('Harvest Date', Icons.calendar_today),
+                            const SizedBox(height: 12),
+                            _buildDateField(
+                              value: _harvestDate,
+                              onTap: () => _selectHarvestDate(),
+                              hintText: 'Select harvest date',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildEnhancedLabel('Expiry Date', Icons.event),
+                            const SizedBox(height: 12),
+                            _buildDateField(
+                              value: _expiryDate,
+                              onTap: () => _selectExpiryDate(),
+                              hintText: 'Select expiry date',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1263,6 +1328,113 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  Future<void> _selectHarvestDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _harvestDate ?? DateTime.now(),
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now().add(const Duration(days: 30)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.green[600]!,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _harvestDate) {
+      setState(() {
+        _harvestDate = picked;
+        // If expiry date is before harvest date, clear it
+        if (_expiryDate != null && _expiryDate!.isBefore(picked)) {
+          _expiryDate = null;
+        }
+      });
+    }
+  }
+
+  Future<void> _selectExpiryDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _expiryDate ?? (_harvestDate ?? DateTime.now()).add(const Duration(days: 7)),
+      firstDate: _harvestDate ?? DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: Colors.green[600]!,
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null && picked != _expiryDate) {
+      setState(() {
+        _expiryDate = picked;
+      });
+    }
+  }
+
+  Widget _buildDateField({
+    required DateTime? value,
+    required VoidCallback onTap,
+    required String hintText,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.green[200]!, width: 1.5),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.green[50],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.green.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Icon(Icons.calendar_today, color: Colors.green[600], size: 20),
+            ),
+            Expanded(
+              child: Text(
+                value != null
+                    ? '${value.day}/${value.month}/${value.year}'
+                    : hintText,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: value != null ? Colors.green[800] : Colors.grey[500],
+                  fontWeight: value != null ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Icon(Icons.arrow_drop_down, color: Colors.green[600], size: 20),
+            ),
+          ],
+        ),
       ),
     );
   }

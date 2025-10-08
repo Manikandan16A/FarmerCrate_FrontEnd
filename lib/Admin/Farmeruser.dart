@@ -17,7 +17,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   String _searchQuery = '';
   List<UserData> users = [];
   bool _isLoading = true; // Add loading state
-  String _filterStatus = 'All'; // Add filter state: All, Verified, Pending
   int _currentIndex = 0; // Home tab is selected
 
   @override
@@ -27,30 +26,47 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   }
 
   Future<void> _fetchUsers() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      final response = await http.get(
+      // Fetch only Farmers
+      final farmersResponse = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/farmers/all'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
         },
       );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
+
+      if (farmersResponse.statusCode == 200) {
+        final data = json.decode(farmersResponse.body);
+        if (data['success'] == true && data['data'] != null) {
           setState(() {
-            users = (data['data'] as List).map((json) => UserData.fromJson(json)).toList();
-            _isLoading = false; // Set loading to false when data is loaded
+            users = (data['data'] as List).map((json) => UserData.fromJson(json, 'Farmer')).toList();
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            users = [];
+            _isLoading = false;
           });
         }
       } else {
-        throw Exception('Failed to load users');
+        throw Exception('Failed to load farmers');
       }
     } catch (e) {
-      print('Error fetching users: $e');
+      print('Error fetching farmers: $e');
       setState(() {
-        _isLoading = false; // Set loading to false on error
+        _isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching farmers: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -90,7 +106,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         throw Exception('Failed to delete farmer');
       }
     } catch (e) {
-      print('Error deleting user: $e');
+      print('Error deleting farmer: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting farmer: ${e.toString()}'),
@@ -269,85 +285,21 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          // Filter chips
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildFilterChip('All', _filterStatus == 'All'),
-              const SizedBox(width: 12),
-              _buildFilterChip('Verified', _filterStatus == 'Verified'),
-              const SizedBox(width: 12),
-              _buildFilterChip('Pending', _filterStatus == 'Pending'),
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, bool isSelected) {
-    Color backgroundColor;
-    Color textColor;
-
-    switch (label) {
-      case 'Verified':
-        backgroundColor = isSelected ? Colors.green : Colors.green[100]!;
-        textColor = isSelected ? Colors.white : Colors.green[700]!;
-        break;
-      case 'Pending':
-        backgroundColor = isSelected ? Colors.orange : Colors.orange[100]!;
-        textColor = isSelected ? Colors.white : Colors.orange[700]!;
-        break;
-      default:
-        backgroundColor = isSelected ? Colors.grey[600]! : Colors.grey[200]!;
-        textColor = isSelected ? Colors.white : Colors.grey[700]!;
-    }
-
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          _filterStatus = label;
-        });
-      },
-      backgroundColor: backgroundColor,
-      selectedColor: backgroundColor,
-      labelStyle: TextStyle(
-        color: textColor,
-        fontWeight: FontWeight.w600,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isSelected ? backgroundColor : Colors.transparent,
-          width: 1,
-        ),
-      ),
-    );
-  }
 
   Widget _buildUserList() {
     final filteredUsers = users.where((user) {
-      // Apply search filter
-      final matchesSearch = _searchQuery.isEmpty ||
+      // Apply search filter only
+      return _searchQuery.isEmpty ||
           user.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           user.email.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           user.zone.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           user.state.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           user.district.toLowerCase().contains(_searchQuery.toLowerCase());
-
-      // Apply status filter
-      bool matchesFilter = true;
-      if (_filterStatus == 'Verified') {
-        matchesFilter = user.verifiedStatus == true;
-      } else if (_filterStatus == 'Pending') {
-        matchesFilter = user.verifiedStatus == false;
-      }
-      // If _filterStatus is 'All', matchesFilter remains true
-
-      return matchesSearch && matchesFilter;
     }).toList();
 
     return Container(
@@ -378,7 +330,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _filterStatus == 'All' ? 'All Farmers' : '${_filterStatus} Farmers',
+                  'All Farmers',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -475,32 +427,31 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             Text(user.email, style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 2),
             Text('${user.zone}, ${user.state}', style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+            const SizedBox(height: 2),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: user.verifiedStatus ? Colors.green[100] : Colors.orange[100],
-                borderRadius: BorderRadius.circular(20),
+                color: _getUserTypeColor(user.userType).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _getUserTypeColor(user.userType).withOpacity(0.3),
+                  width: 1,
+                ),
               ),
               child: Text(
-                user.verifiedStatus ? 'Verified' : 'Pending',
+                user.userType,
                 style: TextStyle(
-                  color: user.verifiedStatus ? Colors.green[700] : Colors.orange[700],
-                  fontSize: 12,
+                  color: _getUserTypeColor(user.userType),
+                  fontSize: 10,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () => _showDeleteConfirmation(user),
-            ),
           ],
+        ),
+        trailing: IconButton(
+          icon: const Icon(Icons.delete, color: Colors.red),
+          onPressed: () => _showDeleteConfirmation(user),
         ),
         onTap: () => _showUserDetails(user),
       ),
@@ -552,10 +503,10 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                             ),
                           ),
                           Text(
-                            'Farmer',
+                            user.userType,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.green[600],
+                              color: _getUserTypeColor(user.userType),
                             ),
                           ),
                         ],
@@ -578,7 +529,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
                 const SizedBox(height: 16),
                 _buildInfoRow(Icons.location_on, 'District:', user.district),
                 const SizedBox(height: 16),
-                _buildInfoRow(Icons.verified, 'Status:', user.verifiedStatus ? 'Verified' : 'Pending'),
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
@@ -607,6 +557,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         );
       },
     );
+  }
+
+  Color _getUserTypeColor(String userType) {
+    switch (userType) {
+      case 'Farmer':
+        return Colors.green;
+      case 'Transporter':
+        return Colors.blue;
+      case 'Consumer':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -661,6 +624,7 @@ class UserData {
   final String accountNumber;
   final String ifscCode;
   final String imageUrl;
+  final String userType;
 
   UserData({
     required this.id,
@@ -677,9 +641,10 @@ class UserData {
     required this.accountNumber,
     required this.ifscCode,
     required this.imageUrl,
+    required this.userType,
   });
 
-  factory UserData.fromJson(Map<String, dynamic> json) {
+  factory UserData.fromJson(Map<String, dynamic> json, String userType) {
     return UserData(
       id: json['id'].toString(),
       uniqueId: json['unique_id'] ?? '',
@@ -695,6 +660,7 @@ class UserData {
       accountNumber: json['account_number'] ?? '',
       ifscCode: json['ifsc_code'] ?? '',
       imageUrl: json['image_url'] ?? '',
+      userType: userType,
     );
   }
 }

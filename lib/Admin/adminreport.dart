@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'common_navigation.dart';
+import 'requstaccept.dart';
+import 'total_order.dart';
+import 'ConsumerManagement.dart';
+import 'transpoter_mang.dart';
+import '../Signin.dart';
 
 class ReportsPage extends StatefulWidget {
-  final dynamic user;
   final String token;
-  const ReportsPage({super.key, this.user, required this.token});
+  final dynamic user;
+  const ReportsPage({super.key, required this.token, required this.user});
 
   @override
   State<ReportsPage> createState() => _ReportsPageState();
@@ -16,81 +23,98 @@ class _ReportsPageState extends State<ReportsPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   bool _isWeeklyView = false;
-  int _currentIndex = 2; // Reports tab is selected
+  bool _isLoading = true;
+  String? _error;
+  int _currentIndex = 1; // Reports tab is index 1
 
-  // Sample order data - replace with API call
-  final Map<DateTime, int> _orderData = {
-    // December 2024
-    DateTime(2024, 12, 1): 45,   // High - Green
-    DateTime(2024, 12, 3): 25,   // Medium - Yellow
-    DateTime(2024, 12, 5): 12,   // Low - Red
-    DateTime(2024, 12, 8): 38,   // Medium - Yellow
-    DateTime(2024, 12, 10): 52,  // High - Green
-    DateTime(2024, 12, 12): 8,   // Low - Red
-    DateTime(2024, 12, 15): 41,  // High - Green
-    DateTime(2024, 12, 18): 22,  // Medium - Yellow
-    DateTime(2024, 12, 20): 15,  // Low - Red
-    DateTime(2024, 12, 22): 48,  // High - Green
-    DateTime(2024, 12, 25): 30,  // Medium - Yellow
-    DateTime(2024, 12, 28): 55,  // High - Green
-    DateTime(2024, 12, 30): 18,  // Medium - Yellow
-    DateTime(2024, 12, 31): 62,  // High - Green (New Year's Eve)
+  // Aggregated order count by calendar day
+  final Map<DateTime, int> _orderData = {};
 
-    // January 2025
-    DateTime(2025, 1, 1): 35,    // Medium - Yellow (New Year's Day)
-    DateTime(2025, 1, 5): 28,    // Medium - Yellow
-    DateTime(2025, 1, 10): 45,   // High - Green
-    DateTime(2025, 1, 15): 18,   // Medium - Yellow
-    DateTime(2025, 1, 20): 52,   // High - Green
-    DateTime(2025, 1, 25): 12,   // Low - Red
-    DateTime(2025, 1, 30): 38,   // Medium - Yellow
+  // Recent orders list built from API
+  List<_SimpleOrder> _recentOrders = [];
 
-    // February 2025
-    DateTime(2025, 2, 3): 42,    // High - Green
-    DateTime(2025, 2, 8): 15,    // Low - Red
-    DateTime(2025, 2, 14): 58,   // High - Green (Valentine's Day)
-    DateTime(2025, 2, 20): 25,   // Medium - Yellow
-    DateTime(2025, 2, 25): 35,   // Medium - Yellow
-    DateTime(2025, 2, 28): 48,   // High - Green
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrders();
+  }
 
-    // March 2025
-    DateTime(2025, 3, 5): 22,    // Medium - Yellow
-    DateTime(2025, 3, 10): 55,   // High - Green
-    DateTime(2025, 3, 15): 18,   // Medium - Yellow
-    DateTime(2025, 3, 20): 42,   // High - Green
-    DateTime(2025, 3, 25): 30,   // Medium - Yellow
-    DateTime(2025, 3, 30): 38,   // Medium - Yellow
+  Future<void> _fetchOrders() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-    // November 2024 (Previous month)
-    DateTime(2024, 11, 5): 32,   // Medium - Yellow
-    DateTime(2024, 11, 10): 48,  // High - Green
-    DateTime(2024, 11, 15): 15,  // Low - Red
-    DateTime(2024, 11, 20): 42,  // High - Green
-    DateTime(2024, 11, 25): 28,  // Medium - Yellow
-    DateTime(2024, 11, 30): 35,  // Medium - Yellow
-  };
+    try {
+      if (widget.token.isEmpty) {
+        throw Exception('No authentication token found');
+      }
 
-  // Sample orders data for demo
-  final Map<DateTime, List<Map<String, String>>> _ordersData = {
-    DateTime(2024, 12, 1): [
-      {'id': 'ORD1001', 'item': 'Tomato', 'qty': '5kg'},
-      {'id': 'ORD1002', 'item': 'Potato', 'qty': '10kg'},
-      {'id': 'ORD1003', 'item': 'Onion', 'qty': '3kg'},
-    ],
-    DateTime(2024, 12, 3): [
-      {'id': 'ORD1004', 'item': 'Carrot', 'qty': '2kg'},
-      {'id': 'ORD1005', 'item': 'Beans', 'qty': '1kg'},
-    ],
-    DateTime(2024, 12, 10): [
-      {'id': 'ORD1006', 'item': 'Cabbage', 'qty': '4kg'},
-      {'id': 'ORD1007', 'item': 'Chili', 'qty': '0.5kg'},
-      {'id': 'ORD1008', 'item': 'Pumpkin', 'qty': '2kg'},
-    ],
-    DateTime(2024, 12, 25): [
-      {'id': 'ORD1009', 'item': 'Apple', 'qty': '6kg'},
-      {'id': 'ORD1010', 'item': 'Banana', 'qty': '12kg'},
-    ],
-  };
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/orders/all'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch orders (${response.statusCode})');
+      }
+
+      final dynamic decoded = jsonDecode(response.body);
+      final List<dynamic> dataList = decoded is Map<String, dynamic>
+          ? (decoded['data'] as List<dynamic>? ?? [])
+          : (decoded as List<dynamic>? ?? []);
+
+      // Reset
+      _orderData.clear();
+      final List<_SimpleOrder> recent = [];
+
+      for (final dynamic item in dataList) {
+        if (item is Map<String, dynamic>) {
+          final createdAtStr = item['created_at']?.toString() ?? '';
+          if (createdAtStr.isEmpty) continue;
+          DateTime? created;
+          try {
+            created = DateTime.parse(createdAtStr).toLocal();
+          } catch (_) {
+            created = null;
+          }
+          if (created == null) continue;
+          final day = DateTime(created.year, created.month, created.day);
+          _orderData[day] = (_orderData[day] ?? 0) + 1;
+
+          // For recent list
+          final product = item['product'] as Map<String, dynamic>?;
+          final productName = product?['name']?.toString() ?? 'Product';
+          final quantity = item['quantity']?.toString() ?? '1';
+          final id = item['id']?.toString() ?? '-';
+          recent.add(
+            _SimpleOrder(
+              id: id,
+              item: productName,
+              qty: quantity,
+              date: day,
+            ),
+          );
+        }
+      }
+
+      // Sort recent orders by date desc and take 10
+      recent.sort((a, b) => b.date.compareTo(a.date));
+      _recentOrders = recent.take(10).toList();
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
 
   // API call placeholder (commented out)
   /*
@@ -117,30 +141,21 @@ class _ReportsPageState extends State<ReportsPage> {
     return 'Low';
   }
 
-  List<Map<String, String>> _getRecentOrders([int count = 10]) {
-    final List<Map<String, String>> allOrders = [];
-    _ordersData.forEach((date, orders) {
-      for (final order in orders) {
-        allOrders.add({
-          'id': order['id']!,
-          'item': order['item']!,
-          'qty': order['qty']!,
-          'date': '${date.day}/${date.month}/${date.year}',
-          'dateSort': date.toIso8601String(),
-        });
-      }
-    });
-    allOrders.sort((a, b) => b['dateSort']!.compareTo(a['dateSort']!));
-    return allOrders.take(count).toList();
+  List<_SimpleOrder> _getRecentOrders([int count = 10]) {
+    return _recentOrders.take(count).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AdminNavigation.buildAppBar(context, 'Reports'),
+      backgroundColor: const Color(0xFFF5F3FF),
+      appBar: AdminNavigation.buildAppBar(context, 'Reports', onRefresh: _fetchOrders),
       drawer: AdminNavigation.buildDrawer(context, widget.user, widget.token),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+          : _error != null
+          ? Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(_error!, style: const TextStyle(color: Colors.red))))
+          : SingleChildScrollView(
         child: Column(
           children: [
             // Header with toggle
@@ -198,6 +213,7 @@ class _ReportsPageState extends State<ReportsPage> {
                         _focusedDay = DateTime.now();
                         _selectedDay = DateTime.now();
                       });
+                      _fetchOrders();
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -485,11 +501,11 @@ class _ReportsPageState extends State<ReportsPage> {
                         child: ListTile(
                           leading: CircleAvatar(
                             backgroundColor: const Color(0xFF4CAF50),
-                            child: Text(order['item']![0], style: const TextStyle(color: Colors.white)),
+                            child: Text(order.item.isNotEmpty ? order.item[0] : '-', style: const TextStyle(color: Colors.white)),
                           ),
-                          title: Text('${order['item']} (${order['qty']})'),
-                          subtitle: Text('Order ID: ${order['id']}'),
-                          trailing: Text(order['date']!, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                          title: Text('${order.item} (${order.qty})'),
+                          subtitle: Text('Order ID: ${order.id}'),
+                          trailing: Text('${order.date.day}/${order.date.month}/${order.date.year}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
                         ),
                       );
                     },
@@ -553,9 +569,9 @@ class _ReportsPageState extends State<ReportsPage> {
     final orderCount = _selectedDay != null
         ? _orderData[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]
         : null;
-    final orders = _selectedDay != null
-        ? _ordersData[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]
-        : null;
+    final orders = _recentOrders.where((o) =>
+    o.date.year == _selectedDay!.year && o.date.month == _selectedDay!.month && o.date.day == _selectedDay!.day
+    ).toList();
 
     return Column(
       children: [
@@ -628,7 +644,7 @@ class _ReportsPageState extends State<ReportsPage> {
             ],
           ),
         ),
-        if (orders != null && orders.isNotEmpty)
+        if (orders.isNotEmpty)
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
             padding: const EdgeInsets.all(16),
@@ -660,7 +676,7 @@ class _ReportsPageState extends State<ReportsPage> {
                   child: Row(
                     children: [
                       Text(
-                        order['id']!,
+                        order.id,
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF2D3748),
@@ -668,14 +684,14 @@ class _ReportsPageState extends State<ReportsPage> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        order['item']!,
+                        order.item,
                         style: const TextStyle(
                           color: Colors.black87,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        order['qty']!,
+                        order.qty,
                         style: const TextStyle(
                           color: Colors.black54,
                         ),
@@ -692,5 +708,17 @@ class _ReportsPageState extends State<ReportsPage> {
 }
 
 extension on Color {
-  darken(double d) {}
+  Color darken([double amount = 0.1]) {
+    final hsl = HSLColor.fromColor(this);
+    final hslDark = hsl.withLightness((hsl.lightness - amount).clamp(0.0, 1.0));
+    return hslDark.toColor();
+  }
+}
+
+class _SimpleOrder {
+  final String id;
+  final String item;
+  final String qty;
+  final DateTime date;
+  _SimpleOrder({required this.id, required this.item, required this.qty, required this.date});
 }

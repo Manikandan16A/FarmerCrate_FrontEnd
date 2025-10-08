@@ -118,7 +118,14 @@ class _TransporterManagementPageState extends State<TransporterManagementPage> {
   }
 
   Future<void> _fetchTransporters() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
+      print('=== Fetching Transporters ===');
+      print('Token: ${widget.token}');
+      
       final headers = {
         'Content-Type': 'application/json',
       };
@@ -133,21 +140,39 @@ class _TransporterManagementPageState extends State<TransporterManagementPage> {
         headers: headers,
       );
 
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print('Parsed data: $data');
+        
         if (data['success'] == true && data['data'] != null) {
+          final List<dynamic> transporterList = data['data'] as List;
+          print('Found ${transporterList.length} transporters');
+          
           setState(() {
-            transporters = (data['data'] as List)
+            transporters = transporterList
                 .map((transporterJson) => Transporter.fromJson(transporterJson))
                 .toList();
             _isLoading = false;
           });
+          
+          print('Successfully loaded ${transporters.length} transporters');
+          _showSuccessSnackBar('Loaded ${transporters.length} transporters successfully');
         } else {
+          print('API returned success: false or no data');
           setState(() {
+            transporters = [];
             _isLoading = false;
           });
-          _showErrorSnackBar('Failed to load transporter data');
+          _showErrorSnackBar('No transporter data available');
         }
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorSnackBar('Authentication failed. Please login again.');
       } else {
         setState(() {
           _isLoading = false;
@@ -155,6 +180,7 @@ class _TransporterManagementPageState extends State<TransporterManagementPage> {
         _showErrorSnackBar('Server error: ${response.statusCode}');
       }
     } catch (e) {
+      print('Error fetching transporters: $e');
       setState(() {
         _isLoading = false;
       });
@@ -209,7 +235,19 @@ class _TransporterManagementPageState extends State<TransporterManagementPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AdminNavigation.buildAppBar(context, 'Transporter Management', onRefresh: _fetchTransporters),
+      appBar: AppBar(
+        title: const Text('Transporter Management'),
+        backgroundColor: Colors.blue[600],
+        foregroundColor: Colors.white,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchTransporters,
+            tooltip: 'Refresh',
+          ),
+        ],
+      ),
       drawer: AdminNavigation.buildDrawer(context, widget.user ?? {}, widget.token ?? ''),
       body: Container(
         decoration: const BoxDecoration(

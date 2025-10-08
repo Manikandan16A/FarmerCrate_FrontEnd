@@ -1031,6 +1031,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                     ),
                   ),
                 );
+                Navigator.pop(context); // Close the drawer
               },
             ),
             ListTile(
@@ -1040,7 +1041,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ReportsPage(token: widget.token),
+                    builder: (context) => ReportsPage(token: widget.token, user: widget.user),
                   ),
                 );
               },
@@ -1278,7 +1279,14 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
             });
             
             // Handle navigation based on selected index
-            if (index == 2) { // Orders tab
+            if (index == 1) { // Report tab
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReportsPage(token: widget.token, user: widget.user),
+                ),
+              );
+            } else if (index == 2) { // Orders tab
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1295,17 +1303,14 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
               icon: Icon(Icons.home, size: 24),
               label: 'Home',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.pending_actions, size: 24),
-              label: 'Total Orders',
-            ),
+
             BottomNavigationBarItem(
               icon: Icon(Icons.pin_invoke_sharp, size: 24),
               label: 'Report',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline, size: 24),
-              label: 'Profile',
+              label: 'Total Order',
             ),
           ],
         ),

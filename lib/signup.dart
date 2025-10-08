@@ -5,10 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'Admin/requstaccept.dart';
 import 'Signin.dart';
-import 'package:crypto/crypto.dart';
-import 'Farmer/homepage.dart';
 import 'utils/cloudinary_upload.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -30,6 +27,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   final _stateController = TextEditingController();
   final _accountNumberController = TextEditingController();
   final _ifscCodeController = TextEditingController();
+  final _globalFarmerIdController = TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -43,24 +41,6 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   late Animation<Offset> _slideAnimation;
 
   final List<String> _roles = ['Farmer', 'Customer', 'Transport'];
-  final List<String> _districts = [
-    'Bangalore',
-    'Mysore',
-    'Hubli',
-    'Belgaum',
-    'Mumbai',
-    'Pune',
-    'Nagpur',
-    'Nashik',
-    'Chennai',
-    'Coimbatore',
-    'Madurai',
-    'Salem',
-    'Thiruvananthapuram',
-    'Kochi',
-    'Thrissur',
-    'Tirupati',
-  ];
   final List<String> _states = [
     'Andhra Pradesh',
     'Arunachal Pradesh',
@@ -262,6 +242,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
     _stateController.dispose();
     _accountNumberController.dispose();
     _ifscCodeController.dispose();
+    _globalFarmerIdController.dispose();
     super.dispose();
   }
 
@@ -306,6 +287,27 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         return 'Tap to select Profile image';
       default:
         return 'Tap to select image';
+    }
+  }
+
+  // Temporary debug function to test API endpoint
+  Future<void> _testAPIEndpoint() async {
+    try {
+      // Try a simple GET request to check if the API is reachable
+      final testResponse = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/products'),
+      ).timeout(const Duration(seconds: 10));
+      
+      print('API Test Response: ${testResponse.statusCode}');
+      print('API Test Body Length: ${testResponse.body.length}');
+      
+      if (testResponse.statusCode == 200) {
+        print('API is reachable and responding');
+      } else {
+        print('API returned status: ${testResponse.statusCode}');
+      }
+    } catch (e) {
+      print('API Test Error: $e');
     }
   }
 
@@ -370,159 +372,155 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
           );
           return;
         }
+        
+        // Debug: Print image upload success
+        print('Image uploaded successfully: $imageUrl');
 
         // 2. Proceed with registration, including imageUrl
         final backendRole = _selectedRole!.toLowerCase();
         // Convert 'transport' to 'transporter' to match API
         final apiRole = backendRole == 'transport' ? 'transporter' : backendRole;
-        
-        // Prepare request body based on role
+
+        // Prepare request body exactly as API expects
+        final String generatedGlobalId = 'GOV${DateTime.now().millisecondsSinceEpoch}';
         Map<String, dynamic> requestBody = {
+          'role': apiRole,
           'name': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
           'password': _passwordController.text,
-          'mobileNumber': '+91${_phoneController.text.trim()}',
-          'role': apiRole,
+          // API expects just the 10-digit number
+          'mobileNumber': _phoneController.text.trim(),
           'address': _addressController.text.trim(),
           'zone': _zoneController.text.trim(),
-          'district': _districtController.text.trim(),
           'state': _stateController.text.trim(),
+          'district': _districtController.text.trim(),
           'image_url': imageUrl,
         };
         
-        // Add role-specific fields
-        if (apiRole == 'farmer') {
-          requestBody['account_number'] = _accountNumberController.text.trim();
-          requestBody['ifsc_code'] = _ifscCodeController.text.trim();
-        } else if (apiRole == 'transporter') {
-          // For transporters, we need additional fields (these would need to be added to the UI)
-          // For now, we'll send empty values or you can add these fields to the signup form
-          requestBody['aadhar_url'] = '';
-          requestBody['pan_url'] = '';
-          requestBody['voter_id_url'] = '';
-          requestBody['license_url'] = '';
-          requestBody['aadhar_number'] = '';
-          requestBody['pan_number'] = '';
-          requestBody['voter_id_number'] = '';
-          requestBody['license_number'] = '';
+        // Validate required fields
+        if (_usernameController.text.trim().isEmpty ||
+            _emailController.text.trim().isEmpty ||
+            _passwordController.text.isEmpty ||
+            _phoneController.text.trim().isEmpty ||
+            _addressController.text.trim().isEmpty ||
+            _zoneController.text.trim().isEmpty ||
+            _districtController.text.trim().isEmpty ||
+            _stateController.text.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Please fill in all required fields'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          return;
         }
         
-        final response = await http.post(
-          Uri.parse('https://farmercrate.onrender.com/api/auth/register'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(requestBody),
-        );
+        // Test API endpoint first (temporary debug)
+        await _testAPIEndpoint();
+        
+        // Add role-specific fields
+        if (apiRole == 'farmer') {
+          // Add farmer-specific required fields per API spec
+          // Use a sensible default for age if not collected in UI
+          requestBody['age'] = 35;
+          requestBody['account_number'] = _accountNumberController.text.trim();
+          requestBody['ifsc_code'] = _ifscCodeController.text.trim();
+          final enteredGlobalId = _globalFarmerIdController.text.trim();
+          requestBody['global_farmer_id'] = enteredGlobalId.isEmpty ? generatedGlobalId : enteredGlobalId;
+        }
 
+        // Debug: Print request details AFTER role-specific fields are added
+        print('API Role: $apiRole');
+        print('Request Body: ${jsonEncode(requestBody)}');
+        
+        // Try the request with retry logic
+        http.Response? response;
+        int requestRetryCount = 0;
+        const maxRequestRetries = 3;
+        
+        while (requestRetryCount < maxRequestRetries) {
+          try {
+            response = await http.post(
+              Uri.parse('https://farmercrate.onrender.com/api/auth/register'),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode(requestBody),
+            ).timeout(
+              const Duration(seconds: 30),
+              onTimeout: () {
+                throw Exception('Request timeout. Please check your internet connection.');
+              },
+            );
+            break; // Success, exit retry loop
+          } catch (e) {
+            requestRetryCount++;
+            print('Request attempt $requestRetryCount failed: $e');
+            if (requestRetryCount >= maxRequestRetries) {
+              rethrow; // Re-throw the last error
+            }
+            // Wait before retrying
+            await Future.delayed(Duration(seconds: requestRetryCount));
+          }
+        }
+        
+        if (response == null) {
+          throw Exception('Failed to get response after $maxRequestRetries attempts');
+        }
+
+        // Debug: Print response details
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+        
         setState(() {
           _isLoading = false;
         });
 
-        if (response.statusCode == 201) {
-          Map<String, dynamic> responseData;
-          try {
-            responseData = jsonDecode(response.body);
-          } catch (e) {
+        Map<String, dynamic> responseData;
+        try {
+          responseData = jsonDecode(response.body);
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error registering user: Invalid server response - $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          return;
+        }
+
+        if ((response.statusCode == 200 || response.statusCode == 201) &&
+            (responseData['success'] == true || responseData['success'] == 'true')) {
+          // Standardized response structure: { success, message, data: { id, name, email, role } }
+          final data = responseData['data'];
+          if (data == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Error registering user: Invalid server response'),
+                content: Text('Missing data from server response'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 3),
               ),
             );
             return;
           }
-          
-          // Handle different response structures based on role
-          Map<String, dynamic> userData = {};
-          String message = responseData['message'] ?? 'Account created successfully';
-          
-          if (apiRole == 'farmer') {
-            final farmer = responseData['farmer'];
-            if (farmer == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Missing farmer data from server response'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-            userData = {
-              'id': farmer['id'],
-              'name': farmer['name'],
-              'email': farmer['email'],
-              'role': 'farmer',
-              'verified_status': farmer['verified_status'] ?? false,
-            };
-          } else if (apiRole == 'customer') {
-            final customer = responseData['customer'];
-            if (customer == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Missing customer data from server response'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-            userData = {
-              'id': customer['id'],
-              'name': customer['name'],
-              'email': customer['email'],
-              'role': 'customer',
-            };
-          } else if (apiRole == 'transporter') {
-            final transporter = responseData['transporter'];
-            if (transporter == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Missing transporter data from server response'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-            userData = {
-              'id': transporter['id'],
-              'name': transporter['name'],
-              'email': transporter['email'],
-              'role': 'transport',
-              'verified_status': transporter['verified_status'] ?? false,
-            };
-          } else if (apiRole == 'admin') {
-            final admin = responseData['admin'];
-            if (admin == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Missing admin data from server response'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 3),
-                ),
-              );
-              return;
-            }
-            userData = {
-              'id': admin['id'],
-              'name': admin['name'],
-              'email': admin['email'],
-              'role': admin['role'] ?? 'admin',
-            };
-          }
+          final Map<String, dynamic> userData = {
+            'id': data['id'],
+            'name': data['name'],
+            'email': data['email'],
+            'role': data['role'] ?? apiRole,
+          };
 
-          // Save user data to SharedPreferences with null safety
           final prefs = await SharedPreferences.getInstance();
-          // Note: API doesn't return a token, so we'll store a placeholder or handle authentication differently
           await prefs.setString('jwt_token', 'temp_token_${userData['id']}');
           await prefs.setString('username', (userData['name'] ?? '').toString());
           await prefs.setString('email', (userData['email'] ?? '').toString());
           await prefs.setString('role', (userData['role'] ?? apiRole).toString());
           await prefs.setInt('user_id', userData['id'] ?? 0);
-          await prefs.setInt('customer_id', userData['id'] ?? 0); // For backward compatibility
+          await prefs.setInt('customer_id', userData['id'] ?? 0); 
 
-          // Determine success message based on role
           String title = "Account Created!";
           String successMessage = "";
 
@@ -547,7 +545,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   ),
                 );
               } else if (apiRole == 'customer') {
-                // Navigate to customer explore page or main customer page
+
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -555,7 +553,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   ),
                 );
               } else if (apiRole == 'transporter') {
-                // Navigate to transport page or main page
+
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -563,7 +561,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                   ),
                 );
               } else {
-                // Default navigation for any other role
+
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -574,41 +572,34 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
             },
           );
         } else {
-          Map<String, dynamic> responseData;
-          try {
-            responseData = jsonDecode(response.body);
-          } catch (e) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error registering user: Invalid server response'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-            return;
-          }
-          
-          String errorMessage = 'Error registering user';
-          if (responseData != null) {
-            errorMessage = responseData['message']?.toString() ?? 'Error registering user';
+          String errorMessage = 'Error registering user (Status: ${response.statusCode})';
+          if (responseData.isNotEmpty) {
+            errorMessage = responseData['message']?.toString() ?? errorMessage;
             if (responseData['errors'] != null) {
               try {
                 final errors = responseData['errors'] as List;
-                errorMessage = errors.map((error) => error['msg']?.toString() ?? '').where((msg) => msg.isNotEmpty).join(', ');
-                if (errorMessage.isEmpty) {
-                  errorMessage = 'Error registering user';
+                final errorMessages = errors
+                    .map((error) => error['msg']?.toString() ?? '')
+                    .where((msg) => msg.isNotEmpty)
+                    .toList();
+                if (errorMessages.isNotEmpty) {
+                  errorMessage = errorMessages.join(', ');
                 }
               } catch (e) {
-                errorMessage = 'Error registering user';
+                print('Error parsing error messages: $e');
               }
             }
           }
+          
+
+          print('Registration failed: $errorMessage');
+          print('Full response: ${response.body}');
           
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(errorMessage),
               backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -616,11 +607,25 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
         setState(() {
           _isLoading = false;
         });
+        
+        String errorMessage = 'Error registering user';
+        if (error.toString().contains('timeout')) {
+          errorMessage = 'Request timeout. Please check your internet connection and try again.';
+        } else if (error.toString().contains('SocketException')) {
+          errorMessage = 'No internet connection. Please check your network and try again.';
+        } else if (error.toString().contains('FormatException')) {
+          errorMessage = 'Invalid response from server. Please try again.';
+        } else {
+          errorMessage = 'Error registering: $error';
+        }
+        
+        print('Registration error: $error');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error registering: $error'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -854,10 +859,10 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                 options: _stateDistricts[_stateController.text] ?? [],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please select a district';
+                    return 'Please enter a district';
                   }
-                  if (!(_stateDistricts[_stateController.text] ?? []).contains(value)) {
-                    return 'Please select a valid district';
+                  if (!RegExp(r'^[a-zA-Z0-9 ]+ ?').hasMatch(value)) {
+                    return 'Only letters, numbers and spaces allowed';
                   }
                   return null;
                 },
@@ -894,6 +899,24 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
                     }
                     if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(value.toUpperCase())) {
                       return 'Please enter a valid IFSC code';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _globalFarmerIdController,
+                  label: 'Global Farmer ID',
+                  icon: Icons.badge_outlined,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9]')),
+                  ],
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter Global Farmer ID';
+                    }
+                    if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
+                      return 'Only letters and numbers allowed';
                     }
                     return null;
                   },
@@ -965,6 +988,32 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 24),
               _buildSignUpButton(),
+              const SizedBox(height: 16),
+              // Debug button (remove in production)
+              if (true) // Set to false in production
+                ElevatedButton(
+                  onPressed: () async {
+                    // Fill form with test data
+                    _usernameController.text = 'testuser${DateTime.now().millisecondsSinceEpoch}';
+                    _emailController.text = 'test${DateTime.now().millisecondsSinceEpoch}@gmail.com';
+                    _passwordController.text = 'Test123!@#';
+                    _confirmPasswordController.text = 'Test123!@#';
+                    _phoneController.text = '9876543210';
+                    _addressController.text = 'Test Address';
+                    _zoneController.text = 'Test Zone';
+                    _stateController.text = 'Karnataka';
+                    _districtController.text = 'Bangalore';
+                    _accountNumberController.text = '1234567890';
+                    _ifscCodeController.text = 'SBIN0001234';
+                    _selectedRole = 'Farmer';
+                    
+                    // Trigger form validation and submission
+                    if (_formKey.currentState!.validate()) {
+                      _handleSignUp();
+                    }
+                  },
+                  child: Text('Debug: Test Signup'),
+                ),
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

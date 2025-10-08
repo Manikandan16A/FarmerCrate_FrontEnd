@@ -1,28 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'Admin/requstaccept.dart';
-import 'Forget.dart';
-import 'Signup.dart';
+import 'delivery_dashboard.dart';
 
-import 'Customer/customerhomepage.dart';
-import 'Farmer/homepage.dart';
-import 'Transpoter/transpoter_dashboard.dart';
-import 'delivery/delivery_dashboard.dart';
-import 'delivery/delivery_password_change.dart';
+class DeliveryPasswordChangeScreen extends StatefulWidget {
+  final String tempToken;
 
+  const DeliveryPasswordChangeScreen({
+    Key? key,
+    required this.tempToken,
+  }) : super(key: key);
 
-class LoginPage extends StatefulWidget {
   @override
-  _LoginPageState createState() => _LoginPageState();
+  _DeliveryPasswordChangeScreenState createState() => _DeliveryPasswordChangeScreenState();
 }
 
-class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
+class _DeliveryPasswordChangeScreenState extends State<DeliveryPasswordChangeScreen> with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
 
   late AnimationController _animationController;
@@ -59,12 +57,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   @override
   void dispose() {
     _animationController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleLogin() async {
+  void _handlePasswordChange() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
@@ -72,11 +70,14 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
       try {
         final response = await http.post(
-          Uri.parse('https://farmercrate.onrender.com/api/auth/login'),
-          headers: {'Content-Type': 'application/json'},
+          Uri.parse('https://farmercrate.onrender.com/api/auth/delivery-person-first-login-password'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${widget.tempToken}',
+          },
           body: jsonEncode({
-            'username': _usernameController.text,
-            'password': _passwordController.text,
+            'newPassword': _newPasswordController.text,
+            'tempToken': widget.tempToken,
           }),
         );
 
@@ -87,126 +88,46 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
 
-          // Debug: Print full response for troubleshooting
-          print('Full response data: $responseData');
-          print('Response keys: ${responseData.keys.toList()}');
+          // Debug: Print full response data
+          print('Password change API response: $responseData');
 
-          // Check if this is a first login that requires password change
-          if (responseData['requiresPasswordChange'] == true) {
-            // Handle first login for delivery person
-            final tempToken = responseData['tempToken'];
-
-            print('First login detected - tempToken: $tempToken');
-
-            // Validate required data
-            if (tempToken == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Invalid server response. Missing tempToken.'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              return;
-            }
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('First login detected. Please change your password.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-
-            // Navigate to password change screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeliveryPasswordChangeScreen(
-                  tempToken: tempToken,
-                ),
-              ),
-            );
-            return;
-          }
-
-          // Normal login flow
           final token = responseData['token'];
           final user = responseData['user'];
 
-          // Validate required data
+          // Add null checks for response data
           if (token == null || user == null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Invalid server response. Missing token or user data.'),
+                content: Text('Error: Missing data in password change response'),
                 backgroundColor: Colors.red,
+                duration: Duration(seconds: 4),
               ),
             );
+            print('ERROR: Missing token or user data - token: $token, user: $user');
             return;
           }
 
-          // Debug: Print user role for troubleshooting
-          print('User role: ${user['role']}');
-          print('User data: $user');
-
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Login Successful! Welcome, ${user['role']?.toUpperCase()}'),
+              content: Text('Password changed successfully! Welcome to Farmer Crate'),
               backgroundColor: Colors.green,
             ),
           );
 
-          if (user['role'] == 'farmer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => FarmersHomePage(token: token),
-              ),
-            );
-          } else if (user['role'] == 'customer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CustomerHomePage(token: token),
-              ),
-            );
-          } else if (user['role'] == 'transporter') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransporterDashboard(token: token),
-              ),
-            );
-          } else if (user['role'] == 'delivery') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeliveryDashboard(token: token, user: user),
-              ),
-            );
-          } else if (user['role'] == 'admin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdminManagementPage(user: user, token: token),
-              ),
-            );
-          } else {
-            // Unknown role - show error and stay on login page
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Unknown user role: ${user['role']}. Please contact support.'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 5),
-              ),
-            );
-            print('Unknown user role: ${user['role']}');
-          }
+          // Navigate to delivery dashboard
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DeliveryDashboard(token: token, user: user),
+            ),
+          );
         } else {
-          String errorMessage = 'Invalid credentials';
+          String errorMessage = 'Failed to change password';
           try {
             final errorData = jsonDecode(response.body);
-            errorMessage = errorData['message'] ?? errorData['error'] ?? 'Invalid credentials';
+            errorMessage = errorData['message'] ?? errorData['error'] ?? 'Failed to change password';
           } catch (e) {
-            errorMessage = 'Login failed. Please try again.';
+            errorMessage = 'Password change failed. Please try again.';
           }
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -222,13 +143,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           _isLoading = false;
         });
 
-        // Check if it's a network error
         String errorMessage = 'Error: $e';
         if (e.toString().contains('SocketException') ||
             e.toString().contains('HandshakeException') ||
             e.toString().contains('Connection refused') ||
             e.toString().contains('Network is unreachable')) {
-          errorMessage = 'Please use network to login';
+          errorMessage = 'Please check your network connection';
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -320,11 +240,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                               child: CircleAvatar(
                                 radius: 48,
                                 backgroundColor: Colors.white,
-                                child: Image.asset(
-                                  'assets/farmer.jpg',
-                                  width: 64,
-                                  height: 64,
-                                  fit: BoxFit.cover,
+                                child: Icon(
+                                  Icons.delivery_dining,
+                                  size: 64,
+                                  color: Color(0xFF4CAF50),
                                 ),
                               ),
                             ),
@@ -347,7 +266,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Welcome! Please login to continue',
+                              'Welcome Delivery Partner! Set your password',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black,
@@ -376,12 +295,21 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Text(
-                              'Sign In',
+                              'Set Your Password',
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF388E3C),
                               ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Please create a secure password for your account',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                             SizedBox(height: 24),
                             Form(
@@ -390,66 +318,44 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _buildTextField(
-                                    controller: _usernameController,
-                                    label: 'Username',
-                                    icon: Icons.person_outline,
+                                    controller: _newPasswordController,
+                                    label: 'New Password',
+                                    icon: Icons.lock_outline,
+                                    isPassword: true,
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter your username';
+                                        return 'Please enter your new password';
                                       }
-                                      if (value.length > 20) {
-                                        return 'Username must be 20 or fewer characters';
-                                      }
-                                      if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
-                                        return 'Only letters and numbers allowed';
+                                      if (value.length < 6) {
+                                        return 'Password must be at least 6 characters';
                                       }
                                       return null;
                                     },
                                   ),
                                   SizedBox(height: 20),
                                   _buildTextField(
-                                    controller: _passwordController,
-                                    label: 'Password',
+                                    controller: _confirmPasswordController,
+                                    label: 'Confirm Password',
                                     icon: Icons.lock_outline,
                                     isPassword: true,
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please enter your password';
+                                        return 'Please confirm your password';
                                       }
-                                      if (value.length < 8) {
-                                        return 'Password must be at least 8 characters';
+                                      if (value != _newPasswordController.text) {
+                                        return 'Passwords do not match';
                                       }
                                       return null;
                                     },
                                   ),
                                   SizedBox(height: 24),
-                                  _buildLoginButton(),
-                                  SizedBox(height: 20),
-                                  Center(
-                                    child: TextButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
-                                        );
-                                      },
-                                      child: Text(
-                                        'Forgot Password?',
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  _buildSubmitButton(),
                                 ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                      SizedBox(height: 24),
-                      _buildCreateAccountLink(),
                     ],
                   ),
                 ),
@@ -470,7 +376,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }) {
     return TextFormField(
       controller: controller,
-      obscureText: isPassword && !_isPasswordVisible,
+      obscureText: isPassword && !_isPasswordVisible && !_isConfirmPasswordVisible,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
@@ -478,12 +384,17 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(
-            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+            (label == 'New Password' ? _isPasswordVisible : _isConfirmPasswordVisible)
+                ? Icons.visibility : Icons.visibility_off,
             color: Colors.black,
           ),
           onPressed: () {
             setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
+              if (label == 'New Password') {
+                _isPasswordVisible = !_isPasswordVisible;
+              } else {
+                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+              }
             });
           },
         )
@@ -508,12 +419,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildLoginButton() {
+  Widget _buildSubmitButton() {
     return Container(
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: _isLoading ? null : _handlePasswordChange,
         style: ElevatedButton.styleFrom(
           backgroundColor: Color(0xFF4CAF50),
           foregroundColor: Colors.white,
@@ -533,7 +444,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         )
             : Text(
-          'LOGIN',
+          'SET PASSWORD',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -541,38 +452,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildCreateAccountLink() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          "Don't have an account? ",
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 16,
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SignUpPage()),
-            );
-          },
-          child: Text(
-            'Sign Up',
-            style: TextStyle(
-              color: Color(0xFFFFFFFF),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

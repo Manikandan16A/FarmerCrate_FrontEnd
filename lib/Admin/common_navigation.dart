@@ -1,3 +1,4 @@
+import 'package:farmer_crate/Admin/requstaccept.dart';
 import 'package:flutter/material.dart';
 import '../Signin.dart';
 import 'adminreport.dart';
@@ -78,7 +79,7 @@ class AdminNavigation {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AdminUserManagementPage(
+                  builder: (context) => AdminManagementPage(
                     token: token,
                     user: user,
                   ),
@@ -123,7 +124,7 @@ class AdminNavigation {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ReportsPage(token: token),
+                  builder: (context) => ReportsPage(token: token, user: user),
                 ),
               );
             },
@@ -217,32 +218,24 @@ class AdminNavigation {
                 ),
               );
               break;
-            case 1: // Total Orders
+            case 1: // Reports
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => OrdersManagementPage(
+                  builder: (context) => ReportsPage(
                     user: user,
                     token: token,
                   ),
                 ),
               );
               break;
-            case 2: // Report
+            case 2: // Total Orders
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ReportsPage(token: token),
-                ),
-              );
-              break;
-            case 3: // Profile/Consumer Management
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CustomerManagementScreen(
-                    token: token,
+                  builder: (context) => OrdersManagementPage(
                     user: user,
+                    token: token,
                   ),
                 ),
               );
@@ -254,17 +247,14 @@ class AdminNavigation {
             icon: Icon(Icons.home, size: 24),
             label: 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart, size: 24),
-            label: 'Orders',
-          ),
+
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics, size: 24),
             label: 'Reports',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people, size: 24),
-            label: 'Consumers',
+            label: 'Total Orders',
           ),
         ],
       ),
