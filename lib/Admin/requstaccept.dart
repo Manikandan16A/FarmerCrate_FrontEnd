@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import '../Signin.dart';
+
+import '../auth/Signin.dart';
 import 'ConsumerManagement.dart';
 import 'Farmeruser.dart';
 
@@ -13,7 +14,7 @@ import 'Farmeruser.dart';
 class AdminManagementPage extends StatefulWidget {
   final dynamic user;
   final String token;
-  const AdminManagementPage({Key? key, required this.user, required this.token}) : super(key: key);
+  const AdminManagementPage({super.key, required this.user, required this.token});
 
   @override
   State<AdminManagementPage> createState() => _AdminManagementPageState();
@@ -1031,7 +1032,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                     ),
                   ),
                 );
-                Navigator.pop(context); // Close the drawer
+                Navigator.pop(context);
               },
             ),
             ListTile(
@@ -1114,7 +1115,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${selectedCategory} Management',
+                      '$selectedCategory Management',
                       style: TextStyle(
                         fontSize: screenWidth * 0.07,
                         fontWeight: FontWeight.bold,

@@ -41,4 +41,47 @@ class CloudinaryUploader {
       return null;
     }
   }
+
+  static String optimizeImageUrl(String imageUrl, {
+    int? width,
+    int? height,
+    String quality = 'auto',
+    String format = 'auto',
+  }) {
+    if (!imageUrl.contains('cloudinary.com')) {
+      return imageUrl; // Return original URL if it's not a Cloudinary URL
+    }
+
+    final uri = Uri.parse(imageUrl);
+    final pathSegments = uri.pathSegments;
+    
+    if (pathSegments.length < 3) {
+      return imageUrl; // Return original if URL structure is unexpected
+    }
+
+    // Extract the public_id and format from the original URL
+    final publicId = pathSegments[pathSegments.length - 1];
+    final originalFormat = publicId.contains('.') ? publicId.split('.').last : 'jpg';
+    
+    // Build transformation parameters
+    final transformations = <String>[];
+    
+    if (width != null) transformations.add('w_$width');
+    if (height != null) transformations.add('h_$height');
+    if (quality != 'auto') transformations.add('q_$quality');
+    if (format != 'auto') transformations.add('f_$format');
+    
+    // Add quality and format if they're set to auto
+    if (quality == 'auto') transformations.add('q_auto');
+    if (format == 'auto') transformations.add('f_auto');
+    
+    final transformationString = transformations.isNotEmpty 
+        ? transformations.join(',') + '/' 
+        : '';
+    
+    // Reconstruct the URL with transformations
+    final optimizedUrl = '${uri.scheme}://${uri.host}/${pathSegments[0]}/${pathSegments[1]}/image/upload/$transformationString$publicId';
+    
+    return optimizedUrl;
+  }
 } 

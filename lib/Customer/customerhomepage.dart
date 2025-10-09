@@ -2,15 +2,11 @@ import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../Transpoter/transpoter_dashboard.dart';
 import 'Categories.dart';
-import '../Signin.dart';
 import 'Cart.dart';
 import '../utils/cloudinary_upload.dart';
 import 'FAQpage.dart';
-import 'product_details.dart';
 import 'product_details_screen.dart';
-import 'wishlist.dart';
 
 class CustomerHomePage extends StatefulWidget {
   final String? token;
@@ -29,6 +25,61 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   List<Product> products = [];
   List<Product> topBuys = [];
   int _currentIndex = 0;
+
+  // Method to get optimized product image
+  Widget buildProductImage(String? imageUrl, {
+    double width = 200,
+    double height = 200,
+    BoxFit fit = BoxFit.cover,
+    Widget? errorWidget,
+  }) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return _buildFallbackImage(width, height, Icons.image, 40, 'No image available');
+    }
+
+    final optimizedUrl = CloudinaryUploader.optimizeImageUrl(
+      imageUrl,
+      width: width.toInt(),
+      height: height.toInt(),
+      quality: 'auto',
+      format: 'auto'
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        optimizedUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) {
+          return errorWidget ?? _buildFallbackImage(
+            width, 
+            height, 
+            Icons.broken_image, 
+            40, 
+            'Failed to load image'
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: width,
+            height: height,
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -98,57 +149,32 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   Future<void> _fetchProducts() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/products'),
         headers: {
           'Content-Type': 'application/json',
-          if (widget.token != null) 'Authorization': 'Bearer ${widget.token}',
+          if (widget.token != null && widget.token!.isNotEmpty) 'Authorization': 'Bearer ${widget.token}',
         },
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> productsData = jsonDecode(response.body)['data'];
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        final List<dynamic> productsData = responseData['data'];
+        
         setState(() {
-          products = productsData.map((data) {
-            String imageUrl = '';
-            if (data['images'] != null && data['images'].toString().isNotEmpty) {
-              imageUrl = data['images'].toString();
-            }
-
-            // Extract rating and review data
-            double rating = 0.0;
-            int reviewCount = 0;
-            List<ProductReview> reviews = [];
-
-            if (data['reviews'] != null && data['reviews'] is List) {
-              reviews = (data['reviews'] as List)
-                  .map((review) => ProductReview.fromJson(review))
-                  .toList();
-              reviewCount = reviews.length;
-              if (reviewCount > 0) {
-                rating = reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviewCount;
-              }
-            } else if (data['rating'] != null) {
-              rating = (data['rating'] ?? 0.0).toDouble();
-              reviewCount = data['review_count'] ?? data['reviewCount'] ?? 0;
-            }
-
-            return Product(
-              data['id'] ?? 0,
-              data['name'] ?? 'Unknown Product',
-              data['description'] ?? 'No description available',
-              double.tryParse(data['price'] ?? '0.0') ?? 0.0,
-              data['quantity'] ?? 0,
-              imageUrl,
-              data['category'] ?? 'General',
-              rating,
-              reviewCount,
-              reviews,
-            );
-          }).toList();
-
-          topBuys = products.take(3).toList();
+          // Convert JSON data to Product objects using fromJson factory
+          products = productsData.map((data) => Product.fromJson(data)).toList();
+          
+          // Sort products by views and take top 3 for featured section
+          final sortedProducts = List<Product>.from(products);
+          sortedProducts.sort((a, b) => b.views.compareTo(a.views));
+          topBuys = sortedProducts.take(3).toList();
+          
           _isLoading = false;
         });
       } else {
@@ -157,6 +183,27 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           topBuys = [];
           _isLoading = false;
         });
+        
+        // Show error message for failed API call
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Failed to load products. Please try again.'),
+              ],
+            ),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            action: SnackBarAction(
+              label: 'Retry',
+              textColor: Colors.white,
+              onPressed: _fetchProducts,
+            ),
+          ),
+        );
       }
     } catch (e) {
       setState(() {
@@ -164,6 +211,27 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         topBuys = [];
         _isLoading = false;
       });
+      
+      // Show error message for network issues
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.wifi_off, color: Colors.white),
+              SizedBox(width: 8),
+              Text('Network error. Please check your connection.'),
+            ],
+          ),
+          backgroundColor: Colors.orange[600],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: _fetchProducts,
+          ),
+        ),
+      );
     }
   }
 
@@ -290,16 +358,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       final productIndex = products.indexWhere((p) => p.id == product.id);
       if (productIndex != -1) {
         final updatedProduct = Product(
-          product.id,
-          product.name,
-          product.description,
-          product.price,
-          product.quantity,
-          product.images,
-          product.category,
-          reviews.isNotEmpty ? reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length : 0.0,
-          reviews.length,
-          reviews,
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          quantity: product.quantity,
+          images: product.images,
+          category: product.category,
+          status: product.status,
+          farmerId: product.farmerId,
+          views: product.views,
+          farmer: product.farmer,
+          rating: reviews.isNotEmpty ? reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length : 0.0,
+          reviewCount: reviews.length,
+          reviews: reviews,
         );
         products[productIndex] = updatedProduct;
 
@@ -786,18 +858,21 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           : FadeTransition(
         opacity: _fadeAnimation,
         child: SafeArea(
-          child: CustomScrollView(
-            physics: BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: SizedBox(height: 100)),
-              _buildWelcomeSection(),
-              _buildSearchBar(),
-              _buildCategories(),
-              _buildTopBuysSection(),
-              _buildSuggestedSection(),
-              _buildSuggestedProductGrid(),
-              SliverToBoxAdapter(child: SizedBox(height: 80)), // Reduced bottom padding
-            ],
+          child: RefreshIndicator(
+            onRefresh: _fetchProducts,
+            child: CustomScrollView(
+              physics: BouncingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(child: SizedBox(height: 100)),
+                _buildWelcomeSection(),
+                _buildSearchBar(),
+                _buildCategories(),
+                _buildTopBuysSection(),
+                _buildSuggestedSection(),
+                _buildSuggestedProductGrid(),
+                SliverToBoxAdapter(child: SizedBox(height: 80)), // Reduced bottom padding
+              ],
+            ),
           ),
         ),
       ),
@@ -855,6 +930,28 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         ),
       ),
       actions: [
+        Container(
+          margin: EdgeInsets.only(right: 8),
+          child: IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.refresh, color: Colors.green[800], size: 20),
+            ),
+            onPressed: _fetchProducts,
+            tooltip: 'Refresh Products',
+          ),
+        ),
         Container(
           margin: EdgeInsets.only(right: 8),
           child: IconButton(
@@ -1312,8 +1409,42 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     final descriptionFontSize = (responsiveValues['descriptionFontSize'] as double) * 0.9;
     final priceFontSize = (responsiveValues['priceFontSize'] as double) * 0.9;
     
-    return Container(
-      width: 170,
+    return GestureDetector(
+      onTap: () {
+        // Convert Product object to Map for ProductDetailScreen
+        final productMap = {
+          'id': product.id,
+          'name': product.name,
+          'description': product.description,
+          'price': product.price,
+          'quantity': product.quantity,
+          'images': product.images,
+          'category': product.category,
+          'rating': product.rating,
+          'reviewCount': product.reviewCount,
+          'reviews': product.reviews.map((review) => {
+            'id': review.id,
+            'customer_name': review.customerName,
+            'rating': review.rating,
+            'comment': review.comment,
+            'created_at': review.createdAt,
+            'customer_image': review.customerImage,
+          }).toList(),
+        };
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(
+              productId: product.id,
+              token: widget.token ?? '',
+              productData: productMap,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 170,
       margin: EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1442,6 +1573,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1623,12 +1755,45 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     
     return GestureDetector(
       onTap: () {
+        // Convert Product object to Map for ProductDetailScreen
+        final productMap = {
+          'product_id': product.id,
+          'name': product.name,
+          'description': product.description,
+          'current_price': product.price.toString(),
+          'quantity': product.quantity,
+          'images': product.images,
+          'category': product.category,
+          'status': product.status,
+          'harvest_date': product.harvestDate?.toIso8601String(),
+          'expiry_date': product.expiryDate?.toIso8601String(),
+          'views': product.views,
+          'farmer': {
+            'farmer_id': product.farmer.id,
+            'global_farmer_id': product.farmer.globalId,
+            'name': product.farmer.name,
+            'image_url': product.farmer.imageUrl,
+            'is_verified_by_gov': product.farmer.isVerifiedByGov,
+          },
+          'rating': product.rating,
+          'review_count': product.reviewCount,
+          'reviews': product.reviews.map((review) => {
+            'id': review.id,
+            'customer_name': review.customerName,
+            'rating': review.rating,
+            'comment': review.comment,
+            'created_at': review.createdAt,
+            'customer_image': review.customerImage,
+          }).toList(),
+        };
+        
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ProductDetailScreen(
               productId: product.id,
               token: widget.token ?? '',
+              productData: productMap,
             ),
           ),
         );
@@ -1901,26 +2066,77 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     return url.contains('cloudinary.com') || url.contains('res.cloudinary.com');
   }
 
-  Widget _buildProductImage(String imageUrl, double width, double height, IconData fallbackIcon, double iconSize) {
-    if (imageUrl.isEmpty || imageUrl == 'null') {
-      return Container(
-        width: width == double.infinity ? null : width,
-        height: height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green[200]!, Colors.green[100]!],
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
-      );
+  String _cleanImageUrl(String imageUrl) {
+    if (imageUrl.isEmpty || imageUrl == 'null') return '';
+    
+    String cleaned = imageUrl.trim();
+    
+    // Remove any extra quotes or spaces
+    cleaned = cleaned.replaceAll('"', '').replaceAll("'", '');
+    
+    // Check if it's a valid URL
+    if (cleaned.startsWith('http://') || 
+        cleaned.startsWith('https://') || 
+        _isCloudinaryUrl(cleaned)) {
+      return cleaned;
+    }
+    
+    // If it's a relative URL, try to make it absolute
+    if (cleaned.startsWith('/')) {
+      return 'https://farmercrate.onrender.com$cleaned';
+    }
+    
+    // If it doesn't start with http, assume it's a relative path
+    if (!cleaned.startsWith('http') && !cleaned.startsWith('assets/')) {
+      return 'https://farmercrate.onrender.com/$cleaned';
+    }
+    
+    return cleaned;
+  }
+
+  String _getOptimizedImageUrl(String imageUrl, {int? width, int? height}) {
+    if (imageUrl.isEmpty || imageUrl == 'null') return '';
+    
+    // Clean and validate the image URL first
+    String cleanUrl = _cleanImageUrl(imageUrl);
+    if (cleanUrl.isEmpty) return '';
+    
+    // Use Cloudinary optimization for better performance
+    return CloudinaryUploader.optimizeImageUrl(
+      cleanUrl,
+      width: width ?? 200,
+      height: height ?? 200,
+      quality: 'auto',
+      format: 'auto',
+    );
+  }
+
+  Widget _buildProductImage(String? imageUrl, double width, double height, IconData fallbackIcon, double iconSize) {
+    // Handle empty or null image URLs
+    if (imageUrl == null || imageUrl.isEmpty || imageUrl == 'null' || imageUrl == '') {
+      return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'No image available');
     }
 
-    if (_isCloudinaryUrl(imageUrl) || imageUrl.startsWith('http')) {
+    // Clean the image URL (remove any extra spaces or characters)
+    String cleanImageUrl = imageUrl.trim();
+    
+    // Check if it's a valid URL (HTTP/HTTPS) or Cloudinary URL
+    bool isValidUrl = cleanImageUrl.startsWith('http://') || 
+                     cleanImageUrl.startsWith('https://') || 
+                     _isCloudinaryUrl(cleanImageUrl);
+
+    if (isValidUrl) {
+      // Use Cloudinary optimization for all valid URLs from database
+      String optimizedUrl = _getOptimizedImageUrl(
+        cleanImageUrl,
+        width: width == double.infinity ? 400 : width.toInt(),
+        height: height.toInt(),
+      );
+
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
-          imageUrl,
+          optimizedUrl,
           width: width == double.infinity ? null : width,
           height: height,
           fit: BoxFit.cover,
@@ -1930,71 +2146,130 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               width: width == double.infinity ? null : width,
               height: height,
               decoration: BoxDecoration(
-                color: Colors.grey[100],
+                gradient: LinearGradient(
+                  colors: [Colors.green[100]!, Colors.green[50]!],
+                ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                      : null,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                  strokeWidth: 2,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          : null,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                      strokeWidth: 2,
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Loading image...',
+                      style: TextStyle(
+                        color: Colors.green[600],
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
           },
           errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width == double.infinity ? null : width,
-              height: height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[200]!, Colors.green[100]!],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
-            );
+            return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Failed to load image');
           },
         ),
       );
-    } else if (imageUrl.startsWith('assets/')) {
+    } else if (cleanImageUrl.startsWith('assets/')) {
+      // Handle local asset images
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.asset(
-          imageUrl,
+          cleanImageUrl,
           width: width == double.infinity ? null : width,
           height: height,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: width == double.infinity ? null : width,
-              height: height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[200]!, Colors.green[100]!],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
-            );
+            return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Asset not found');
           },
         ),
       );
     } else {
-      return Container(
-        width: width == double.infinity ? null : width,
-        height: height,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.green[200]!, Colors.green[100]!],
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
-      );
+      // Handle other cases (base64, data URLs, etc.)
+      return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Invalid image format');
     }
+  }
+
+  Widget _buildFallbackImage(double width, double height, IconData fallbackIcon, double iconSize, String message) {
+    return Container(
+      width: width == double.infinity ? null : width,
+      height: height,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.green[200]!, Colors.green[100]!],
+        ),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
+          SizedBox(height: 4),
+          Text(
+            message,
+            style: TextStyle(
+              color: Colors.green[600],
+              fontSize: 10,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class Farmer {
+  final int id;
+  final String globalId;
+  final String name;
+  final String mobileNumber;
+  final String email;
+  final String address;
+  final String zone;
+  final String state;
+  final String district;
+  final String? imageUrl;
+  final bool isVerifiedByGov;
+
+  Farmer({
+    required this.id,
+    required this.globalId,
+    required this.name,
+    required this.mobileNumber,
+    required this.email,
+    required this.address,
+    required this.zone,
+    required this.state,
+    required this.district,
+    this.imageUrl,
+    required this.isVerifiedByGov,
+  });
+
+  factory Farmer.fromJson(Map<String, dynamic> json) {
+    return Farmer(
+      id: json['farmer_id'],
+      globalId: json['global_farmer_id'],
+      name: json['name'],
+      mobileNumber: json['mobile_number'],
+      email: json['email'],
+      address: json['address'],
+      zone: json['zone'],
+      state: json['state'],
+      district: json['district'],
+      imageUrl: json['image_url'],
+      isVerifiedByGov: json['is_verified_by_gov'],
+    );
   }
 }
 
@@ -2004,24 +2279,68 @@ class Product {
   final String description;
   final double price;
   final int quantity;
-  final String images;
+  final String? images;
   final String category;
+  final String status;
+  final DateTime? harvestDate;
+  final DateTime? expiryDate;
+  final int farmerId;
+  final int views;
   final double rating;
   final int reviewCount;
   final List<ProductReview> reviews;
+  final Farmer farmer;
 
-  Product(
-      this.id,
-      this.name,
-      this.description,
-      this.price,
-      this.quantity,
-      this.images,
-      this.category,
-      this.rating,
-      this.reviewCount,
-      this.reviews,
-      );
+  Product({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.price,
+    required this.quantity,
+    this.images,
+    required this.category,
+    required this.status,
+    this.harvestDate,
+    this.expiryDate,
+    required this.farmerId,
+    required this.views,
+    this.rating = 0.0,
+    this.reviewCount = 0,
+    this.reviews = const [],
+    required this.farmer,
+  });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['product_id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      price: double.tryParse(json['current_price'] ?? '0.0') ?? 0.0,
+      quantity: json['quantity'] ?? 0,
+      images: json['images'],
+      category: json['category'] ?? 'Uncategorized',
+      status: json['status'] ?? 'available',
+      harvestDate: json['harvest_date'] != null ? DateTime.parse(json['harvest_date']) : null,
+      expiryDate: json['expiry_date'] != null ? DateTime.parse(json['expiry_date']) : null,
+      farmerId: json['farmer_id'] ?? 0,
+      views: json['views'] ?? 0,
+      rating: 0.0, // Initialize with default value as ratings are managed separately
+      reviewCount: 0, // Initialize with default value as reviews are managed separately
+      reviews: [], // Initialize empty as reviews are fetched separately
+      farmer: json['farmer'] != null ? Farmer.fromJson(json['farmer']) : Farmer(
+        id: 0,
+        globalId: '',
+        name: '',
+        mobileNumber: '',
+        email: '',
+        address: '',
+        zone: '',
+        state: '',
+        district: '',
+        isVerifiedByGov: false,
+      ),
+    );
+  }
 }
 
 class ProductReview {
@@ -2043,12 +2362,12 @@ class ProductReview {
 
   factory ProductReview.fromJson(Map<String, dynamic> json) {
     return ProductReview(
-      id: json['id'] ?? 0,
-      customerName: json['customer_name'] ?? json['customerName'] ?? 'Anonymous',
+      id: json['id'] ?? json['review_id'] ?? 0,
+      customerName: json['customer_name'] ?? 'Anonymous',
       rating: (json['rating'] ?? 0.0).toDouble(),
-      comment: json['comment'] ?? json['review'] ?? '',
-      createdAt: json['created_at'] ?? json['createdAt'] ?? '',
-      customerImage: json['customer_image'] ?? json['customerImage'],
+      comment: json['comment'] ?? '',
+      createdAt: json['created_at'] ?? DateTime.now().toIso8601String(),
+      customerImage: json['customer_image'],
     );
   }
 }

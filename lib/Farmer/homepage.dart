@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import '../Signin.dart';
+
 import '../Customer/Cart.dart';
+import '../auth/Signin.dart';
 import 'Addproduct.dart';
 import 'contact_admin.dart';
 import 'farmerprofile.dart';
 import 'ProductEdit.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/gestures.dart';
+import '../utils/cloudinary_upload.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
-  
-  const FarmersHomePage({Key? key, this.token}) : super(key: key);
+
+  const FarmersHomePage({super.key, this.token});
 
   @override
-  _FarmersHomePageState createState() => _FarmersHomePageState();
+  State<FarmersHomePage> createState() => _FarmersHomePageState();
 }
 
 class _FarmersHomePageState extends State<FarmersHomePage> {
@@ -27,7 +28,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   String? errorMessage;
   late ScrollController _scrollController;
   bool _showSearchBar = true;
-  double _lastOffset = 0;
 
   @override
   void initState() {
@@ -44,18 +44,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      // _filteredProducts = _allProducts.where((product) {
-      //   final matchesSearch = product['title']
-      //       .toLowerCase()
-      //       .contains(_searchController.text.toLowerCase());
-      //   final matchesCategory = _selectedCategory == null ||
-      //       product['category'] == _selectedCategory;
-      //   return matchesSearch && matchesCategory;
-      // }).toList();
-    });
-  }
 
 
   void _onNavItemTapped(int index) {
@@ -84,7 +72,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
-      (route) => false,
+          (route) => false,
     );
   }
 
@@ -103,13 +91,48 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           'Authorization': 'Bearer ${widget.token}',
       };
 
+
       final response = await http.get(uri, headers: headers);
+
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        final productsData = responseData['data'] ?? [];
+
+        List<dynamic> productsData = [];
+
+        // Handle different response structures
+        if (responseData is Map && responseData.containsKey('data')) {
+          productsData = responseData['data'] ?? [];
+        } else if (responseData is List) {
+          productsData = responseData;
+        } else {
+          productsData = [responseData]; // Single product case
+        }
+
+
+        if (productsData.isNotEmpty) {
+          setState(() {
+            products = productsData.map<Product>((json) {
+              return Product.fromJson(json);
+            }).toList();
+            isLoading = false;
+          });
+        } else {
+          setState(() {
+            products = [];
+            isLoading = false;
+            errorMessage = 'No products found. Add your first product!';
+          });
+        }
+      } else if (response.statusCode == 401) {
         setState(() {
-          products = productsData.map<Product>((json) => Product.fromJson(json)).toList();
+          errorMessage = 'Authentication failed. Please login again.';
           isLoading = false;
+        });
+      } else if (response.statusCode == 404) {
+        setState(() {
+          products = [];
+          isLoading = false;
+          errorMessage = 'No products found. Add your first product!';
         });
       } else {
         setState(() {
@@ -161,7 +184,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => FarmerProductsPage(token: widget.token)),
-                (route) => false,
+                    (route) => false,
               );
             },
           ),
@@ -362,7 +385,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                       ),
                     ),
                     SizedBox(width: 20),
-                    Container(
+                    SizedBox(
                       width: 80,
                       height: 80,
                       child: Image.asset(
@@ -398,7 +421,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 childAspectRatio: 0.75,
               ),
               delegate: SliverChildBuilderDelegate(
-                (context, index) {
+                    (context, index) {
                   final product = products[index];
                   return _buildProductCard(
                     context,
@@ -472,7 +495,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       String price,
       String description,
       String? imageUrl,
-    ) {
+      ) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -508,21 +531,36 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               child: imageUrl != null && imageUrl.startsWith('http')
                   ? Image.network(
-                      imageUrl,
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        height: 120,
-                        color: Colors.green[50],
-                        child: Icon(Icons.broken_image, size: 40, color: Colors.green[300]),
+                CloudinaryUploader.optimizeImageUrl(imageUrl, width: 300, height: 120, quality: 'auto', format: 'auto'),
+                height: 120,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 120,
+                    color: Colors.green[50],
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                            : null,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[300]!),
                       ),
-                    )
-                  : Container(
-                      height: 120,
-                      color: Colors.green[50],
-                      child: Icon(Icons.image, size: 40, color: Colors.green[300]),
                     ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 120,
+                  color: Colors.green[50],
+                  child: Icon(Icons.broken_image, size: 40, color: Colors.green[300]),
+                ),
+              )
+                  : Container(
+                height: 120,
+                color: Colors.green[50],
+                child: Icon(Icons.image, size: 40, color: Colors.green[300]),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(12.0),
@@ -567,7 +605,7 @@ class ProductDetailPage extends StatefulWidget {
   final String? description;
 
   const ProductDetailPage({
-    Key? key,
+    super.key,
     required this.title,
     required this.price,
     required this.rating,
@@ -575,10 +613,10 @@ class ProductDetailPage extends StatefulWidget {
     required this.emoji,
     this.imageUrl,
     this.description,
-  }) : super(key: key);
+  });
 
   @override
-  _ProductDetailPageState createState() => _ProductDetailPageState();
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {

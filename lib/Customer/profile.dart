@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../Signin.dart';
+
 import '../Customer/customerhomepage.dart';
+import '../auth/Signin.dart';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'FAQpage.dart';

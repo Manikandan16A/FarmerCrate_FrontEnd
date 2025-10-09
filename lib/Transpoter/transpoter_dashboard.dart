@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'adddeliveryperson.dart';
 
 
 
 class TransporterApp extends StatelessWidget {
   final String? token;
   
-  const TransporterApp({Key? key, this.token, required int customerId}) : super(key: key);
+  const TransporterApp({super.key, this.token, required int customerId});
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +52,7 @@ class DeliveryPerson {
 class TransporterDashboard extends StatefulWidget {
   final String? token;
   
-  const TransporterDashboard({Key? key, this.token}) : super(key: key);
+  const TransporterDashboard({super.key, this.token});
 
   @override
   State<TransporterDashboard> createState() => _TransporterDashboardState();
@@ -116,25 +116,6 @@ class _TransporterDashboardState extends State<TransporterDashboard>
     super.dispose();
   }
 
-  void _showAddEditDialog({DeliveryPerson? person}) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AddEditDeliveryPersonDialog(
-        person: person,
-        onSave: (deliveryPerson) {
-          setState(() {
-            if (person == null) {
-              deliveryPersons.add(deliveryPerson);
-            } else {
-              int index = deliveryPersons.indexWhere((p) => p.id == person.id);
-              deliveryPersons[index] = deliveryPerson;
-            }
-          });
-        },
-      ),
-    );
-  }
 
   void _deletePerson(String id) {
     showDialog(
@@ -169,6 +150,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _buildDrawer(),
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: CustomScrollView(
@@ -179,6 +161,12 @@ class _TransporterDashboardState extends State<TransporterDashboard>
               pinned: true,
               elevation: 0,
               backgroundColor: Colors.transparent,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu, color: Colors.white),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              ),
               flexibleSpace: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
@@ -250,11 +238,298 @@ class _TransporterDashboardState extends State<TransporterDashboard>
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddEditDialog(),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddDeliveryAgentScreen(token: widget.token),
+            ),
+          );
+        },
         backgroundColor: const Color(0xFF667EEA),
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text('Add Driver', style: TextStyle(color: Colors.white)),
       ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF667EEA),
+              Color(0xFF764BA2),
+            ],
+          ),
+        ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF667EEA),
+                    Color(0xFF764BA2),
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.local_shipping,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'TransporterCrate',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Delivery Management',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.dashboard, color: Colors.white, size: 20),
+              ),
+              title: const Text(
+                'Dashboard',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.people, color: Colors.white, size: 20),
+              ),
+              title: const Text(
+                'Delivery Team',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.analytics, color: Colors.white, size: 20),
+              ),
+              title: const Text(
+                'Analytics',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Add analytics navigation here
+              },
+            ),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.settings, color: Colors.white, size: 20),
+              ),
+              title: const Text(
+                'Settings',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                // Add settings navigation here
+              },
+            ),
+            const Divider(color: Colors.white30, thickness: 1),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.logout, color: Colors.white, size: 20),
+              ),
+              title: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showLogoutDialog();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: const Color(0xFF667EEA),
+        unselectedItemColor: Colors.grey[600],
+        selectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
+        ),
+        currentIndex: 0,
+        elevation: 0,
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              // Dashboard - already on this page
+              break;
+            case 1:
+              // Analytics
+              break;
+            case 2:
+              // Settings
+              break;
+            case 3:
+              // Logout
+              _showLogoutDialog();
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard, size: 24),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.analytics, size: 24),
+            label: 'Analytics',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings, size: 24),
+            label: 'Settings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.logout, size: 24),
+            label: 'Logout',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Logout'),
+            ],
+          ),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                // Add logout logic here
+                // For now, just show a snackbar
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Logged out successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('Logout', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -264,7 +539,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
         Expanded(
           child: _buildStatCard(
             title: 'Total Drivers',
-            value: '${deliveryPersons.length}',
+            value: deliveryPersons.length.toString(),
             icon: Icons.people,
             color: const Color(0xFF4CAF50),
           ),
@@ -273,7 +548,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
         Expanded(
           child: _buildStatCard(
             title: 'Active Drivers',
-            value: '${deliveryPersons.where((p) => p.isActive).length}',
+            value: deliveryPersons.where((p) => p.isActive).length.toString(),
             icon: Icons.directions_bike,
             color: const Color(0xFF2196F3),
           ),
@@ -282,7 +557,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
         Expanded(
           child: _buildStatCard(
             title: 'Avg Rating',
-            value: '${(deliveryPersons.map((p) => p.rating).reduce((a, b) => a + b) / deliveryPersons.length).toStringAsFixed(1)}',
+            value: (deliveryPersons.map((p) => p.rating).reduce((a, b) => a + b) / deliveryPersons.length).toStringAsFixed(1),
             icon: Icons.star,
             color: const Color(0xFFFF9800),
           ),
@@ -483,7 +758,14 @@ class _TransporterDashboardState extends State<TransporterDashboard>
                 ),
                 onTap: () => Future.delayed(
                   Duration.zero,
-                      () => _showAddEditDialog(person: person),
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddDeliveryAgentScreen(token: widget.token),
+                      ),
+                    );
+                  },
                 ),
               ),
               PopupMenuItem(
@@ -526,10 +808,10 @@ class AddEditDeliveryPersonDialog extends StatefulWidget {
   final Function(DeliveryPerson) onSave;
 
   const AddEditDeliveryPersonDialog({
-    Key? key,
+    super.key,
     this.person,
     required this.onSave,
-  }) : super(key: key);
+  });
 
   @override
   State<AddEditDeliveryPersonDialog> createState() => _AddEditDeliveryPersonDialogState();

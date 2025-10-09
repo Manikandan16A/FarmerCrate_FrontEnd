@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../auth/Signin.dart';
 import 'homepage.dart';
-import '../Signin.dart';
+
 import 'ProductEdit.dart';
 import 'farmerprofile.dart';
 import 'package:image_picker/image_picker.dart';
@@ -159,12 +160,77 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
 
     String? imageUrl;
     if (_selectedImage != null) {
-      imageUrl = await CloudinaryUploader.uploadImage(_selectedImage!);
-      if (imageUrl == null) {
+      setState(() {
+        _errorMessage = null;
+        _isLoading = true;
+      });
+      
+      try {
+        // Show upload progress
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Uploading image...'),
+              ],
+            ),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Upload image to Cloudinary
+        imageUrl = await CloudinaryUploader.uploadImage(_selectedImage!);
+        
+        if (imageUrl == null) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Failed to upload image. Please try again.';
+          });
+          _showErrorSnackBar('Image upload failed. Please try again.');
+          return;
+        }
+
+        // Optimize the image URL for better performance
+        imageUrl = CloudinaryUploader.optimizeImageUrl(
+          imageUrl,
+          width: 800,
+          height: 800,
+          quality: 'auto',
+          format: 'auto'
+        );
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Image uploaded successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Failed to upload image. Please try again.';
+          _errorMessage = 'Failed to upload image: $e';
         });
+        _showErrorSnackBar('Image upload failed. Please try again.');
         return;
       }
     }
@@ -173,11 +239,19 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
 
     Map<String, String> headers = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
 
-    if (widget.token != null && widget.token!.isNotEmpty) {
-      headers['Authorization'] = 'Bearer ${widget.token}';
+    // Always include token in headers since it's required for authentication
+    if (widget.token == null || widget.token!.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Authentication token is missing. Please login again.';
+      });
+      return;
     }
+    
+    headers['Authorization'] = 'Bearer ${widget.token}';
 
     try {
       final response = await http.post(
@@ -189,9 +263,10 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           'current_price': price,
           'quantity': _quantity,
           'category': _selectedCategory,
-          'images': imageUrl,
+          'images': imageUrl ?? '', // Use the optimized Cloudinary URL
           'harvest_date': _harvestDate!.toIso8601String().split('T')[0],
           'expiry_date': _expiryDate!.toIso8601String().split('T')[0],
+          'status': 'available'
         }),
       ).timeout(
         const Duration(seconds: 5),
@@ -211,6 +286,16 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       if (response.statusCode == 200 || response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
+          // Show success message with product details
+          final productData = responseData['data'];
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Product "${productData['name']}" created successfully with ID: ${productData['product_id']}'),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
           _resetForm();
           setState(() {
             _showSuccessMessage = true;
@@ -269,11 +354,42 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   }
 
   Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85, // Slightly higher quality for better visual results
+        maxWidth: 1600,   // Increased max width for better quality on high-res displays
+        maxHeight: 1600,  // Increased max height while maintaining aspect ratio
+      );
+      
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+          _errorMessage = null; // Clear any previous error messages
+        });
+        
+        // Show a preview of the selected image
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.image, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(child: Text('Image selected successfully')),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
       setState(() {
-        _selectedImage = File(image.path);
+        _errorMessage = 'Failed to pick image: $e';
       });
+      _showErrorSnackBar('Failed to pick image. Please try again.');
     }
   }
 
@@ -434,7 +550,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome Header
+            _buildImagePreview(), // Add image preview at the top
+            const SizedBox(height: 20),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -1199,6 +1316,96 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+      ),
+    );
+  }
+
+  Widget _buildImagePreview() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.green[200]!, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.green[50],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            height: 200,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              color: Colors.white,
+            ),
+            child: _selectedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                    child: Image.file(
+                      _selectedImage!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            color: Colors.red[400],
+                            size: 40,
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                : Center(
+                    child: Icon(
+                      Icons.add_photo_alternate_outlined,
+                      color: Colors.green[300],
+                      size: 40,
+                    ),
+                  ),
+          ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _pickImage,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.green[200]!, width: 1),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _selectedImage != null ? Icons.edit : Icons.add,
+                      color: Colors.green[600],
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      _selectedImage != null ? 'Change Image' : 'Select Image',
+                      style: TextStyle(
+                        color: Colors.green[600],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

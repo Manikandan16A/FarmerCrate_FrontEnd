@@ -4,9 +4,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
-import '../Signin.dart'; // Ensure this path is correct
-import 'Addproduct.dart'; // Ensure this path is correct
-import 'farmerprofile.dart'; // Ensure this path is correct
+import 'package:shared_preferences/shared_preferences.dart';
+import '../auth/Signin.dart';
+import 'Addproduct.dart';
+import 'farmerprofile.dart';
 import 'homepage.dart';
 import '../utils/cloudinary_upload.dart';
 
@@ -35,27 +36,32 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id'],
-      name: json['name'] ?? '',
+      id: json['id'] ?? json['product_id'] ?? 0,
+      name: json['name'] ?? json['product_name'] ?? '',
       description: json['description'] ?? '',
-      price: double.tryParse(json['price'].toString()) ?? 0.0,
-      quantity: json['quantity'] ?? 0,
+      price: double.tryParse((json['price'] ?? 0).toString()) ?? 0.0,
+      quantity: json['quantity'] ?? json['stock'] ?? json['available_quantity'] ?? 0,
       category: json['category'] ?? '',
-      images: json['images'],
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+      images: json['images'] ?? json['image_url'] ?? json['product_image'] ?? json['image'],
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) :
+      json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) :
+      json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'product_id': id, // Use product_id instead of id to match API format
       'name': name,
       'description': description,
-      'price': price,
+      'price': price.toStringAsFixed(2), // Convert to string with 2 decimal places
       'quantity': quantity,
       'category': category,
       'images': images,
+      'status': 'available',
+      'harvest_date': DateTime.now().toIso8601String().split('T')[0],
+      'expiry_date': DateTime.now().add(Duration(days: 30)).toIso8601String().split('T')[0],
     };
   }
 }
@@ -100,7 +106,30 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
   @override
   void initState() {
     super.initState();
-    fetchProducts();
+    _initializeToken();
+  }
+
+  Future<void> _initializeToken() async {
+    String? effectiveToken = widget.token;
+
+    if (effectiveToken == null || effectiveToken.isEmpty) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        effectiveToken = prefs.getString('auth_token');
+        print('Retrieved token from SharedPreferences: ${effectiveToken != null ? effectiveToken.substring(0, effectiveToken.length > 20 ? 20 : effectiveToken.length) + '...' : 'null'}');
+      } catch (e) {
+        print('Error retrieving token from SharedPreferences: $e');
+      }
+    }
+
+    if (effectiveToken != null && effectiveToken.isNotEmpty) {
+      await fetchProducts();
+    } else {
+      setState(() {
+        errorMessage = 'Authentication token not available. Please login again.';
+        isLoading = false;
+      });
+    }
   }
 
   Future<void> fetchProducts() async {
@@ -117,9 +146,20 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         'Accept': 'application/json',
       };
 
-      if (widget.token != null && widget.token!.isNotEmpty) {
-        headers['Authorization'] = 'Bearer ${widget.token}';
-        print('Token being used: ${widget.token!.substring(0, widget.token!.length > 20 ? 20 : widget.token!.length)}...'); // Debug print
+
+      String? effectiveToken = widget.token;
+      if (effectiveToken == null || effectiveToken.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          effectiveToken = prefs.getString('auth_token');
+        } catch (e) {
+          print('Error retrieving token from SharedPreferences: $e');
+        }
+      }
+
+      if (effectiveToken != null && effectiveToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
+        print('Token being used: ${effectiveToken.substring(0, effectiveToken.length > 20 ? 20 : effectiveToken.length)}...'); // Debug print
       } else {
         print('No token available'); // Debug print
         setState(() {
@@ -276,8 +316,19 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         'Accept': 'application/json',
       };
 
-      if (widget.token != null && widget.token!.isNotEmpty) {
-        headers['Authorization'] = 'Bearer ${widget.token}';
+      // Get effective token (from widget or SharedPreferences)
+      String? effectiveToken = widget.token;
+      if (effectiveToken == null || effectiveToken.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          effectiveToken = prefs.getString('auth_token');
+        } catch (e) {
+          print('Error retrieving token from SharedPreferences: $e');
+        }
+      }
+
+      if (effectiveToken != null && effectiveToken.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       } else {
         setState(() {
           errorMessage = 'Authentication token not available. Please login again.';
@@ -286,14 +337,17 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         return;
       }
 
-      // Create updated product with the new image URL
+      // Create updated product with the correct API format
       final updatedProductData = {
         'name': product.name,
         'description': product.description,
-        'price': product.price,
+        'current_price': product.price.toStringAsFixed(2), // Use 'current_price' as per API format
         'quantity': product.quantity,
         'category': product.category,
         'images': imageUrl,
+        'status': 'available',
+        'harvest_date': DateTime.now().toIso8601String().split('T')[0],
+        'expiry_date': DateTime.now().add(Duration(days: 30)).toIso8601String().split('T')[0],
       };
 
       print('Updating product with ID: ${product.id}');
@@ -314,6 +368,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
 
       print('Update response status: ${response.statusCode}');
       print('Update response body: ${response.body}');
+
+      // Log the full response for debugging
+      print('Full response headers: ${response.headers}');
+      print('Request URL: $uri');
+      print('Request headers: $headers');
+      print('Request body: ${jsonEncode(updatedProductData)}');
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Refresh the product list
@@ -347,6 +407,30 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             content: Text('Access denied. You don\'t have permission to update this product.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 3),
+          ),
+        );
+      } else if (response.statusCode == 400) {
+        // Handle 400 Bad Request specifically
+        String errorDetail = 'Invalid request data. Please check your input.';
+        try {
+          if (response.body.isNotEmpty) {
+            final errorData = jsonDecode(response.body);
+            errorDetail = errorData['message'] ?? errorData['error'] ?? errorDetail;
+            print('Server validation error: $errorData');
+          }
+        } catch (e) {
+          errorDetail = 'Invalid request format. Please check all fields.';
+        }
+
+        setState(() {
+          errorMessage = errorDetail;
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorDetail),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
           ),
         );
       } else if (response.statusCode == 404) {

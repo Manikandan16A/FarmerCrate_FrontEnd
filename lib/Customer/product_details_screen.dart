@@ -4,12 +4,19 @@ import 'package:http/http.dart' as http;
 import 'navigation_utils.dart';
 import 'Cart.dart';
 import 'payment.dart';
+import '../utils/cloudinary_upload.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
   final String token;
+  final Map<String, dynamic>? productData; // Add this to pass product data directly
 
-  const ProductDetailScreen({Key? key, required this.productId, required this.token}) : super(key: key);
+  const ProductDetailScreen({
+    Key? key, 
+    required this.productId, 
+    required this.token,
+    this.productData,
+  }) : super(key: key);
 
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
@@ -39,6 +46,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     _slideAnimation = Tween<Offset>(begin: Offset(0, 0.3), end: Offset.zero).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
+    
+    // Always fetch fresh data from API
     fetchProductDetail();
   }
 
@@ -53,30 +62,81 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
       isLoading = true;
       error = null;
     });
+    
     try {
+      print('Fetching product details for ID: ${widget.productId}');
+      
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/products/${widget.productId}'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ${widget.token}',
+          if (widget.token.isNotEmpty) 'Authorization': 'Bearer ${widget.token}',
+        },
+      ).timeout(
+        Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout. Please check your internet connection.');
         },
       );
+      
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body}');
+      
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('Parsed Response Data: $responseData');
+        
+        // Handle different response formats
+        Map<String, dynamic>? productInfo;
+        if (responseData['data'] != null) {
+          productInfo = responseData['data'];
+        } else if (responseData['product'] != null) {
+          productInfo = responseData['product'];
+        } else if (responseData is Map<String, dynamic>) {
+          productInfo = responseData;
+        }
+        
+        if (productInfo != null && productInfo.isNotEmpty) {
+          setState(() {
+            productData = productInfo;
+            isLoading = false;
+            error = null;
+          });
+          _animationController.forward();
+        } else {
+          throw Exception('Product data not found in response');
+        }
+      } else if (response.statusCode == 404) {
         setState(() {
-          productData = jsonDecode(response.body)['data'];
+          error = 'Product not found';
           isLoading = false;
+          productData = null;
         });
-        _animationController.forward();
+      } else if (response.statusCode == 401) {
+        setState(() {
+          error = 'Authentication required. Please login again.';
+          isLoading = false;
+          productData = null;
+        });
+      } else if (response.statusCode == 500) {
+        setState(() {
+          error = 'Server error. Please try again later.';
+          isLoading = false;
+          productData = null;
+        });
       } else {
         setState(() {
           error = 'Failed to load product details (${response.statusCode})';
           isLoading = false;
+          productData = null;
         });
       }
     } catch (e) {
+      print('Error fetching product details: $e');
       setState(() {
-        error = 'Error: $e';
+        error = 'Network error: ${e.toString()}';
         isLoading = false;
+        productData = null;
       });
     }
   }
@@ -86,6 +146,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
       return 'Not Available';
     }
     return value.toString();
+  }
+
+  String _getOptimizedImageUrl(String imageUrl, {int? width, int? height}) {
+    if (imageUrl.isEmpty || imageUrl == 'null') return '';
+    
+    // Use Cloudinary optimization for better performance
+    return CloudinaryUploader.optimizeImageUrl(
+      imageUrl,
+      width: width ?? 400,
+      height: height ?? 400,
+      quality: 'auto',
+      format: 'auto',
+    );
   }
 
   Future<void> _addToCart() async {
@@ -305,39 +378,74 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
         ),
       ),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.error_outline, size: 80, color: Colors.white),
-            SizedBox(height: 20),
-            Text(
-              'Oops! Something went wrong',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              error!,
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: fetchProductDetail,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.red[600],
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 80, color: Colors.white),
+              SizedBox(height: 20),
+              Text(
+                'Failed to Load Product',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              child: Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
+              SizedBox(height: 10),
+              Text(
+                error ?? 'Something went wrong while loading product details.',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Product ID: ${widget.productId}',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        side: BorderSide(color: Colors.white, width: 2),
+                      ),
+                    ),
+                    child: Text('Go Back', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        isLoading = true;
+                        error = null;
+                      });
+                      fetchProductDetail();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.red[600],
+                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: Text('Retry', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -364,28 +472,32 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
   }
 
   Widget _buildProductDetail() {
-    return CustomScrollView(
-      slivers: [
-        _buildSliverAppBar(),
-        SliverToBoxAdapter(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Column(
-                children: [
-                  _buildProductInfo(),
-                  _buildProductStats(),
-                  _buildFarmerSection(),
-                  SizedBox(height: 100), // Space for bottom bar
-                ],
+    return RefreshIndicator(
+      onRefresh: fetchProductDetail,
+      child: CustomScrollView(
+        slivers: [
+          _buildSliverAppBar(),
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: Column(
+                  children: [
+                    _buildProductInfo(),
+                    _buildProductStats(),
+                    _buildFarmerSection(),
+                    SizedBox(height: 100), // Space for bottom bar
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
 
   Widget _buildSliverAppBar() {
     return SliverAppBar(
@@ -411,7 +523,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      actions: [],
+      actions: [
+        if (isLoading)
+          Container(
+            margin: EdgeInsets.all(8),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          )
+        else
+          Container(
+            margin: EdgeInsets.all(8),
+            child: IconButton(
+              icon: Icon(Icons.refresh, color: Colors.white),
+              onPressed: fetchProductDetail,
+              tooltip: 'Refresh',
+            ),
+          ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -425,12 +561,40 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
               ? Stack(
             children: [
               Image.network(
-                productData!['images'],
+                _getOptimizedImageUrl(
+                  productData!['images'],
+                  width: 400,
+                  height: 400,
+                ),
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          : null,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    ),
+                  );
+                },
                 errorBuilder: (context, error, stackTrace) => Center(
-                  child: Icon(Icons.eco, size: 100, color: Colors.green[400]),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.eco, size: 100, color: Colors.green[400]),
+                      SizedBox(height: 8),
+                      Text(
+                        'Image not available',
+                        style: TextStyle(
+                          color: Colors.green[600],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               Container(
@@ -448,7 +612,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
             ],
           )
               : Center(
-            child: Icon(Icons.eco, size: 120, color: Colors.green[400]),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.eco, size: 120, color: Colors.green[400]),
+                SizedBox(height: 8),
+                Text(
+                  'No image available',
+                  style: TextStyle(
+                    color: Colors.green[600],
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -564,15 +741,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
                   title: 'Views',
                   value: getField(productData!['views']),
                   color: Colors.orange,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _buildInfoCard(
-                  icon: Icons.check_circle,
-                  title: 'Status',
-                  value: getField(productData!['status']),
-                  color: Colors.green,
                 ),
               ),
             ],

@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'Admin/requstaccept.dart';
+import '../Admin/requstaccept.dart';
+import '../Customer/customerhomepage.dart';
+import '../Farmer/homepage.dart';
+import '../Transpoter/transpoter_dashboard.dart';
+import '../delivery/delivery_dashboard.dart';
 import 'Forget.dart';
 import 'Signup.dart';
-
-import 'Customer/customerhomepage.dart';
-import 'Farmer/homepage.dart';
-import 'Transpoter/transpoter_dashboard.dart';
-import 'delivery/delivery_dashboard.dart';
-import 'delivery/delivery_password_change.dart';
-
+import 'customerFTL.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -75,7 +73,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           Uri.parse('https://farmercrate.onrender.com/api/auth/login'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'username': _usernameController.text,
+            'username': _usernameController.text.trim(),
             'password': _passwordController.text,
           }),
         );
@@ -87,118 +85,73 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
 
-          // Debug: Print full response for troubleshooting
-          print('Full response data: $responseData');
-          print('Response keys: ${responseData.keys.toList()}');
-
-          // Check if this is a first login that requires password change
-          if (responseData['requiresPasswordChange'] == true) {
-            // Handle first login for delivery person
-            final tempToken = responseData['tempToken'];
-
-            print('First login detected - tempToken: $tempToken');
-
-            // Validate required data
-            if (tempToken == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Invalid server response. Missing tempToken.'),
-                  backgroundColor: Colors.red,
+          // Check if OTP verification is required for first-time customer login
+          if (responseData['requiresOTP'] == true) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OTPVerificationPage(
+                  email: responseData['email'],
+                  tempToken: responseData['tempToken'],
+                  userName: _usernameController.text.trim(),
                 ),
-              );
-              return;
-            }
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('First login detected. Please change your password.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-
-            // Navigate to password change screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeliveryPasswordChangeScreen(
-                  tempToken: tempToken,
-                ),
-              ),
-            );
-            return;
-          }
-
-          // Normal login flow
-          final token = responseData['token'];
-          final user = responseData['user'];
-
-          // Validate required data
-          if (token == null || user == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Invalid server response. Missing token or user data.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-
-          // Debug: Print user role for troubleshooting
-          print('User role: ${user['role']}');
-          print('User data: $user');
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Login Successful! Welcome, ${user['role']?.toUpperCase()}'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          if (user['role'] == 'farmer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => FarmersHomePage(token: token),
-              ),
-            );
-          } else if (user['role'] == 'customer') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CustomerHomePage(token: token),
-              ),
-            );
-          } else if (user['role'] == 'transporter') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransporterDashboard(token: token),
-              ),
-            );
-          } else if (user['role'] == 'delivery') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DeliveryDashboard(token: token, user: user),
-              ),
-            );
-          } else if (user['role'] == 'admin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdminManagementPage(user: user, token: token),
               ),
             );
           } else {
-            // Unknown role - show error and stay on login page
+            // Normal login success - existing logic
+            final token = responseData['token'];
+            final user = responseData['user'];
+
+            // Debug: Print user role for troubleshooting
+            print('User role: ${user['role']}');
+            print('User data: $user');
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Unknown user role: ${user['role']}. Please contact support.'),
-                backgroundColor: Colors.orange,
-                duration: Duration(seconds: 5),
+                content: Text('Login Successful! Welcome, ${user['role']?.toUpperCase()}'),
+                backgroundColor: Colors.green,
               ),
             );
-            print('Unknown user role: ${user['role']}');
+
+            if (user['role'] == 'farmer') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FarmersHomePage(token: token),
+                ),
+              );
+            } else if (user['role'] == 'customer') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CustomerHomePage(token: token),
+                ),
+              );
+            } else if (user['role'] == 'transporter') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TransporterApp(customerId: 1,),
+                ),
+              );
+            } else if (user['role'] == 'admin') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AdminManagementPage(user: user, token: token),
+                ),
+              );
+            } else {
+              // Unknown role - show error and stay on login page
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Unknown user role: ${user['role']}. Please contact support.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 5),
+                ),
+              );
+              print('Unknown user role: ${user['role']}');
+            }
           }
         } else {
           String errorMessage = 'Invalid credentials';
@@ -221,21 +174,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         setState(() {
           _isLoading = false;
         });
-
-        // Check if it's a network error
-        String errorMessage = 'Error: $e';
-        if (e.toString().contains('SocketException') ||
-            e.toString().contains('HandshakeException') ||
-            e.toString().contains('Connection refused') ||
-            e.toString().contains('Network is unreachable')) {
-          errorMessage = 'Please use network to login';
-        }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -398,7 +340,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                         return 'Please enter your username';
                                       }
                                       if (value.length > 20) {
-                                        return 'Username must be 20 or fewer characters';
+                                        return 'Username must be 8 or fewer characters';
                                       }
                                       if (!RegExp(r'^[a-zA-Z0-9]+$').hasMatch(value)) {
                                         return 'Only letters and numbers allowed';
@@ -416,8 +358,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter your password';
                                       }
-                                      if (value.length < 8) {
-                                        return 'Password must be at least 8 characters';
+                                      if (value.length > 8) {
+                                        return 'Password must be 8 or fewer characters';
                                       }
                                       return null;
                                     },
