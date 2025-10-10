@@ -98,7 +98,7 @@ class _CartPageState extends State<CartPage> {
       }
 
       print('Fetching cart items with token: ${_token!.substring(0, 10)}...');
-      
+
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
@@ -106,15 +106,15 @@ class _CartPageState extends State<CartPage> {
           'Content-Type': 'application/json',
         },
       );
-      
+
       print('Cart API Response Status: ${response.statusCode}');
       print('Cart API Response Body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final dynamic itemsData = data['data'] ?? [];
         print('Cart items data: $itemsData');
-        
+
         setState(() {
           if (itemsData is List) {
             _cartItems = itemsData.map((json) => CartItem.fromJson(json)).toList();

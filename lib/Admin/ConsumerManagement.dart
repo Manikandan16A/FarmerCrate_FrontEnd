@@ -35,9 +35,10 @@ class Customer {
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
+    print('Customer JSON: $json');
     return Customer(
-      id: json['id'],
-      customerName: json['customer_name'] ?? 'Unknown',
+      id: json['customer_id'] ?? json['id'] ?? 0,
+      customerName: json['name'] ?? json['customer_name'] ?? 'Unknown',
       mobileNumber: json['mobile_number'] ?? 'N/A',
       email: json['email'] ?? 'N/A',
       address: json['address'] ?? 'N/A',
@@ -83,9 +84,9 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
     try {
       print('=== Fetching Customers ===');
       print('Token: ${widget.token}');
-      
+
       final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/customers/all'),
+        Uri.parse('https://farmercrate.onrender.com/api/admin/customers'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
@@ -98,18 +99,18 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('Parsed data: $data');
-        
+
         if (data['success'] == true && data['data'] != null) {
           final List<dynamic> customerList = data['data'] as List;
           print('Found ${customerList.length} customers');
-          
+
           setState(() {
             customers = customerList
                 .map((customerJson) => Customer.fromJson(customerJson))
                 .toList();
             _isLoading = false;
           });
-          
+
           print('Successfully loaded ${customers.length} customers');
 
         } else {
@@ -142,6 +143,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
 
   Future<void> _deleteCustomer(int customerId) async {
     try {
+      print('Deleting customer with ID: $customerId');
       final response = await http.delete(
         Uri.parse('https://farmercrate.onrender.com/api/admin/customers/$customerId'),
         headers: {
@@ -196,7 +198,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -205,6 +207,7 @@ class _CustomerManagementScreenState extends State<CustomerManagementScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
               child: const Text('Delete'),
             ),

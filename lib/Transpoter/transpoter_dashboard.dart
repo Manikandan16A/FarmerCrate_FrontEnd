@@ -366,7 +366,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
                 child: const Icon(Icons.analytics, color: Colors.white, size: 20),
               ),
               title: const Text(
-                'Analytics',
+                'Qr Scan',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -478,7 +478,7 @@ class _TransporterDashboardState extends State<TransporterDashboard>
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics, size: 24),
-            label: 'Analytics',
+            label: 'Qr Scan',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings, size: 24),
