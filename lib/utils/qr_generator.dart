@@ -7,7 +7,7 @@ class QRGenerator {
   static Future<String?> generateOrderQR(Map<String, dynamic> orderData) async {
     try {
       print('Generating QR code for order data: $orderData');
-      
+
       // Create compact JSON string for QR code (easier to scan)
       final qrJson = {
         'order_id': orderData['order_id'],
@@ -17,7 +17,7 @@ class QRGenerator {
         'zone': orderData['zone'],
         'pincode': orderData['pincode'],
       };
-      
+
       String qrData = qrJson.toString();
       print('QR data string: $qrData');
 
@@ -43,7 +43,7 @@ class QRGenerator {
           print('Failed to generate QR image data');
           return null;
         }
-        
+
         final buffer = picData.buffer.asUint8List();
         print('QR image buffer size: ${buffer.length}');
 
@@ -52,13 +52,13 @@ class QRGenerator {
         final fileName = 'qr_${orderData['order_id'] ?? DateTime.now().millisecondsSinceEpoch}.png';
         final file = File('${tempDir.path}/$fileName');
         await file.writeAsBytes(buffer);
-        
+
         print('QR image saved to: ${file.path}');
 
         // Upload to Cloudinary
         final cloudinaryUrl = await CloudinaryUploader.uploadImage(file);
         print('Cloudinary upload result: $cloudinaryUrl');
-        
+
         // Clean up temporary file
         try {
           await file.delete();
@@ -66,7 +66,7 @@ class QRGenerator {
         } catch (e) {
           print('Failed to delete temporary file: $e');
         }
-        
+
         return cloudinaryUrl;
       } else {
         print('QR validation failed: ${qrValidationResult.status}');
