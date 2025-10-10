@@ -141,32 +141,31 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     print('Delete confirmation - id: ${user.id}, uniqueId: ${user.uniqueId}');
     final deleteId = user.id.isNotEmpty ? user.id : user.uniqueId;
     print('Will use ID: $deleteId');
-
     showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Farmer'),
-          content: Text('Are you sure you want to delete farmer "${user.name}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _deleteUser(deleteId);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
+    context: context,
+    builder: (BuildContext context) {
+    return AlertDialog(
+    title: const Text('Delete Farmer'),
+    content: Text('Are you sure you want to delete farmer "${user.name}"?'),
+    actions: [
+    TextButton(
+    onPressed: () => Navigator.of(context).pop(),
+    child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+    ),
+    ElevatedButton(
+    onPressed: () {
+    Navigator.of(context).pop();
+    _deleteUser(deleteId);
+    },
+    style: ElevatedButton.styleFrom(
+    backgroundColor: Colors.red,
+    foregroundColor: Colors.white,
+    ),
+    child: const Text('Delete'),
+    ),
+    ],
+    );
+    },
     );
   }
 

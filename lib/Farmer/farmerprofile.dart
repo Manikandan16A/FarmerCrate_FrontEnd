@@ -176,62 +176,59 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+    if (data['success'] == true && data['data'] != null) {
+    final farmerData = data['data'];
+    setState(() {
+    _nameController.text = farmerData['name']?.toString() ?? '';
+    _emailController.text = farmerData['email']?.toString() ?? '';
+    _phoneController.text = farmerData['mobile_number']?.toString() ?? '';
+    _addressController.text = farmerData['address']?.toString() ?? '';
+    _zoneController.text = farmerData['zone']?.toString() ?? '';
+    // Handle state with proper case conversion
+    String? stateValue = farmerData['state']?.toString();
+    if (stateValue != null && stateValue.isNotEmpty) {
+    _selectedState = _southStates.contains(stateValue) ? stateValue : null;
+    } else {
+    _selectedState = null;
+    }
 
-        if (data['success'] == true && data['data'] != null) {
-          final farmerData = data['data'];
-          setState(() {
-            _nameController.text = farmerData['name']?.toString() ?? '';
-            _emailController.text = farmerData['email']?.toString() ?? '';
-            _phoneController.text = farmerData['mobile_number']?.toString() ?? '';
-            _addressController.text = farmerData['address']?.toString() ?? '';
-            _zoneController.text = farmerData['zone']?.toString() ?? '';
+    String? districtValue = farmerData['district']?.toString();
+    if (districtValue != null && districtValue.isNotEmpty) {
+    _selectedDistrict = _tamilNaduDistricts.contains(districtValue) ? districtValue : null;
+    } else {
+    _selectedDistrict = null;
+    }
 
-            // Handle state with proper case conversion
-            String? stateValue = farmerData['state']?.toString();
-            if (stateValue != null && stateValue.isNotEmpty) {
-              _selectedState = _southStates.contains(stateValue) ? stateValue : null;
-            } else {
-              _selectedState = null;
-            }
-
-
-            String? districtValue = farmerData['district']?.toString();
-            if (districtValue != null && districtValue.isNotEmpty) {
-              _selectedDistrict = _tamilNaduDistricts.contains(districtValue) ? districtValue : null;
-            } else {
-              _selectedDistrict = null;
-            }
-
-            _farmerImageUrl = farmerData['image_url']?.toString();
-          });
-          _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
-        } else {
-          throw Exception('Invalid data format received from server');
-        }
-      } else if (response.statusCode == 401) {
-        _showSnackBar('Authentication failed. Please login again.', Colors.red);
-        // Handle token expiration - navigate to login
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => LoginPage()),
-              (route) => false,
-        );
-      } else if (response.statusCode == 404) {
-        _showSnackBar('Profile not found. Please contact support.', Colors.orange);
-        print('404 Error: Endpoint not found or profile does not exist');
-      } else {
-        _showSnackBar('Failed to load profile. Error: ${response.statusCode}', Colors.red);
-        print('Error ${response.statusCode}: ${response.body}');
-      }
+    _farmerImageUrl = farmerData['image_url']?.toString();
+    });
+    _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
+    } else {
+    throw Exception('Invalid data format received from server');
+    }
+    } else if (response.statusCode == 401) {
+    _showSnackBar('Authentication failed. Please login again.', Colors.red);
+    // Handle token expiration - navigate to login
+    Navigator.pushAndRemoveUntil(
+    context,
+    MaterialPageRoute(builder: (context) => LoginPage()),
+    (route) => false,
+    );
+    } else if (response.statusCode == 404) {
+    _showSnackBar('Profile not found. Please contact support.', Colors.orange);
+    print('404 Error: Endpoint not found or profile does not exist');
+    } else {
+    _showSnackBar('Failed to load profile. Error: ${response.statusCode}', Colors.red);
+    print('Error ${response.statusCode}: ${response.body}');
+    }
     } catch (e) {
-      print('Error loading profile: $e');
-      _showSnackBar('Error loading profile: ${e.toString()}', Colors.red);
+    print('Error loading profile: $e');
+    _showSnackBar('Error loading profile: ${e.toString()}', Colors.red);
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    if (mounted) {
+    setState(() {
+    _isLoading = false;
+    });
+    }
     }
   }
 
@@ -678,24 +675,23 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           },
           body: jsonEncode(updateData),
         );
-
-        if (response.statusCode == 200) {
-          setState(() {
-            _isEditMode = false;
-          });
-          _showSnackBar('Profile updated successfully!', Colors.green[600]!);
-          _fetchFarmerProfile();
-        } else {
-          _showSnackBar('Failed to update profile: ${response.statusCode}', Colors.red);
-        }
-      } catch (e) {
-        _showSnackBar('Error: $e', Colors.red);
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    if (response.statusCode == 200) {
+    setState(() {
+    _isEditMode = false;
+    });
+    _showSnackBar('Profile updated successfully!', Colors.green[600]!);
+    _fetchFarmerProfile();
+    } else {
+    _showSnackBar('Failed to update profile: ${response.statusCode}', Colors.red);
     }
+    } catch (e) {
+    _showSnackBar('Error: $e', Colors.red);
+    } finally {
+    setState(() {
+    _isLoading = false;
+    });
+    }
+  }
   }
 
   @override
@@ -1157,18 +1153,18 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
-          filled: true,
-          fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
-          labelStyle: TextStyle(
-            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-          counterText: maxLength != null ? null : "",
-          contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20, vertical: 18),
-        ),
-      ),
+    filled: true,
+    fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
+    labelStyle: TextStyle(
+    color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+    fontWeight: FontWeight.w600,
+    fontSize: 14,
+    ),
+    counterText: maxLength != null ? null : "",
+    contentPadding: const EdgeInsets.symmetric(
+    horizontal: 20, vertical: 18),
+    ),
+    ),
     );
   }
 
@@ -1184,87 +1180,87 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     final validValue = items.contains(value) ? value : null;
 
     return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: _isEditMode ? [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ] : [],
-      ),
-      child: DropdownButtonFormField<String>(
-        value: validValue, // Use validated value
-        items: items.map((String item) {
-          return DropdownMenuItem<String>(
-            value: item,
-            child: Text(
-              item,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF2D3748),
-              ),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: _isEditMode ? [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
             ),
-          );
-        }).toList(),
-        onChanged: _isEditMode ? onChanged : null,
-        validator: validator,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.green[600]!.withOpacity(0.2),
-                  Colors.green[400]!.withOpacity(0.2),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          ] : [],
+        ),
+        child: DropdownButtonFormField<String>(
+          value: validValue,
+          items: items.map((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(
+                item,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF2D3748),
+                ),
               ),
-              borderRadius: BorderRadius.circular(8),
+            );
+          }).toList(),
+          onChanged: _isEditMode ? onChanged : null,
+          validator: validator,
+          decoration: InputDecoration(
+            labelText: label,
+    prefixIcon: Container(
+    margin: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+    gradient: LinearGradient(
+    colors: [
+    Colors.green[600]!.withOpacity(0.2),
+    Colors.green[400]!.withOpacity(0.2),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.circular(8),
+    ),
+    child: Icon(icon, color: Colors.green[600]!, size: 20),
+    ),
+    border: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(color: Colors.grey.shade200),
+    ),
+    enabledBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(color: Colors.grey.shade200),
+    ),
+    focusedBorder: OutlineInputBorder(
+    borderRadius: BorderRadius.circular(16),
+    borderSide: BorderSide(color: Colors.green[600]!, width: 2),
+    ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
-            child: Icon(icon, color: Colors.green[600]!, size: 20),
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.grey.shade200),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.green[600]!, width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red, width: 2),
-          ),
-          filled: true,
-          fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
-          labelStyle: TextStyle(
-            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-          contentPadding: const EdgeInsets.symmetric(
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.red, width: 2),
+            ),
+            filled: true,
+            fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
+            labelStyle: TextStyle(
+              color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            contentPadding: const EdgeInsets.symmetric(
               horizontal: 20, vertical: 18),
+          ),
+          isExpanded: true,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+          ),
         ),
-        isExpanded: true,
-        icon: Icon(
-          Icons.keyboard_arrow_down_rounded,
-          color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
-        ),
-      ),
     );
   }
 
