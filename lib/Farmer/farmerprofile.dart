@@ -4,8 +4,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../auth/Signin.dart';
 import 'homepage.dart';
-
-import '../Customer/Cart.dart';
 import 'Addproduct.dart';
 import 'contact_admin.dart';
 import 'dart:convert';
@@ -53,7 +51,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     'Puducherry',
   ];
 
-  // Tamil Nadu Districts
+
   final List<String> _tamilNaduDistricts = [
     'Ariyalur',
     'Chengalpattu',
@@ -149,101 +147,92 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   }
 
   Future<void> _fetchFarmerProfile() async {
-    if (widget.token == null) {
+    if (widget.token == null || widget.token!.isEmpty) {
       _showSnackBar('No authentication token found', Colors.red);
       return;
     }
+
     setState(() {
       _isLoading = true;
     });
-    
-    // Try multiple endpoints
-    final endpoints = [
-      'https://farmercrate.onrender.com/api/farmer/me',
-      'https://farmercrate.onrender.com/api/farmers/me',
-      'https://farmercrate.onrender.com/api/farmer/profile',
-    ];
-    
-    for (String endpoint in endpoints) {
-      try {
-        print('Trying endpoint: $endpoint');
-        final response = await http.get(
-          Uri.parse(endpoint),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ${widget.token}',
-          },
-        );
-        print('Farmer profile API Response Status: ${response.statusCode}');
-        print('Farmer profile API Response Body: ${response.body}');
-        
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          print('Parsed data: $data');
-          
-          // Handle different response structures
-          Map<String, dynamic> farmer;
-          if (data['data'] != null) {
-            farmer = data['data'];
-          } else if (data['farmer'] != null) {
-            farmer = data['farmer'];
-          } else {
-            farmer = data;
-          }
-          
-          print('Farmer data: $farmer');
-          
-          setState(() {
-            _nameController.text = farmer['name'] ?? farmer['farmer_name'] ?? '';
-            _emailController.text = farmer['email'] ?? '';
-            _phoneController.text = farmer['mobile_number'] ?? farmer['phone'] ?? '';
-            _addressController.text = farmer['address'] ?? '';
-            _zoneController.text = farmer['zone'] ?? '';
-            _selectedState = farmer['state'] ?? '';
-            _selectedDistrict = farmer['district'] ?? '';
-            _farmerImageUrl = farmer['image_url'] ?? farmer['profile_image_url'];
 
-            // Ensure selected values are in the lists
-            if (_selectedState != null && !_southStates.contains(_selectedState)) {
+    try {
+      // Print token for debugging
+      print('Using token: ${widget.token}');
+
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/farmers/me'),
+        headers: {
+          'Content-Type': 'application/json',
+          // Make sure token format matches what backend expects
+          'Authorization': widget.token!.startsWith('Bearer ')
+              ? widget.token!
+              : 'Bearer ${widget.token}',
+        },
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true && data['data'] != null) {
+          final farmerData = data['data'];
+          setState(() {
+            _nameController.text = farmerData['name']?.toString() ?? '';
+            _emailController.text = farmerData['email']?.toString() ?? '';
+            _phoneController.text = farmerData['mobile_number']?.toString() ?? '';
+            _addressController.text = farmerData['address']?.toString() ?? '';
+            _zoneController.text = farmerData['zone']?.toString() ?? '';
+
+            // Handle state with proper case conversion
+            String? stateValue = farmerData['state']?.toString();
+            if (stateValue != null && stateValue.isNotEmpty) {
+              _selectedState = _southStates.contains(stateValue) ? stateValue : null;
+            } else {
               _selectedState = null;
             }
-            if (_selectedDistrict != null &&
-                !_tamilNaduDistricts.contains(_selectedDistrict)) {
+
+
+            String? districtValue = farmerData['district']?.toString();
+            if (districtValue != null && districtValue.isNotEmpty) {
+              _selectedDistrict = _tamilNaduDistricts.contains(districtValue) ? districtValue : null;
+            } else {
               _selectedDistrict = null;
             }
+
+            _farmerImageUrl = farmerData['image_url']?.toString();
           });
-          _showSnackBar('Profile loaded successfully!', const Color(0xFF1976D2));
-          return; // Success, exit the loop
-        } else if (response.statusCode == 404) {
-          print('Endpoint $endpoint not found (404), trying next...');
-          continue; // Try next endpoint
+          _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
         } else {
-          print('Endpoint $endpoint failed with status ${response.statusCode}: ${response.body}');
-          continue; // Try next endpoint
+          throw Exception('Invalid data format received from server');
         }
-      } catch (e) {
-        print('Error with endpoint $endpoint: $e');
-        continue; // Try next endpoint
+      } else if (response.statusCode == 401) {
+        _showSnackBar('Authentication failed. Please login again.', Colors.red);
+        // Handle token expiration - navigate to login
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+              (route) => false,
+        );
+      } else if (response.statusCode == 404) {
+        _showSnackBar('Profile not found. Please contact support.', Colors.orange);
+        print('404 Error: Endpoint not found or profile does not exist');
+      } else {
+        _showSnackBar('Failed to load profile. Error: ${response.statusCode}', Colors.red);
+        print('Error ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('Error loading profile: $e');
+      _showSnackBar('Error loading profile: ${e.toString()}', Colors.red);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
-    
-    // If all endpoints failed, show default values
-    print('All farmer profile endpoints failed. Setting default values.');
-    _showSnackBar('Profile endpoints not available. Using default values.', Colors.orange);
-    setState(() {
-      _nameController.text = 'New Farmer';
-      _emailController.text = 'farmer@example.com';
-      _phoneController.text = '';
-      _addressController.text = '';
-      _zoneController.text = '';
-      _selectedState = null;
-      _selectedDistrict = null;
-      _farmerImageUrl = null;
-    });
-    
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   void _showSnackBar(String message, Color color) {
@@ -304,8 +293,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+                    gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -364,7 +352,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           _enableEditMode();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1976D2),
+                          backgroundColor: Colors.green[600]!,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -393,7 +381,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       _isEditMode = true;
     });
     _showSnackBar('Edit mode enabled. You can now modify your profile.',
-        const Color(0xFF2E7D32));
+        Colors.green[600]!);
   }
 
   void _cancelEdit() {
@@ -448,7 +436,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           child: Wrap(
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFF2E7D32)),
+                leading: Icon(Icons.camera_alt, color: Colors.green[600]!),
                 title: const Text('Take Photo'),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
@@ -463,7 +451,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFF2E7D32)),
+                leading: Icon(Icons.photo_library, color: Colors.green[600]!),
                 title: const Text('Choose from Gallery'),
                 onTap: () async {
                   Navigator.pop(context); // Close the bottom sheet
@@ -478,7 +466,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.cancel, color: Color(0xFF2E7D32)),
+                leading: Icon(Icons.cancel, color: Colors.green[600]!),
                 title: const Text('Cancel'),
                 onTap: () {
                   Navigator.pop(context); // Close the bottom sheet
@@ -517,7 +505,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     };
     try {
       final response = await http.put(
-        Uri.parse('https://farmercrate.onrender.com/api/farmer/me'),
+        Uri.parse('https://farmercrate.onrender.com/api/farmers/me'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
@@ -530,7 +518,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           _profileImage = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile photo updated'), backgroundColor: Color(0xFF2E7D32)),
+          SnackBar(content: Text('Profile photo updated'), backgroundColor: Colors.green[600]!),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -573,8 +561,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+                    gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -633,7 +620,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           _saveProfile();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1976D2),
+                          backgroundColor: Colors.green[600]!,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -683,50 +670,23 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         'image_url': imageUrl,
       };
       try {
-        print('Updating farmer profile with data: $updateData');
-        
-        // Try multiple endpoints for update
-        final updateEndpoints = [
-          'https://farmercrate.onrender.com/api/farmer/me',
-          'https://farmercrate.onrender.com/api/farmers/me',
-          'https://farmercrate.onrender.com/api/farmer/profile',
-        ];
-        
-        bool updateSuccess = false;
-        for (String endpoint in updateEndpoints) {
-          try {
-            print('Trying update endpoint: $endpoint');
-            final response = await http.put(
-              Uri.parse(endpoint),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ${widget.token}',
-              },
-              body: jsonEncode(updateData),
-            );
-            print('Farmer profile update response status: ${response.statusCode}');
-            print('Farmer profile update response body: ${response.body}');
-            
-            if (response.statusCode == 200) {
-              setState(() {
-                _isEditMode = false;
-              });
-              _showSnackBar('Profile updated successfully!', const Color(0xFF2E7D32));
-              _fetchFarmerProfile();
-              updateSuccess = true;
-              break; // Success, exit the loop
-            } else {
-              print('Update failed with status ${response.statusCode}: ${response.body}');
-              continue; // Try next endpoint
-            }
-          } catch (e) {
-            print('Error with update endpoint $endpoint: $e');
-            continue; // Try next endpoint
-          }
-        }
-        
-        if (!updateSuccess) {
-          _showSnackBar('Failed to update profile. All endpoints failed.', Colors.red);
+        final response = await http.put(
+          Uri.parse('https://farmercrate.onrender.com/api/farmers/me'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ${widget.token}',
+          },
+          body: jsonEncode(updateData),
+        );
+
+        if (response.statusCode == 200) {
+          setState(() {
+            _isEditMode = false;
+          });
+          _showSnackBar('Profile updated successfully!', Colors.green[600]!);
+          _fetchFarmerProfile();
+        } else {
+          _showSnackBar('Failed to update profile: ${response.statusCode}', Colors.red);
         }
       } catch (e) {
         _showSnackBar('Error: $e', Colors.red);
@@ -741,129 +701,36 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: _isLoading ? _buildLoadingWidget() : _buildProfileForm(),
-              ),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
+      appBar: _buildAppBar(),
       drawer: _buildSideNav(),
+      body: _isLoading ? _buildLoadingWidget() : _buildProfileForm(),
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 200.0,
-      floating: false,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -50,
-                right: -50,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.1),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -30,
-                left: -30,
-                child: Container(
-                  width: 150,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.05),
-                  ),
-                ),
-              ),
-              const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 40),
-                    Icon(
-                      Icons.agriculture,
-                      color: Colors.white,
-                      size: 50,
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Farmer Profile',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Manage your farming profile',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 5,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: Icon(Icons.menu, color: Colors.green[800]),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      title: Text(
+        'Farmer Profile',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
         ),
       ),
       actions: [
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _fetchFarmerProfile,
-            tooltip: 'Refresh Profile',
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.only(right: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: Icon(_isEditMode ? Icons.close_rounded : Icons.edit_outlined,
-                color: Colors.white),
-            onPressed: _isEditMode ? _cancelEdit : _showEditConfirmation,
-            tooltip: _isEditMode ? 'Cancel Edit' : 'Edit Profile',
-          ),
+        IconButton(
+          icon: Icon(_isEditMode ? Icons.close_rounded : Icons.edit_outlined, color: Colors.green[800]),
+          onPressed: _isEditMode ? _cancelEdit : _showEditConfirmation,
         ),
       ],
     );
@@ -889,8 +756,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                   ),
                 ],
               ),
-              child: const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1976D2)),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
                 strokeWidth: 3,
               ),
             ),
@@ -918,21 +785,21 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   }
 
   Widget _buildProfileForm() {
-    return Container(
-      margin: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
             _buildProfileImageSection(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             _buildPersonalInfoCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildContactInfoCard(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             _buildLocationInfoCard(),
             if (_isEditMode) ...[
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               _buildSaveButton(),
             ],
             const SizedBox(height: 100),
@@ -957,7 +824,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         ],
       ),
       child: Column(
-                  children: [
+        children: [
           Stack(
             children: [
               Container(
@@ -965,8 +832,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF1976D2).withOpacity(0.1),
-                      const Color(0xFF2196F3).withOpacity(0.1),
+                      Colors.green[600]!.withOpacity(0.1),
+                      Colors.green[400]!.withOpacity(0.1),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -975,20 +842,19 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 padding: const EdgeInsets.all(4),
                 child: CircleAvatar(
                   radius: 60,
-                      backgroundColor: Colors.white,
-                      backgroundImage: _profileImage != null
-                          ? FileImage(_profileImage!)
+                  backgroundColor: Colors.white,
+                  backgroundImage: _profileImage != null
+                      ? FileImage(_profileImage!)
                       : (_farmerImageUrl != null &&
                       _farmerImageUrl!.isNotEmpty)
-                          ? NetworkImage(_farmerImageUrl!) as ImageProvider
-                          : null,
-                      child: (_profileImage == null &&
-                          (_farmerImageUrl == null || _farmerImageUrl!.isEmpty))
+                      ? NetworkImage(_farmerImageUrl!) as ImageProvider
+                      : null,
+                  child: (_profileImage == null &&
+                      (_farmerImageUrl == null || _farmerImageUrl!.isEmpty))
                       ? Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+                      gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -996,26 +862,25 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                     child: const Icon(
                         Icons.agriculture, size: 60, color: Colors.white),
                   )
-                          : null,
+                      : null,
                 ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _pickImage,
-                        child: Container(
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _pickImage,
+                  child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+                      gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
+                      shape: BoxShape.circle,
+                      boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1976D2).withOpacity(0.3),
+                          color: Colors.green[600]!.withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -1023,11 +888,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                     ),
                     child: const Icon(
                         Icons.camera_alt, size: 20, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           Text(
             _nameController.text.isNotEmpty ? _nameController.text : 'Welcome!',
@@ -1056,30 +921,30 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       title: 'Personal Information',
       icon: Icons.person_outline,
       children: [
-              _buildTextFormField(
-                controller: _nameController,
-                label: 'Full Name',
-                icon: Icons.person_outline,
+        _buildTextFormField(
+          controller: _nameController,
+          label: 'Full Name',
+          icon: Icons.person_outline,
           validator: (value) =>
           value == null || value.isEmpty
               ? 'Please enter your full name'
               : null,
-              ),
+        ),
         const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: _emailController,
-                label: 'Email Address',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
+        _buildTextFormField(
+          controller: _emailController,
+          label: 'Email Address',
+          icon: Icons.email_outlined,
+          keyboardType: TextInputType.emailAddress,
+          validator: (value) {
             if (value == null || value.isEmpty)
               return 'Please enter your email address';
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return 'Please enter a valid email address';
-                  }
-                  return null;
-                },
-              ),
+            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              return 'Please enter a valid email address';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
@@ -1089,23 +954,23 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       title: 'Contact Information',
       icon: Icons.phone_outlined,
       children: [
-              _buildTextFormField(
-                controller: _phoneController,
-                label: 'Phone Number',
-                icon: Icons.phone,
-                keyboardType: TextInputType.phone,
-                maxLength: 10,
-                validator: (value) {
+        _buildTextFormField(
+          controller: _phoneController,
+          label: 'Phone Number',
+          icon: Icons.phone,
+          keyboardType: TextInputType.phone,
+          maxLength: 10,
+          validator: (value) {
             if (value == null || value.isEmpty)
               return 'Please enter your phone number';
             if (value.length != 10)
               return 'Phone number must be exactly 10 digits';
-                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                    return 'Phone number must contain only digits';
-                  }
-                  return null;
-                },
-              ),
+            if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+              return 'Phone number must contain only digits';
+            }
+            return null;
+          },
+        ),
       ],
     );
   }
@@ -1115,9 +980,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       title: 'Location Details',
       icon: Icons.location_on_outlined,
       children: [
-              _buildTextFormField(
-                controller: _addressController,
-                label: 'Address',
+        _buildTextFormField(
+          controller: _addressController,
+          label: 'Address',
           icon: Icons.location_city_outlined,
           validator: (value) =>
           value == null || value.isEmpty
@@ -1125,9 +990,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               : null,
         ),
         const SizedBox(height: 16),
-              _buildTextFormField(
-                controller: _zoneController,
-                label: 'Zone',
+        _buildTextFormField(
+          controller: _zoneController,
+          label: 'Zone',
           icon: Icons.map_outlined,
           validator: (value) =>
           value == null || value.isEmpty
@@ -1135,32 +1000,32 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               : null,
         ),
         const SizedBox(height: 16),
-              _buildDropdownField(
-                value: _selectedState,
-                items: _southStates,
-                label: 'State',
+        _buildDropdownField(
+          value: _selectedState,
+          items: _southStates,
+          label: 'State',
           icon: Icons.flag_outlined,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedState = newValue;
-                  });
-                },
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedState = newValue;
+            });
+          },
           validator: (value) =>
           value == null || value.isEmpty
               ? 'Please select your state'
               : null,
-              ),
+        ),
         const SizedBox(height: 16),
-              _buildDropdownField(
-                value: _selectedDistrict,
-                items: _tamilNaduDistricts,
-                label: 'District',
+        _buildDropdownField(
+          value: _selectedDistrict,
+          items: _tamilNaduDistricts,
+          label: 'District',
           icon: Icons.location_on_outlined,
-                onChanged: (String? newValue) {
-                  setState(() {
-                    _selectedDistrict = newValue;
-                  });
-                },
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedDistrict = newValue;
+            });
+          },
           validator: (value) =>
           value == null || value.isEmpty
               ? 'Please select your district'
@@ -1196,11 +1061,10 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-            gradient: const LinearGradient(
-                colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+                  gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: Colors.white, size: 24),
@@ -1245,62 +1109,62 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         ] : [],
       ),
       child: TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      validator: validator,
-      maxLength: maxLength,
+        controller: controller,
+        keyboardType: keyboardType,
+        validator: validator,
+        maxLength: maxLength,
         readOnly: !_isEditMode,
         style: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w500,
           color: Color(0xFF2D3748),
         ),
-      decoration: InputDecoration(
-        labelText: label,
+        decoration: InputDecoration(
+          labelText: label,
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF1976D2).withOpacity(0.2),
-                  const Color(0xFF2196F3).withOpacity(0.2),
+                  Colors.green[600]!.withOpacity(0.2),
+                  Colors.green[400]!.withOpacity(0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFF1976D2), size: 20),
+            child: Icon(icon, color: Colors.green[600]!, size: 20),
           ),
-        border: OutlineInputBorder(
+          border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
+          ),
+          focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.green[600]!, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        filled: true,
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          filled: true,
           fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
           labelStyle: TextStyle(
-            color: _isEditMode ? const Color(0xFF1976D2) : Colors.grey[600],
-          fontWeight: FontWeight.w600,
+            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+            fontWeight: FontWeight.w600,
             fontSize: 14,
-        ),
-        counterText: maxLength != null ? null : "",
+          ),
+          counterText: maxLength != null ? null : "",
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 20, vertical: 18),
         ),
@@ -1316,6 +1180,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     required void Function(String?) onChanged,
     String? Function(String?)? validator,
   }) {
+    // Ensure value exists in items list
+    final validValue = items.contains(value) ? value : null;
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
@@ -1328,10 +1195,10 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         ] : [],
       ),
       child: DropdownButtonFormField<String>(
-      value: value,
-      items: items.map((String item) {
-        return DropdownMenuItem<String>(
-          value: item,
+        value: validValue, // Use validated value
+        items: items.map((String item) {
+          return DropdownMenuItem<String>(
+            value: item,
             child: Text(
               item,
               style: const TextStyle(
@@ -1340,62 +1207,62 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 color: Color(0xFF2D3748),
               ),
             ),
-        );
-      }).toList(),
+          );
+        }).toList(),
         onChanged: _isEditMode ? onChanged : null,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
           prefixIcon: Container(
             margin: const EdgeInsets.all(12),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  const Color(0xFF1976D2).withOpacity(0.2),
-                  const Color(0xFF2196F3).withOpacity(0.2),
+                  Colors.green[600]!.withOpacity(0.2),
+                  Colors.green[400]!.withOpacity(0.2),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, color: const Color(0xFF1976D2), size: 20),
+            child: Icon(icon, color: Colors.green[600]!, size: 20),
           ),
-        border: OutlineInputBorder(
+          border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.grey.shade200),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide(color: Colors.grey.shade200),
-        ),
-        focusedBorder: OutlineInputBorder(
+          ),
+          focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF1976D2), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.green[600]!, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
-        filled: true,
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          filled: true,
           fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
           labelStyle: TextStyle(
-            color: _isEditMode ? const Color(0xFF1976D2) : Colors.grey[600],
-          fontWeight: FontWeight.w600,
+            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+            fontWeight: FontWeight.w600,
             fontSize: 14,
-        ),
+          ),
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 20, vertical: 18),
-      ),
-      isExpanded: true,
+        ),
+        isExpanded: true,
         icon: Icon(
           Icons.keyboard_arrow_down_rounded,
-          color: _isEditMode ? const Color(0xFF2E7D32) : Colors.grey[600],
+          color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
         ),
       ),
     );
@@ -1407,14 +1274,13 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       height: 60,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1976D2), Color(0xFF2196F3)],
+        gradient: LinearGradient(colors: [Colors.green[600]!, Colors.green[400]!],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1976D2).withOpacity(0.4),
+            color: Colors.green[600]!.withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1472,235 +1338,131 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
   Widget _buildSideNav() {
     return Drawer(
-      child: Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue[50]!, Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.green[600],
             ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue[400]!, Colors.blue[700]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'FarmerCrate',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.agriculture, color: Colors.white, size: 28),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'FarmerCrate',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  _nameController.text.isNotEmpty ? _nameController.text : 'Welcome, Farmer!',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 22,
-                        backgroundImage: (_farmerImageUrl != null && _farmerImageUrl!.isNotEmpty)
-                            ? NetworkImage(_farmerImageUrl!)
-                            : null,
-                        child: (_farmerImageUrl == null || _farmerImageUrl!.isEmpty)
-                            ? Icon(Icons.person, size: 24, color: Colors.blue[700])
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _nameController.text.isNotEmpty ? _nameController.text : 'Welcome, Farmer!',
-                              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _emailController.text.isNotEmpty ? _emailController.text : 'Let\'s grow together',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-            _buildDrawerItem(icon: Icons.home, title: 'Home', onTap: () => _onNavItemTapped(0)),
-            _buildDrawerItem(icon: Icons.add_circle, title: 'Add Product', onTap: () => _onNavItemTapped(1)),
-            _buildDrawerItem(icon: Icons.edit, title: 'Edit Products', onTap: () => _onNavItemTapped(2)),
-            _buildDrawerItem(icon: Icons.contact_mail, title: 'Contact Admin', onTap: () {
+          ),
+          ListTile(
+            leading: Icon(Icons.home, color: Colors.green[600]),
+            title: Text('Home'),
+            onTap: () => _onNavItemTapped(0),
+          ),
+          ListTile(
+            leading: Icon(Icons.add, color: Colors.green[600]),
+            title: Text('Add Product'),
+            onTap: () => _onNavItemTapped(1),
+          ),
+          ListTile(
+            leading: Icon(Icons.edit, color: Colors.green[600]),
+            title: Text('Edit Products'),
+            onTap: () => _onNavItemTapped(2),
+          ),
+          ListTile(
+            leading: Icon(Icons.contact_mail, color: Colors.green[600]),
+            title: Text('Contact Admin'),
+            onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => ContactAdminPage(token: widget.token)),
               );
-            }),
-            _buildDrawerItem(icon: Icons.person, title: 'Profile', onTap: () => _onNavItemTapped(3)),
-            const Divider(color: Colors.blue, thickness: 1),
-            _buildDrawerItem(icon: Icons.logout, title: 'Logout', onTap: () {
+            },
+          ),
+          ListTile(
+            leading: Icon(Icons.person, color: Colors.green[600]),
+            title: Text('Profile'),
+            onTap: () => _onNavItemTapped(3),
+          ),
+          Divider(),
+          ListTile(
+            leading: Icon(Icons.logout, color: Colors.red[600]),
+            title: Text('Logout'),
+            onTap: () {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => LoginPage()),
                     (route) => false,
               );
-            }, isLogout: true),
-          ],
-        ),
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    bool isLogout = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.transparent,
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isLogout ? Colors.red[100] : Colors.blue[100],
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: isLogout ? Colors.red[600] : Colors.blue[600],
-            size: 20,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: isLogout ? Colors.red[600] : Colors.grey[800],
-          ),
-        ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
             spreadRadius: 1,
-            blurRadius: 15,
-            offset: const Offset(0, -5),
+            blurRadius: 10,
+            offset: Offset(0, -2),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.blueGrey,
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: Colors.blue[600],
-          unselectedItemColor: Colors.grey[400],
-          selectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          currentIndex: _currentIndex,
-          elevation: 0,
-          onTap: _onNavItemTapped,
-          items: [
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 0 ? Colors.blue[100] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.home, size: 24),
-              ),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 1 ? Colors.blue[100] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.add_circle, size: 24),
-              ),
-              label: 'Add Product',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 2 ? Colors.blue[100] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.edit, size: 24),
-              ),
-              label: 'Edit Product',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 3 ? Colors.blue[100] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.person, size: 24),
-              ),
-              label: 'Profile',
-            ),
-          ],
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.normal,
         ),
+        currentIndex: _currentIndex,
+        elevation: 0,
+        onTap: _onNavItemTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home, size: 24),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add, size: 24),
+            label: 'Add Product',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.edit, size: 24),
+            label: 'Edit Product',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline, size: 24),
+            label: 'Profile',
+          ),
+        ],
       ),
     );
   }

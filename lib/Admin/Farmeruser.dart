@@ -33,7 +33,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
     try {
       // Fetch only Farmers
       final farmersResponse = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/farmers/all'),
+        Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
@@ -42,9 +42,14 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
 
       if (farmersResponse.statusCode == 200) {
         final data = json.decode(farmersResponse.body);
+        print('Farmers data: ${data['data']}');
         if (data['success'] == true && data['data'] != null) {
           setState(() {
             users = (data['data'] as List).map((json) => UserData.fromJson(json, 'Farmer')).toList();
+            print('Loaded ${users.length} farmers');
+            if (users.isNotEmpty) {
+              print('First farmer - id: ${users[0].id}, uniqueId: ${users[0].uniqueId}');
+            }
             _isLoading = false;
           });
         } else {
@@ -72,6 +77,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
 
   Future<void> _deleteUser(String userId) async {
     try {
+      print('Deleting farmer with ID: $userId');
       final response = await http.delete(
         Uri.parse('https://farmercrate.onrender.com/api/admin/farmers/$userId'),
         headers: {
@@ -80,11 +86,14 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
         },
       );
 
+      print('Delete response status: ${response.statusCode}');
+      print('Delete response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true) {
           setState(() {
-            users.removeWhere((user) => user.id == userId);
+            users.removeWhere((user) => user.uniqueId == userId || user.id == userId);
           });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -102,14 +111,26 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
             backgroundColor: Colors.red,
           ),
         );
+      } else if (response.statusCode == 500) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server error. Please contact administrator.'),
+            backgroundColor: Colors.red,
+          ),
+        );
       } else {
-        throw Exception('Failed to delete farmer');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete: Status ${response.statusCode}'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       print('Error deleting farmer: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error deleting farmer: ${e.toString()}'),
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -117,6 +138,10 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
   }
 
   void _showDeleteConfirmation(UserData user) {
+    print('Delete confirmation - id: ${user.id}, uniqueId: ${user.uniqueId}');
+    final deleteId = user.id.isNotEmpty ? user.id : user.uniqueId;
+    print('Will use ID: $deleteId');
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -126,15 +151,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                _deleteUser(user.id);
+                _deleteUser(deleteId);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
               ),
               child: const Text('Delete'),
             ),
@@ -646,8 +672,8 @@ class UserData {
 
   factory UserData.fromJson(Map<String, dynamic> json, String userType) {
     return UserData(
-      id: json['id'].toString(),
-      uniqueId: json['unique_id'] ?? '',
+      id: json['farmer_id']?.toString() ?? json['id']?.toString() ?? '',
+      uniqueId: json['global_farmer_id']?.toString() ?? json['unique_id']?.toString() ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       mobileNumber: json['mobile_number'] ?? '',
@@ -655,7 +681,7 @@ class UserData {
       zone: json['zone'] ?? '',
       state: json['state'] ?? '',
       district: json['district'] ?? '',
-      verifiedStatus: json['verified_status'] ?? false,
+      verifiedStatus: json['is_verified_by_gov'] ?? false,
       age: json['age'],
       accountNumber: json['account_number'] ?? '',
       ifscCode: json['ifsc_code'] ?? '',

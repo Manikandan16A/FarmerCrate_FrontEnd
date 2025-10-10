@@ -97,7 +97,7 @@ class _CartPageState extends State<CartPage> {
       }
 
       print('Fetching cart items with token: ${_token!.substring(0, 10)}...');
-      
+
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
@@ -105,15 +105,15 @@ class _CartPageState extends State<CartPage> {
           'Content-Type': 'application/json',
         },
       );
-      
+
       print('Cart API Response Status: ${response.statusCode}');
       print('Cart API Response Body: ${response.body}');
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final dynamic itemsData = data['data'] ?? [];
         print('Cart items data: $itemsData');
-        
+
         setState(() {
           if (itemsData is List) {
             _cartItems = itemsData.map((json) => CartItem.fromJson(json)).toList();
@@ -556,10 +556,8 @@ class _CartPageState extends State<CartPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: selectedCount > 0 ? () async {
+                    onPressed: selectedCount > 0 ? () {
                       final selectedItems = _cartItems.where((item) => item.isSelected).toList();
-                      String userAddress = await _fetchUserAddress();
-                      String userPhone = await _fetchUserPhone();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -570,14 +568,13 @@ class _CartPageState extends State<CartPage> {
                               'price': item.price,
                               'quantity': item.quantity,
                               'images': item.images,
+                              'product_id': item.productId,
+                              'id': item.productId,
                             }).toList(),
-                            userAddress: userAddress,
-                            userPhone: userPhone,
                             token: widget.token,
                           ),
                         ),
                       );
-
                     } : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[600],
@@ -614,42 +611,7 @@ class _CartPageState extends State<CartPage> {
   }
 
 
-  Future<String> _fetchUserPhone() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/customer/me'),
-        headers: {
-          'Authorization': 'Bearer ${_token ?? widget.token ?? ''}',
-          'Content-Type': 'application/json',
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final customer = data['data'];
-        // Always use 'mobile_number' to match profile
-        return customer['mobile_number']?.toString() ?? '';
-      }
-    } catch (e) {}
-    return '';
-  }
 
-  Future<String> _fetchUserAddress() async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/customer/me'),
-        headers: {
-          'Authorization': 'Bearer ${_token ?? widget.token ?? ''}',
-          'Content-Type': 'application/json',
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final customer = data['data'];
-        return customer['address'] ?? '';
-      }
-    } catch (e) {}
-    return '';
-  }
 
   void _showClearCartDialog() {
     showDialog(

@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'Categories.dart';
 import 'Cart.dart';
-import '../utils/cloudinary_upload.dart';
+
 import 'FAQpage.dart';
 import 'product_details_screen.dart';
 
@@ -26,60 +26,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   List<Product> topBuys = [];
   int _currentIndex = 0;
 
-  // Method to get optimized product image
-  Widget buildProductImage(String? imageUrl, {
-    double width = 200,
-    double height = 200,
-    BoxFit fit = BoxFit.cover,
-    Widget? errorWidget,
-  }) {
-    if (imageUrl == null || imageUrl.isEmpty) {
-      return _buildFallbackImage(width, height, Icons.image, 40, 'No image available');
-    }
 
-    final optimizedUrl = CloudinaryUploader.optimizeImageUrl(
-      imageUrl,
-      width: width.toInt(),
-      height: height.toInt(),
-      quality: 'auto',
-      format: 'auto'
-    );
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Image.network(
-        optimizedUrl,
-        width: width,
-        height: height,
-        fit: fit,
-        errorBuilder: (context, error, stackTrace) {
-          return errorWidget ?? _buildFallbackImage(
-            width, 
-            height, 
-            Icons.broken_image, 
-            40, 
-            'Failed to load image'
-          );
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: width,
-            height: height,
-            color: Colors.grey[200],
-            child: Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                    : null,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -165,16 +112,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         final List<dynamic> productsData = responseData['data'];
-        
+
         setState(() {
           // Convert JSON data to Product objects using fromJson factory
           products = productsData.map((data) => Product.fromJson(data)).toList();
-          
+
           // Sort products by views and take top 3 for featured section
           final sortedProducts = List<Product>.from(products);
           sortedProducts.sort((a, b) => b.views.compareTo(a.views));
           topBuys = sortedProducts.take(3).toList();
-          
+
           _isLoading = false;
         });
       } else {
@@ -183,7 +130,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           topBuys = [];
           _isLoading = false;
         });
-        
+
         // Show error message for failed API call
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -211,7 +158,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         topBuys = [];
         _isLoading = false;
       });
-      
+
       // Show error message for network issues
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -307,11 +254,11 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         print('Profile API Response: $data');
         setState(() {
           customerImageUrl = data['data']?['image_url'] ?? data['data']?['imageUrl'] ?? data['data']?['profile_image'];
-          customerName = data['data']?['customer_name'] ?? 
-                        data['data']?['name'] ?? 
-                        data['data']?['username'] ?? 
-                        data['data']?['full_name'] ?? 
-                        data['data']?['first_name'];
+          customerName = data['data']?['customer_name'] ??
+              data['data']?['name'] ??
+              data['data']?['username'] ??
+              data['data']?['full_name'] ??
+              data['data']?['first_name'];
           print('Customer Image URL: $customerImageUrl');
           print('Customer Name: $customerName');
           _isLoadingProfile = false;
@@ -601,6 +548,11 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     }
   }
 
+  String _formatProductDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
   void _showAllReviews(Product product) {
     showModalBottomSheet(
       context: context,
@@ -679,59 +631,59 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               Expanded(
                 child: product.reviews.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.reviews, size: 64, color: Colors.grey[400]),
-                            SizedBox(height: 16),
-                            Text(
-                              'No reviews yet',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Be the first to review this product!',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                            SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Review form coming soon!'),
-                                    backgroundColor: Colors.green[600],
-                                  ),
-                                );
-                              },
-                              icon: Icon(Icons.rate_review, size: 16),
-                              label: Text('Write Review'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green[600],
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                              ),
-                            ),
-                          ],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.reviews, size: 64, color: Colors.grey[400]),
+                      SizedBox(height: 16),
+                      Text(
+                        'No reviews yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
                         ),
-                      )
-                    : ListView.builder(
-                        padding: EdgeInsets.all(16),
-                        itemCount: product.reviews.length,
-                        itemBuilder: (context, index) {
-                          return _buildDetailedReviewCard(product.reviews[index]);
-                        },
                       ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Be the first to review this product!',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Review form coming soon!'),
+                              backgroundColor: Colors.green[600],
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.rate_review, size: 16),
+                        label: Text('Write Review'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green[600],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: product.reviews.length,
+                  itemBuilder: (context, index) {
+                    return _buildDetailedReviewCard(product.reviews[index]);
+                  },
+                ),
               ),
             ],
           ),
@@ -761,7 +713,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
 
     try {
       print('Adding product ${product.id} to cart with token: ${widget.token!.substring(0, 10)}...');
-      
+
       final response = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
@@ -886,14 +838,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       elevation: 0,
       flexibleSpace: Container(
         decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(0.9),
-            Colors.green[50]!.withOpacity(0.9),
-          ],
-        ),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.green[50]!.withOpacity(0.9),
+            ],
+          ),
         ),
       ),
       leading: Builder(
@@ -1050,7 +1002,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                customerName != null && customerName!.isNotEmpty 
+                customerName != null && customerName!.isNotEmpty
                     ? ' $customerName'
                     : 'Welcome!',
                 style: TextStyle(
@@ -1238,6 +1190,24 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                     ),
                     child: _isLoadingProfile
                         ? Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      ),
+                    )
+                        : customerImageUrl != null && customerImageUrl!.isNotEmpty
+                        ? ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Image.network(
+                        customerImageUrl!,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
                             child: SizedBox(
                               width: 20,
                               height: 20,
@@ -1246,38 +1216,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
                             ),
-                          )
-                        : customerImageUrl != null && customerImageUrl!.isNotEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: Image.network(
-                                  customerImageUrl!,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) return child;
-                                    return Center(
-                                      child: SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  errorBuilder: (context, error, stackTrace) => Icon(
-                                    Icons.person,
-                                    size: 40,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              )
-                            : Icon(
-                                Icons.person,
-                                size: 40,
-                                color: Colors.white,
-                              ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Icon(
+                          Icons.person,
+                          size: 40,
+                          color: Colors.white,
+                        ),
+                      ),
+                    )
+                        : Icon(
+                      Icons.person,
+                      size: 40,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -1408,7 +1360,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     final titleFontSize = (responsiveValues['titleFontSize'] as double) * 0.9;
     final descriptionFontSize = (responsiveValues['descriptionFontSize'] as double) * 0.9;
     final priceFontSize = (responsiveValues['priceFontSize'] as double) * 0.9;
-    
+
     return GestureDetector(
       onTap: () {
         // Convert Product object to Map for ProductDetailScreen
@@ -1431,7 +1383,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             'customer_image': review.customerImage,
           }).toList(),
         };
-        
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1445,135 +1397,153 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       },
       child: Container(
         width: 170,
-      margin: EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            blurRadius: 15,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                height: imageHeight,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.green[100]!,
-                      Colors.green[50]!,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Center(
-                  child: _buildProductImage(
-                    product.images,
-                    70,
-                    70,
-                    _getProductIcon(product.name),
-                    35,
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        margin: EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.15),
+              blurRadius: 15,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  height: imageHeight,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.orange[400]!, Colors.orange[600]!],
+                      colors: [
+                        Colors.green[100]!,
+                        Colors.green[50]!,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                  child: Text(
-                    '#${index + 1}',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: _buildProductImage(
+                      product.images,
+                      70,
+                      70,
+                      _getProductIcon(product.name),
+                      35,
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Icon(
-                  Icons.favorite_border,
-                  color: Colors.grey[400],
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding * 0.75, vertical: padding * 0.25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    product.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: titleFontSize,
-                      color: Colors.grey[800],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    product.category,
-                    style: TextStyle(
-                      fontSize: descriptionFontSize,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.inventory, color: Colors.green[400], size: 14),
-                      SizedBox(width: 4),
-                      Text(
-                        '${product.quantity}',
-                        style: TextStyle(fontSize: descriptionFontSize, color: Colors.grey[600]),
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.orange[400]!, Colors.orange[600]!],
                       ),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  _buildCompactReviewSection(product),
-                  SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Text(
-                      '₹${product.price.toStringAsFixed(2)}',
+                      '#${index + 1}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Icon(
+                    Icons.favorite_border,
+                    color: Colors.grey[400],
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: padding * 0.75, vertical: padding * 0.25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: priceFontSize,
-                        color: Colors.green[700],
+                        fontSize: titleFontSize,
+                        color: Colors.grey[800],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      product.category,
+                      style: TextStyle(
+                        fontSize: descriptionFontSize,
+                        color: Colors.grey[500],
                       ),
                     ),
-                  ),
-                ],
+                    SizedBox(height: 4),
+                    if (product.harvestDate != null || product.expiryDate != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (product.harvestDate != null)
+                            Text(
+                              'Harvest: ${_formatProductDate(product.harvestDate)}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.blue[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (product.expiryDate != null)
+                            Text(
+                              'Expires: ${_formatProductDate(product.expiryDate)}',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.orange[600],
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                        ],
+                      ),
+                    SizedBox(height: 2),
+                    _buildCompactReviewSection(product),
+                    Spacer(),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.green[600],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '₹${product.price.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: priceFontSize,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1632,13 +1602,13 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   SliverGridDelegate _getResponsiveGridDelegate(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     // Calculate responsive values based on screen size
     int crossAxisCount;
     double childAspectRatio;
     double crossAxisSpacing;
     double mainAxisSpacing;
-    
+
     if (screenWidth < 320) {
       // Very small screens (old phones)
       crossAxisCount = 1;
@@ -1670,14 +1640,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       crossAxisSpacing = 20;
       mainAxisSpacing = 20;
     }
-    
+
     // Adjust aspect ratio based on screen height to prevent overflow
     if (screenHeight < 600) {
       childAspectRatio = childAspectRatio * 1.1; // Make cards taller on short screens
     } else if (screenHeight > 800) {
       childAspectRatio = childAspectRatio * 0.9; // Make cards shorter on tall screens
     }
-    
+
     return SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: crossAxisCount,
       childAspectRatio: childAspectRatio,
@@ -1690,13 +1660,13 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   Map<String, dynamic> _getResponsiveValues(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     double titleFontSize;
     double descriptionFontSize;
     double priceFontSize;
     double padding;
     double imageHeight;
-    
+
     if (screenWidth < 320) {
       // Very small screens
       titleFontSize = 14;
@@ -1726,7 +1696,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       padding = 8;
       imageHeight = 140;
     }
-    
+
     // Adjust for very short screens
     if (screenHeight < 600) {
       titleFontSize *= 0.9;
@@ -1735,7 +1705,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       padding *= 0.8;
       imageHeight *= 0.9;
     }
-    
+
     return {
       'titleFontSize': titleFontSize,
       'descriptionFontSize': descriptionFontSize,
@@ -1752,68 +1722,68 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     final titleFontSize = responsiveValues['titleFontSize'] as double;
     final descriptionFontSize = responsiveValues['descriptionFontSize'] as double;
     final priceFontSize = responsiveValues['priceFontSize'] as double;
-    
+
     return GestureDetector(
-      onTap: () {
-        // Convert Product object to Map for ProductDetailScreen
-        final productMap = {
-          'product_id': product.id,
-          'name': product.name,
-          'description': product.description,
-          'current_price': product.price.toString(),
-          'quantity': product.quantity,
-          'images': product.images,
-          'category': product.category,
-          'status': product.status,
-          'harvest_date': product.harvestDate?.toIso8601String(),
-          'expiry_date': product.expiryDate?.toIso8601String(),
-          'views': product.views,
-          'farmer': {
-            'farmer_id': product.farmer.id,
-            'global_farmer_id': product.farmer.globalId,
-            'name': product.farmer.name,
-            'image_url': product.farmer.imageUrl,
-            'is_verified_by_gov': product.farmer.isVerifiedByGov,
-          },
-          'rating': product.rating,
-          'review_count': product.reviewCount,
-          'reviews': product.reviews.map((review) => {
-            'id': review.id,
-            'customer_name': review.customerName,
-            'rating': review.rating,
-            'comment': review.comment,
-            'created_at': review.createdAt,
-            'customer_image': review.customerImage,
-          }).toList(),
-        };
-        
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProductDetailScreen(
-              productId: product.id,
-              token: widget.token ?? '',
-              productData: productMap,
+        onTap: () {
+          // Convert Product object to Map for ProductDetailScreen
+          final productMap = {
+            'product_id': product.id,
+            'name': product.name,
+            'description': product.description,
+            'current_price': product.price.toString(),
+            'quantity': product.quantity,
+            'images': product.images,
+            'category': product.category,
+            'status': product.status,
+            'harvest_date': product.harvestDate?.toIso8601String(),
+            'expiry_date': product.expiryDate?.toIso8601String(),
+            'views': product.views,
+            'farmer': {
+              'farmer_id': product.farmer.id,
+              'global_farmer_id': product.farmer.globalId,
+              'name': product.farmer.name,
+              'image_url': product.farmer.imageUrl,
+              'is_verified_by_gov': product.farmer.isVerifiedByGov,
+            },
+            'rating': product.rating,
+            'review_count': product.reviewCount,
+            'reviews': product.reviews.map((review) => {
+              'id': review.id,
+              'customer_name': review.customerName,
+              'rating': review.rating,
+              'comment': review.comment,
+              'created_at': review.createdAt,
+              'customer_image': review.customerImage,
+            }).toList(),
+          };
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProductDetailScreen(
+                productId: product.id,
+                token: widget.token ?? '',
+                productData: productMap,
+              ),
             ),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.15),
-              blurRadius: 15,
-              offset: Offset(0, 8),
+          );
+        },
+        child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.15),
+                  blurRadius: 15,
+                  offset: Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              Container(
               height: imageHeight,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -1831,113 +1801,118 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.75),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                  padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.75),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: titleFontSize,
-                        color: Colors.grey[800],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    product.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: titleFontSize,
+                      color: Colors.grey[800],
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      product.description,
-                      style: TextStyle(
-                        fontSize: descriptionFontSize,
-                        color: Colors.grey[500],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    product.description,
+                    style: TextStyle(
+                      fontSize: descriptionFontSize,
+                      color: Colors.grey[500],
                     ),
-                    SizedBox(height: 8),
-                    Row(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8),
+                  Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green[50],
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.inventory, color: Colors.green[600], size: 12),
-                              SizedBox(width: 2),
-                              Text(
-                                '${product.quantity}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.green[600],
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 6),
-                    _buildReviewSection(product),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Text(
-                          '₹${product.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: priceFontSize,
-                            color: Colors.green[700],
-                          ),
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'per kg',
-                          style: TextStyle(
-                            fontSize: descriptionFontSize * 0.8,
-                            color: Colors.grey[500],
-                          ),
-                        ),
-                        Spacer(),
-                        GestureDetector(
-                          onTap: () => _addToCart(product),
-                          child: Container(
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.green[500]!, Colors.green[700]!],
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.add_shopping_cart,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      if (product.harvestDate != null)
+                  Container(
+              margin: EdgeInsets.only(bottom: 4),
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Harvest: ${_formatProductDate(product.harvestDate)}',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.blue[600],
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          ],
+            if (product.expiryDate != null)
+        Container(
+    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+    color: Colors.orange[50],
+    borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+    'Expires: ${_formatProductDate(product.expiryDate)}',
+    style: TextStyle(
+    fontSize: 10,
+    color: Colors.orange[600],
+    fontWeight: FontWeight.w600,
+    ),
+    ),
         ),
-      ),
+                      ],
+                  ),
+                      SizedBox(height: 6),
+                      _buildReviewSection(product),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.green[600],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '₹${product.price.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: priceFontSize,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => _addToCart(product),
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.orange[600],
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.add_shopping_cart,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+              ),
+            ),
+              ],
+            ),
+        ),
     );
   }
 
@@ -2062,169 +2037,40 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     return Icons.eco;
   }
 
-  bool _isCloudinaryUrl(String url) {
-    return url.contains('cloudinary.com') || url.contains('res.cloudinary.com');
-  }
 
-  String _cleanImageUrl(String imageUrl) {
-    if (imageUrl.isEmpty || imageUrl == 'null') return '';
-    
-    String cleaned = imageUrl.trim();
-    
-    // Remove any extra quotes or spaces
-    cleaned = cleaned.replaceAll('"', '').replaceAll("'", '');
-    
-    // Check if it's a valid URL
-    if (cleaned.startsWith('http://') || 
-        cleaned.startsWith('https://') || 
-        _isCloudinaryUrl(cleaned)) {
-      return cleaned;
-    }
-    
-    // If it's a relative URL, try to make it absolute
-    if (cleaned.startsWith('/')) {
-      return 'https://farmercrate.onrender.com$cleaned';
-    }
-    
-    // If it doesn't start with http, assume it's a relative path
-    if (!cleaned.startsWith('http') && !cleaned.startsWith('assets/')) {
-      return 'https://farmercrate.onrender.com/$cleaned';
-    }
-    
-    return cleaned;
-  }
-
-  String _getOptimizedImageUrl(String imageUrl, {int? width, int? height}) {
-    if (imageUrl.isEmpty || imageUrl == 'null') return '';
-    
-    // Clean and validate the image URL first
-    String cleanUrl = _cleanImageUrl(imageUrl);
-    if (cleanUrl.isEmpty) return '';
-    
-    // Use Cloudinary optimization for better performance
-    return CloudinaryUploader.optimizeImageUrl(
-      cleanUrl,
-      width: width ?? 200,
-      height: height ?? 200,
-      quality: 'auto',
-      format: 'auto',
-    );
-  }
 
   Widget _buildProductImage(String? imageUrl, double width, double height, IconData fallbackIcon, double iconSize) {
-    // Handle empty or null image URLs
-    if (imageUrl == null || imageUrl.isEmpty || imageUrl == 'null' || imageUrl == '') {
-      return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'No image available');
+    if (imageUrl == null || imageUrl.isEmpty || imageUrl == 'null') {
+      return _buildFallbackImage(width, height, fallbackIcon, iconSize);
     }
 
-    // Clean the image URL (remove any extra spaces or characters)
-    String cleanImageUrl = imageUrl.trim();
-    
-    // Check if it's a valid URL (HTTP/HTTPS) or Cloudinary URL
-    bool isValidUrl = cleanImageUrl.startsWith('http://') || 
-                     cleanImageUrl.startsWith('https://') || 
-                     _isCloudinaryUrl(cleanImageUrl);
-
-    if (isValidUrl) {
-      // Use Cloudinary optimization for all valid URLs from database
-      String optimizedUrl = _getOptimizedImageUrl(
-        cleanImageUrl,
-        width: width == double.infinity ? 400 : width.toInt(),
-        height: height.toInt(),
-      );
-
+    String cleanUrl = imageUrl.trim();
+    if (cleanUrl.startsWith('http')) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
-          optimizedUrl,
-          width: width == double.infinity ? null : width,
-          height: height,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              width: width == double.infinity ? null : width,
-              height: height,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[100]!, Colors.green[50]!],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                      strokeWidth: 2,
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Loading image...',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Failed to load image');
-          },
-        ),
-      );
-    } else if (cleanImageUrl.startsWith('assets/')) {
-      // Handle local asset images
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.asset(
-          cleanImageUrl,
+          cleanUrl,
           width: width == double.infinity ? null : width,
           height: height,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
-            return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Asset not found');
+            return _buildFallbackImage(width, height, fallbackIcon, iconSize);
           },
         ),
       );
-    } else {
-      // Handle other cases (base64, data URLs, etc.)
-      return _buildFallbackImage(width, height, fallbackIcon, iconSize, 'Invalid image format');
     }
+    return _buildFallbackImage(width, height, fallbackIcon, iconSize);
   }
 
-  Widget _buildFallbackImage(double width, double height, IconData fallbackIcon, double iconSize, String message) {
+  Widget _buildFallbackImage(double width, double height, IconData fallbackIcon, double iconSize) {
     return Container(
       width: width == double.infinity ? null : width,
       height: height,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.green[200]!, Colors.green[100]!],
-        ),
+        color: Colors.green[100],
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
-          SizedBox(height: 4),
-          Text(
-            message,
-            style: TextStyle(
-              color: Colors.green[600],
-              fontSize: 10,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+      child: Icon(fallbackIcon, size: iconSize, color: Colors.green[600]),
     );
   }
 }
@@ -2455,4 +2301,3 @@ class HelpPage extends StatelessWidget {
     );
   }
 }
-
