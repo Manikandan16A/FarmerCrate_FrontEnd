@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'navigation_utils.dart';
 import 'Cart.dart';
 import 'payment.dart';
-import '../utils/cloudinary_upload.dart';
+
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -148,16 +148,70 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     return value.toString();
   }
 
-  String _getOptimizedImageUrl(String imageUrl, {int? width, int? height}) {
-    if (imageUrl.isEmpty || imageUrl == 'null') return '';
+  String _formatDate(dynamic dateValue) {
+    if (dateValue == null || dateValue.toString().trim().isEmpty) {
+      return 'Not Available';
+    }
     
-    // Use Cloudinary optimization for better performance
-    return CloudinaryUploader.optimizeImageUrl(
-      imageUrl,
-      width: width ?? 400,
-      height: height ?? 400,
-      quality: 'auto',
-      format: 'auto',
+    try {
+      DateTime date = DateTime.parse(dateValue.toString());
+      return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+    } catch (e) {
+      return dateValue.toString();
+    }
+  }
+
+  Widget _buildProductImage(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty || imageUrl == 'null') {
+      return Container(
+        height: 300,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Icon(Icons.image_not_supported, size: 80, color: Colors.grey[400]),
+      );
+    }
+    
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: Colors.grey[200],
+              child: Icon(Icons.broken_image, size: 80, color: Colors.grey[400]),
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              color: Colors.grey[200],
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                      : null,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -194,7 +248,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
           'Authorization': 'Bearer ${widget.token}',
         },
         body: jsonEncode({
-          'productId': productData!['id'],
+          'productId': productData!['product_id'],
           'quantity': quantity,
         }),
       );
@@ -289,11 +343,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
       return;
     }
 
-    // Navigate to payment page
+    final orderData = {
+      'product_id': productData!['product_id'],
+      'product_name': productData!['name'],
+      'quantity': quantity,
+      'unit_price': double.tryParse(productData!['current_price'].toString()) ?? 0.0,
+      'total_price': (double.tryParse(productData!['current_price'].toString()) ?? 0.0) * quantity,
+    };
+
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => FarmerCratePaymentPage(),
+        builder: (context) => FarmerCratePaymentPage(
+          orderData: orderData,
+          token: widget.token,
+        ),
       ),
     );
   }
@@ -561,11 +625,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
               ? Stack(
             children: [
               Image.network(
-                _getOptimizedImageUrl(
-                  productData!['images'],
-                  width: 400,
-                  height: 400,
-                ),
+                productData!['images'],
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
@@ -695,7 +755,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
-                  '₹${getField(productData!['price'])}',
+                  '₹${getField(productData!['current_price'])}',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -724,6 +784,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
             ),
           ),
           SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInfoCard(
+                  icon: Icons.eco,
+                  title: 'Harvest',
+                  value: _formatDate(productData!['harvest_date']),
+                  color: Colors.green,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildInfoCard(
+                  icon: Icons.schedule,
+                  title: 'Expiry',
+                  value: _formatDate(productData!['expiry_date']),
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -817,9 +899,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
             ),
           ),
           SizedBox(height: 16),
-          _buildStatRow('Last Price Update', getField(productData!['last_price_update'])),
-          _buildStatRow('Created', getField(productData!['created_at'])),
-          _buildStatRow('Last Updated', getField(productData!['updated_at'])),
+          _buildStatRow('Last Price Update', _formatDate(productData!['last_price_update'])),
+          _buildStatRow('Created', _formatDate(productData!['created_at'])),
+          _buildStatRow('Last Updated', _formatDate(productData!['updated_at'])),
         ],
       ),
     );
@@ -1147,7 +1229,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
                 SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'Total: ₹${(double.tryParse(getField(productData!['price'])) ?? 0.0) * quantity}',
+                    'Total: ₹${(double.tryParse(getField(productData!['current_price'])) ?? 0.0) * quantity}',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,

@@ -101,12 +101,7 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage>
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => FarmerCratePaymentPage(),
-              ),
-            );
+            Navigator.pop(context);
           },
         ),
       ),
