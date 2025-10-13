@@ -1,0 +1,110 @@
+[33mcommit 3e4fade10ecea5eb0f62b67ab32f88dc60d8e380[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Wed Sep 3 11:43:15 2025 +0530
+
+    latest
+
+[33mcommit a738a06ba85fbdcf5c4c59f1873049a2708a00fc[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Fri Jul 25 00:05:29 2025 +0530
+
+    customer home page design
+
+[33mcommit 85df43c437ad580e429facadf335ffde299374b5[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Thu Jul 24 23:01:25 2025 +0530
+
+    product_details
+
+[33mcommit 284274a2d93deea7cb5f87e7ccee0293ebd5424b[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Thu Jul 24 20:48:33 2025 +0530
+
+    profile
+
+[33mcommit 7df921ad35651080d04985e972fd8956b27b2564[m[33m ([m[1;31morigin/updation[m[33m)[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Mon Jul 21 14:11:33 2025 +0530
+
+    customer profile
+
+[33mcommit 4a2db59e534b637d21208cb2b0da6098a6048f1e[m
+Merge: b2c9b74 ff96d5f
+Author: Jonash P <168477583+Jonash1011@users.noreply.github.com>
+Date:   Wed Jul 16 00:16:08 2025 +0530
+
+    Merge pull request #1 from Muthukrisnan2004/main
+    
+    categories page img display
+
+[33mcommit ff96d5f342dd31e7d4e0c52b4fe2dead17d6ddd8[m
+Author: Muthukrisnan2004 <muthukrishnan07212004@gmail.com>
+Date:   Wed Jul 16 00:13:25 2025 +0530
+
+    categories page img display
+
+[33mcommit b2c9b742144923d91866fcddfb696117a75ab110[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Wed Jul 16 00:13:00 2025 +0530
+
+    customer product Display
+
+[33mcommit 61c88b8e0c20da69736218c03fe0182dbcfa3ba1[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Thu Jul 10 23:39:38 2025 +0530
+
+    customer api
+
+[33mcommit a15021abeed385a0b5d9a30c0f493e265eedcc10[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Tue Jul 1 09:57:37 2025 +0530
+
+    customerlogin
+
+[33mcommit 6d280fb34be7d5ca8ed9b4af96aecfb4d37295ab[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Mon Jun 30 14:58:26 2025 +0530
+
+    changes
+
+[33mcommit 98c5d47a86e7fdf996b7cf25a5fae96cb8ea56c1[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Mon Jun 30 14:51:25 2025 +0530
+
+    productedit
+
+[33mcommit f7bc4e23001ed31c4061d96ac242f0c38823c262[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Sun Jun 29 00:55:07 2025 +0530
+
+    product edit
+
+[33mcommit d0255788d1dd9b2a0fb7954a4a0c47dfd940e8d5[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Sat Jun 28 21:52:47 2025 +0530
+
+    addproduct api added
+
+[33mcommit 0e74d1acda83a8d68f30b49221253e8fe8fce1b6[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Sat Jun 28 15:50:17 2025 +0530
+
+    farmer api
+
+[33mcommit a6e30722920da0936780bbb2b4981f2e1cbb408b[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Fri Jun 27 21:56:40 2025 +0530
+
+    latest
+
+[33mcommit 4ee6ca0a6e0fe629e785725c67db1cbe77791ea4[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Thu Jun 26 23:57:11 2025 +0530
+
+    adding cloudinary
+
+[33mcommit 8fee73c04814795496717c38967ec9bb3526c4d8[m
+Author: Jonash1011 <jonash10112002@gmail.com>
+Date:   Thu Jun 26 17:12:16 2025 +0530
+
+    Initializing repo
