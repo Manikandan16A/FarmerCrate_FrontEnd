@@ -5,7 +5,6 @@ import 'dart:io';
 import '../auth/Signin.dart';
 import 'homepage.dart';
 import 'Addproduct.dart';
-import 'Fullorders.dart';
 import 'Orders_history.dart' as OrderHistory;
 import 'contact_admin.dart';
 import 'dart:convert';
@@ -138,7 +137,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = OrdersPage();
+        targetPage = OrderHistory.OrdersHistoryPage(token: widget.token);
         break;
       case 2:
         targetPage = FarmerProductsPage(token: widget.token);
@@ -854,7 +853,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => OrderHistory.OrdersPage()),
+                MaterialPageRoute(builder: (context) => OrderHistory.OrdersHistoryPage(token: widget.token)),
               );
             },
           ),

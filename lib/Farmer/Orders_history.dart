@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class OrdersPage extends StatefulWidget {
-  const OrdersPage({Key? key}) : super(key: key);
+class OrdersHistoryPage extends StatefulWidget {
+  final String? token;
+  const OrdersHistoryPage({Key? key, this.token}) : super(key: key);
 
   @override
-  State<OrdersPage> createState() => _OrdersPageState();
+  State<OrdersHistoryPage> createState() => _OrdersHistoryPageState();
 }
 
-class _OrdersPageState extends State<OrdersPage> {
+class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
   List<dynamic> orders = [];
   bool isLoading = true;
   String? errorMessage;
@@ -27,13 +28,13 @@ class _OrdersPageState extends State<OrdersPage> {
     });
 
     try {
-      // Replace with your actual API base URL
       final response = await http.get(
-        Uri.parse('YOUR_BASE_URL/api/farmers/orders'),
+        Uri.parse('https://farmercrate.onrender.com/api/farmers/orders'),
         headers: {
           'Content-Type': 'application/json',
-          // Add authentication headers if needed
-          // 'Authorization': 'Bearer YOUR_TOKEN',
+          'Authorization': widget.token?.startsWith('Bearer ') == true
+              ? widget.token!
+              : 'Bearer ${widget.token}',
         },
       );
 
