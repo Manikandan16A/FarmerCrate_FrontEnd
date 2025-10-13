@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import '../utils/cloudinary_upload.dart';
 
 class AddDeliveryAgentScreen extends StatefulWidget {
   final String? token;
@@ -20,17 +22,19 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
   final _vehicleNumberController = TextEditingController();
   final _licenseNumberController = TextEditingController();
   final _licenseUrlController = TextEditingController();
+  final _imageUrlController = TextEditingController();
+  final _currentLocationController = TextEditingController();
 
-  String _selectedVehicleType = 'Bike';
+  String _selectedVehicleType = 'bike';
   bool _isLoading = false;
-  File? _selectedImage;
+  File? _licenseImage;
+  File? _profileImage;
 
-  final List<String> _vehicleTypes = [
-    'Bike',
-    'Car',
-    'Van',
-    'Truck',
-    'Three Wheeler'
+  final List<Map<String, String>> _vehicleTypes = [
+    {'label': 'Bike', 'value': 'bike'},
+    {'label': 'Car', 'value': 'car'},
+    {'label': 'Van', 'value': 'van'},
+    {'label': 'Truck', 'value': 'truck'},
   ];
 
   @override
@@ -40,128 +44,34 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
     _vehicleNumberController.dispose();
     _licenseNumberController.dispose();
     _licenseUrlController.dispose();
+    _imageUrlController.dispose();
+    _currentLocationController.dispose();
     super.dispose();
   }
 
-  Future<void> _showImageSourceDialog() async {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Select Image Source'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt),
-                title: const Text('Take Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Choose from Gallery'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
+  Future<void> _pickImage(bool isLicense) async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: source);
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
-        _selectedImage = File(pickedFile.path);
+        if (isLicense) {
+          _licenseImage = File(pickedFile.path);
+        } else {
+          _profileImage = File(pickedFile.path);
+        }
       });
     }
   }
 
-  String? _validateMobileNumber(String? value) {
-    if (value?.isEmpty ?? true) {
-      return 'Please enter mobile number';
-    }
-    if (value!.length != 10) {
-      return 'Mobile number must be exactly 10 digits';
-    }
-    if (!RegExp(r'^[0-9]{10}$').hasMatch(value)) {
-      return 'Please enter a valid 10-digit mobile number';
-    }
-    return null;
-  }
-
-  String? _validateDrivingLicense(String? value) {
-    if (value?.isEmpty ?? true) {
-      return 'Please enter driving license number';
-    }
-
-    String cleanValue = value!.replaceAll(' ', '').toUpperCase();
-
-    if (cleanValue.length != 15) {
-      return 'Driving license must be exactly 15 characters';
-    }
-
-    if (!RegExp(r'^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$').hasMatch(cleanValue)) {
-      return 'Invalid driving license format';
-    }
-
-    String yearStr = cleanValue.substring(4, 8);
-    int year = int.parse(yearStr);
-    int currentYear = DateTime.now().year;
-    if (year < 1950 || year > currentYear) {
-      return 'Invalid year in driving license';
-    }
-
-    return null;
-  }
-
-  String? _validateVehicleNumber(String? value) {
-    if (value?.isEmpty ?? true) {
-      return 'Please enter vehicle number';
-    }
-    String cleanValue = value!.replaceAll(' ', '').toUpperCase();
-    if (!RegExp(r'^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$').hasMatch(cleanValue)) {
-      return 'Invalid vehicle number format (e.g., MH12AB1234)';
-    }
-    return null;
-  }
-
-  String? _validateLicenseUrl(String? value) {
-    if (value?.isEmpty ?? true) {
-      return 'Please enter license URL';
-    }
-    String url = value!.trim();
-    if (!RegExp(r'^https?:\/\/(www\.)?[-a-zA-Z0-9@:%.\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%\+.~#?&//=]*)$').hasMatch(url)) {
-      return 'Please enter a valid URL (e.g., https://example.com)';
-    }
-    return null;
-  }
-
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) {
+      _showWarningSnackBar('Please fill all required fields correctly');
       return;
     }
 
-    if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a profile photo'), backgroundColor: Colors.red),
-      );
-      return;
-    }
-
-    if (widget.token == null || widget.token!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Authentication error. Please log in again.'), backgroundColor: Colors.red),
-      );
+    if (_licenseImage == null || _profileImage == null) {
+      _showWarningSnackBar('Please select both license and profile images');
       return;
     }
 
@@ -170,40 +80,43 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
     });
 
     try {
-      final url = Uri.parse('https://farmercrate.onrender.com/api/transporters/delivery-person');
-      var request = http.MultipartRequest('POST', url);
+      // Upload images to Cloudinary
+      final licenseUrl = await CloudinaryUploader.uploadImage(_licenseImage!);
+      final profileUrl = await CloudinaryUploader.uploadImage(_profileImage!);
 
-      request.headers['Authorization'] = 'Bearer ${widget.token!}';
-
-      request.fields['name'] = _nameController.text.trim();
-      request.fields['mobile_number'] = _mobileNumberController.text.trim();
-      request.fields['vehicle_number'] = _vehicleNumberController.text.replaceAll(' ', '').toUpperCase();
-      request.fields['license_number'] = _licenseNumberController.text.replaceAll(' ', '').toUpperCase();
-      request.fields['vehicle_type'] = _selectedVehicleType;
-      request.fields['license_url'] = _licenseUrlController.text.trim();
-      request.fields['status'] = 'active';
-
-      request.files.add(
-        await http.MultipartFile.fromPath('photo', _selectedImage!.path),
+      if (licenseUrl == null || profileUrl == null) {
+        _showErrorSnackBar('Failed to upload images');
+        setState(() => _isLoading = false);
+        return;
+      }
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/transporters/delivery-person'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${widget.token}',
+        },
+        body: jsonEncode({
+          'name': _nameController.text.trim(),
+          'mobile_number': _mobileNumberController.text.trim(),
+          'vehicle_number': _vehicleNumberController.text.replaceAll(' ', '').toUpperCase(),
+          'license_number': _licenseNumberController.text.replaceAll(' ', '').toUpperCase(),
+          'vehicle_type': _selectedVehicleType,
+          'license_url': licenseUrl,
+          'image_url': profileUrl,
+          'current_location': _currentLocationController.text.trim(),
+        }),
       );
 
-      final response = await request.send();
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Delivery Agent added successfully!'), backgroundColor: Colors.green),
-        );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        _showSuccessSnackBar(data['message'] ?? 'Delivery person added successfully!');
         _clearForm();
       } else {
-        final responseBody = await response.stream.bytesToString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add agent. Error: ${response.reasonPhrase} - $responseBody'), backgroundColor: Colors.red),
-        );
+        final errorData = jsonDecode(response.body);
+        _showErrorSnackBar(errorData['message'] ?? 'Failed to add delivery person');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e'), backgroundColor: Colors.red),
-      );
+      _showErrorSnackBar('Error: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -217,395 +130,503 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
     _vehicleNumberController.clear();
     _licenseNumberController.clear();
     _licenseUrlController.clear();
+    _imageUrlController.clear();
+    _currentLocationController.clear();
     setState(() {
-      _selectedVehicleType = 'Bike';
-      _selectedImage = null;
+      _selectedVehicleType = 'bike';
+      _licenseImage = null;
+      _profileImage = null;
     });
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.check_circle, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.error, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFFE53935),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.warning, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFFFFA726),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
-        title: const Text(
-          'Add Delivery Agent',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.green[700],
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Add Delivery Person', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Color(0xFF2E7D32),
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.person_add,
-                      size: 50,
-                      color: Colors.green[600],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Add New Delivery Agent',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'Fill in the details below to add a new delivery agent',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 1,
-                      blurRadius: 5,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Agent Information',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green[800],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: _showImageSourceDialog,
-                      child: Container(
-                        height: 120,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: _selectedImage == null
-                            ? Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.camera_alt,
-                                  size: 30,
-                                  color: Colors.green[600],
-                                ),
-                                const SizedBox(width: 10),
-                                Icon(
-                                  Icons.photo_library,
-                                  size: 30,
-                                  color: Colors.green[600],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Tap to take photo or choose from gallery',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        )
-                            : Stack(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.file(
-                                _selectedImage!,
-                                fit: BoxFit.cover,
-                                height: 120,
-                                width: double.infinity,
-                              ),
-                            ),
-                            Positioned(
-                              top: 5,
-                              right: 5,
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _selectedImage = null;
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _nameController,
-                      label: 'Name',
-                      icon: Icons.person,
-                      validator: (value) {
-                        if (value?.trim().isEmpty ?? true) {
-                          return 'Please enter name';
-                        }
-                        if (value!.trim().length < 2) {
-                          return 'Name must be at least 2 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _mobileNumberController,
-                      label: 'Mobile Number (10 digits)',
-                      icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(10),
-                      ],
-                      validator: _validateMobileNumber,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _vehicleNumberController,
-                      label: 'Vehicle Number',
-                      icon: Icons.directions_car,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(15),
-                        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\s]')),
-                      ],
-                      validator: _validateVehicleNumber,
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(
-                        'Format: MH12AB1234',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _licenseNumberController,
-                      label: 'License Number (15 characters)',
-                      icon: Icons.card_membership,
-                      inputFormatters: [
-                        LengthLimitingTextInputFormatter(18),
-                        FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9\s]')),
-                      ],
-                      validator: _validateDrivingLicense,
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(
-                        'Format: MH1420110012345',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _selectedVehicleType,
-                      decoration: InputDecoration(
-                        labelText: 'Vehicle Type',
-                        prefixIcon:
-                        Icon(Icons.two_wheeler, color: Colors.green[600]),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.green[600]!),
-                        ),
-                      ),
-                      items: _vehicleTypes.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedVehicleType = newValue!;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField(
-                      controller: _licenseUrlController,
-                      label: 'License URL',
-                      icon: Icons.link,
-                      keyboardType: TextInputType.url,
-                      validator: _validateLicenseUrl,
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: Text(
-                        'Enter a valid URL (e.g., https://example.com/license.pdf)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isLoading ? null : _clearForm,
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        side: BorderSide(color: Colors.green[600]!),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        'Clear Form',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.green[600],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green[600],
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: _isLoading
-                          ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                          : const Text(
-                        'Add Agent',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF2E7D32).withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: Offset(0, 5),
                   ),
                 ],
               ),
-            ],
-          ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delivery_dining, color: Colors.white, size: 48),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Add New Delivery Person',
+                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Fill in the details below',
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2E7D32).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.person, color: Color(0xFF2E7D32), size: 20),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Personal Information',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.2), width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 15,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: InputDecoration(
+                              labelText: 'Full Name *',
+                              hintText: 'Enter delivery person name',
+                              prefixIcon: Icon(Icons.person_outline, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value?.trim().isEmpty ?? true) return 'Please enter name';
+                              if (value!.trim().length < 2) return 'Name must be at least 2 characters';
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          TextFormField(
+                            controller: _mobileNumberController,
+                            decoration: InputDecoration(
+                              labelText: 'Mobile Number *',
+                              hintText: '10 digit mobile number',
+                              prefixIcon: Icon(Icons.phone, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                              counterText: '',
+                            ),
+                            keyboardType: TextInputType.phone,
+                            maxLength: 10,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) return 'Please enter mobile number';
+                              if (!RegExp(r'^[0-9]{10}$').hasMatch(value!)) return 'Enter valid 10-digit number';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF2E7D32).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.directions_car, color: Color(0xFF2E7D32), size: 20),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Vehicle Information',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.2), width: 1),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 15,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          DropdownButtonFormField<String>(
+                            value: _selectedVehicleType,
+                            decoration: InputDecoration(
+                              labelText: 'Vehicle Type *',
+                              prefixIcon: Icon(Icons.two_wheeler, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            items: _vehicleTypes.map((type) {
+                              return DropdownMenuItem(value: type['value'], child: Text(type['label']!));
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedVehicleType = value!;
+                              });
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          TextFormField(
+                            controller: _vehicleNumberController,
+                            decoration: InputDecoration(
+                              labelText: 'Vehicle Number *',
+                              hintText: 'e.g., KA01AB1234',
+                              prefixIcon: Icon(Icons.confirmation_number, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(15),
+                              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
+                            ],
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) return 'Please enter vehicle number';
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          TextFormField(
+                            controller: _licenseNumberController,
+                            decoration: InputDecoration(
+                              labelText: 'License Number *',
+                              hintText: 'e.g., KA0120230001',
+                              prefixIcon: Icon(Icons.card_membership, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) return 'Please enter license number';
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: () => _pickImage(true),
+                            child: Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: _licenseImage == null
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.camera_alt, color: Color(0xFF2E7D32), size: 32),
+                                        SizedBox(height: 8),
+                                        Text('Tap to select License Image', style: TextStyle(color: Colors.grey[600])),
+                                      ],
+                                    )
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.file(_licenseImage!, fit: BoxFit.cover),
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          GestureDetector(
+                            onTap: () => _pickImage(false),
+                            child: Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: _profileImage == null
+                                  ? Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.person, color: Color(0xFF2E7D32), size: 32),
+                                        SizedBox(height: 8),
+                                        Text('Tap to select Profile Image', style: TextStyle(color: Colors.grey[600])),
+                                      ],
+                                    )
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.file(_profileImage!, fit: BoxFit.cover),
+                                    ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          TextFormField(
+                            controller: _currentLocationController,
+                            decoration: InputDecoration(
+                              labelText: 'Current Location *',
+                              hintText: 'e.g., Bangalore, Karnataka',
+                              prefixIcon: Icon(Icons.location_on, color: Color(0xFF2E7D32)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.grey.shade50,
+                            ),
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) return 'Please enter current location';
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? Function(String?)? validator,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-  }) {
-    return TextFormField(
-      controller: controller,
-      validator: validator,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.green[600]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Colors.green[600]!),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Colors.red),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF2E7D32).withOpacity(0.4),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: _isLoading ? null : _submitForm,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _isLoading
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Add Delivery Person',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
     );

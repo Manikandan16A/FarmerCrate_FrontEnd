@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../Admin/requstaccept.dart';
 import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
-import '../Transpoter/transpoter_dashboard.dart';
+import '../Transpoter/transporter_dashboard.dart';
 import '../delivery/delivery_dashboard.dart';
 import 'Forget.dart';
 import 'Signup.dart';
@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TransporterApp(customerId: 1,),
+                  builder: (context) => TransporterDashboard(token: token),
                 ),
               );
             } else if (user['role'] == 'admin') {
