@@ -37,13 +37,24 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     String? imageUrl;
-    var imageData = json['image_urls'];
-    if (imageData is List && imageData.isNotEmpty) {
-      imageUrl = imageData[0];
-    } else if (imageData is String && imageData.isNotEmpty) {
-      imageUrl = imageData;
-    } else {
-      imageUrl = json['images'] ?? json['image_url'] ?? json['product_image'] ?? json['image'];
+    
+    var imagesData = json['images'];
+    if (imagesData is List && imagesData.isNotEmpty) {
+      var firstImage = imagesData[0];
+      if (firstImage is Map && firstImage['image_url'] != null) {
+        imageUrl = firstImage['image_url'];
+      }
+    }
+    
+    if (imageUrl == null) {
+      var imageData = json['image_urls'];
+      if (imageData is List && imageData.isNotEmpty) {
+        imageUrl = imageData[0];
+      } else if (imageData is String && imageData.isNotEmpty) {
+        imageUrl = imageData;
+      } else {
+        imageUrl = json['image_url'] ?? json['product_image'] ?? json['image'];
+      }
     }
 
     return Product(
@@ -87,7 +98,7 @@ class FarmerProductsPage extends StatefulWidget {
 }
 
 class _FarmerProductsPageState extends State<FarmerProductsPage> {
-  int _currentIndex = 1;
+  int _currentIndex = 2;
   List<Product> products = [];
   List<Product> filteredProducts = [];
   String searchQuery = '';
@@ -1984,29 +1995,57 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           items: [
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.home, size: 24),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 0 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                  size: 22,
+                ),
               ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.shopping_bag, size: 24),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 1 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 1 ? Icons.shopping_bag : Icons.shopping_bag_outlined,
+                  size: 22,
+                ),
               ),
               label: 'Orders',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.mode_edit_sharp, size: 24),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 2 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 2 ? Icons.edit : Icons.edit_outlined,
+                  size: 22,
+                ),
               ),
               label: 'Edit Product',
             ),
             BottomNavigationBarItem(
               icon: Container(
-                padding: EdgeInsets.all(4),
-                child: Icon(Icons.person_outline, size: 24),
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 3 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 3 ? Icons.person : Icons.person_outline,
+                  size: 22,
+                ),
               ),
               label: 'Profile',
             ),
