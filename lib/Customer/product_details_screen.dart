@@ -149,14 +149,146 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
   }
 
   String? _getProductImage() {
-    if (productData == null) return null;
-    var imageData = productData!['image_urls'];
-    if (imageData is List && imageData.isNotEmpty) {
-      return imageData[0];
-    } else if (imageData is String && imageData.isNotEmpty) {
-      return imageData;
+    final images = _getAllProductImages();
+    return images.isNotEmpty ? images[0] : null;
+  }
+
+  List<String> _getAllProductImages() {
+    if (productData == null) return [];
+    
+    List<String> imageUrls = [];
+    
+    var imagesData = productData!['images'];
+    if (imagesData is List && imagesData.isNotEmpty) {
+      for (var img in imagesData) {
+        if (img is Map && img['image_url'] != null) {
+          imageUrls.add(img['image_url']);
+        }
+      }
     }
-    return productData!['images']?.toString();
+    
+    if (imageUrls.isEmpty) {
+      var imageUrlsData = productData!['image_urls'];
+      if (imageUrlsData is List) {
+        imageUrls.addAll(imageUrlsData.map((e) => e.toString()).toList());
+      } else if (imageUrlsData is String && imageUrlsData.isNotEmpty) {
+        imageUrls.add(imageUrlsData);
+      }
+    }
+    
+    return imageUrls;
+  }
+
+  Widget _buildImageGallery() {
+    final images = _getAllProductImages();
+    
+    if (images.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.green[100]!, Colors.green[50]!],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.eco, size: 120, color: Colors.green[400]),
+              SizedBox(height: 8),
+              Text(
+                'No image available',
+                style: TextStyle(color: Colors.green[600], fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Stack(
+      children: [
+        PageView.builder(
+          itemCount: images.length,
+          itemBuilder: (context, index) {
+            return Image.network(
+              images[index],
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.green[100]!, Colors.green[50]!],
+                    ),
+                  ),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      value: loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                          : null,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    ),
+                  ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) => Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.green[100]!, Colors.green[50]!],
+                  ),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.eco, size: 100, color: Colors.green[400]),
+                      SizedBox(height: 8),
+                      Text(
+                        'Image not available',
+                        style: TextStyle(color: Colors.green[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
+            ),
+          ),
+        ),
+        if (images.length > 1)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${images.length} photos',
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   String _formatDate(dynamic dateValue) {
@@ -624,81 +756,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
           ),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.green[100]!, Colors.green[50]!],
-            ),
-          ),
-          child: _getProductImage() != null && _getProductImage()!.isNotEmpty
-              ? Stack(
-            children: [
-              Image.network(
-                _getProductImage()!,
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.eco, size: 100, color: Colors.green[400]),
-                      SizedBox(height: 8),
-                      Text(
-                        'Image not available',
-                        style: TextStyle(
-                          color: Colors.green[600],
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.3),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          )
-              : Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.eco, size: 120, color: Colors.green[400]),
-                SizedBox(height: 8),
-                Text(
-                  'No image available',
-                  style: TextStyle(
-                    color: Colors.green[600],
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        background: _buildImageGallery(),
       ),
     );
   }
