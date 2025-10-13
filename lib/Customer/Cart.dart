@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'customerhomepage.dart';
 import 'navigation_utils.dart';
+import '../utils/user_utils.dart';
 
 import 'order_confirm.dart';
 import 'product_details_screen.dart';
 
 class CartItem {
-  final int cartItemId;
+  int cartItemId;
   final int productId;
   final String name;
   final String description;
@@ -34,17 +36,70 @@ class CartItem {
   });
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
-    final product = json['product'] ?? json;
+    // Normalize and parse cart item JSON from API
+
+    // The API sometimes returns the product inside a nested field 'cart_product' or 'product'
+    final product = json['cart_product'] ?? json['product'] ?? json['Product'] ?? json;
+
+    // cart uses cart_id and product_id at top-level in some responses
+    final cartItemId = json['cart_id'] ?? json['cart_item_id'] ?? json['id'] ?? json['cartItemId'] ?? 0;
+    final productId = json['product_id'] ?? product['product_id'] ?? product['id'] ?? json['productId'] ?? 0;
+
+    // price can be string or number; prefer current_price then price
+    final priceRaw = product['current_price'] ?? product['current_price'] ?? product['price'] ?? json['current_price'] ?? json['price'] ?? '0.0';
+
+    // images may be provided under many names and formats. Normalize to a single URL string.
+    dynamic imagesField = product['images'] ?? product['image'] ?? product['image_url'] ?? product['imageUrl'] ?? json['images'] ?? json['image'] ?? json['image_url'];
+    String imagesRaw = '';
+    if (imagesField != null) {
+      if (imagesField is List && imagesField.isNotEmpty) {
+        imagesRaw = (imagesField[0] ?? '').toString();
+      } else if (imagesField is String) {
+        // If it's a comma-separated list, take the first
+        imagesRaw = imagesField.split(',').map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+      } else {
+        imagesRaw = imagesField.toString();
+      }
+    }
+
+    // If still empty, try common alternative fields inside product or farmer
+    if (imagesRaw.isEmpty) {
+      final farmer = product['farmer'] ?? product['Farmer'] ?? {};
+      dynamic farmerImage = farmer is Map ? (farmer['image_url'] ?? farmer['imageUrl'] ?? farmer['photo'] ?? farmer['avatar'] ?? farmer['image']) : null;
+      if (farmerImage != null) {
+        if (farmerImage is String) imagesRaw = farmerImage.split(',').map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+      }
+    }
+
+    if (imagesRaw.isEmpty) {
+      // Try a few other keys that some APIs use
+      final alt = product['thumbnail'] ?? product['photo'] ?? product['image_path'] ?? product['picture'];
+      if (alt != null) imagesRaw = alt.toString();
+    }
+
+    if (kDebugMode) {
+      if (imagesRaw.isEmpty) {
+        debugPrint('No product image found for cart item (product id: $productId, cart id: $cartItemId)');
+      } else {
+        debugPrint('Using product image for cart item: $imagesRaw');
+      }
+    }
+
+    final name = product['name'] ?? product['product_name'] ?? json['name'] ?? 'Unknown Product';
+    final description = product['description'] ?? json['description'] ?? '';
+    final category = product['category'] ?? json['category'] ?? '';
+    final stockRaw = product['quantity'] ?? product['stock'] ?? json['quantity'] ?? json['stock'] ?? 999;
+
     return CartItem(
-      cartItemId: json['id'] ?? json['cartItemId'] ?? 0,
-      productId: product['id'] ?? json['productId'] ?? json['product_id'] ?? 0,
-      name: product['name'] ?? json['name'] ?? 'Unknown Product',
-      description: product['description'] ?? json['description'] ?? '',
-      price: double.tryParse((product['price'] ?? json['price']).toString()) ?? 0.0,
-      quantity: json['quantity'] ?? 1,
-      images: product['images'] ?? json['images'] ?? '',
-      category: product['category'] ?? json['category'] ?? '',
-      stock: int.tryParse((product['stock'] ?? product['quantity'] ?? json['stock'] ?? json['quantity'] ?? 999).toString()) ?? 999,
+      cartItemId: (cartItemId is int) ? cartItemId : int.tryParse(cartItemId.toString()) ?? 0,
+      productId: (productId is int) ? productId : int.tryParse(productId.toString()) ?? 0,
+      name: name.toString(),
+      description: description.toString(),
+      price: double.tryParse(priceRaw.toString()) ?? 0.0,
+      quantity: (json['quantity'] is int) ? json['quantity'] : int.tryParse((json['quantity'] ?? '1').toString()) ?? 1,
+  images: imagesRaw ?? '',
+      category: category.toString(),
+      stock: int.tryParse(stockRaw.toString()) ?? 999,
     );
   }
 }
@@ -71,15 +126,19 @@ class _CartPageState extends State<CartPage> {
   }
 
   Future<void> _loadToken() async {
-    // Use the token passed from the parent widget first, then fallback to SharedPreferences
+    // Prefer token passed from parent. Then try UserUtils (jwt_token). Fallback to legacy 'auth_token'.
     if (widget.token != null && widget.token!.isNotEmpty) {
       _token = widget.token;
-      _fetchCartItems();
     } else {
-      final prefs = await SharedPreferences.getInstance();
-      _token = prefs.getString('auth_token');
-      _fetchCartItems();
+      // Try UserUtils helper (uses 'jwt_token')
+      _token = await UserUtils.getToken();
+      if (_token == null || _token!.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        _token = prefs.getString('auth_token') ?? prefs.getString('jwt_token');
+      }
     }
+    // fetch items once we attempted to obtain a token
+    _fetchCartItems();
   }
 
   Future<void> _fetchCartItems() async {
@@ -96,7 +155,12 @@ class _CartPageState extends State<CartPage> {
         return;
       }
 
-      print('Fetching cart items with token: ${_token!.substring(0, 10)}...');
+    if (kDebugMode) {
+      final tokenPreview = _token != null
+        ? ((_token!.length > 10) ? '${_token!.substring(0, 10)}...' : _token)
+        : 'null';
+      debugPrint('Fetching cart items with token: $tokenPreview');
+    }
 
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
@@ -105,22 +169,28 @@ class _CartPageState extends State<CartPage> {
           'Content-Type': 'application/json',
         },
       );
-
-      print('Cart API Response Status: ${response.statusCode}');
-      print('Cart API Response Body: ${response.body}');
+      if (kDebugMode) {
+        debugPrint('Cart API Response Status: ${response.statusCode}');
+        debugPrint('Cart API Response Body: ${response.body}');
+      }
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final dynamic itemsData = data['data'] ?? [];
-        print('Cart items data: $itemsData');
+  final data = json.decode(response.body);
+  if (kDebugMode) debugPrint('Full API response: $data');
+        
+  final dynamic itemsData = data['data'] ?? data['cart_items'] ?? data['items'] ?? [];
+  if (kDebugMode) debugPrint('Cart items data: $itemsData');
 
         setState(() {
           if (itemsData is List) {
-            _cartItems = itemsData.map((json) => CartItem.fromJson(json)).toList();
-            print('Parsed ${_cartItems.length} cart items from List');
-          } else if (itemsData is Map && itemsData['items'] != null) {
-            _cartItems = (itemsData['items'] as List).map((json) => CartItem.fromJson(json)).toList();
-            print('Parsed ${_cartItems.length} cart items from Map items');
+            _cartItems = itemsData.map((item) => CartItem.fromJson(item)).toList();
+            if (kDebugMode) debugPrint('Parsed ${_cartItems.length} cart items');
+          } else if (itemsData is Map) {
+            final items = itemsData['items'] ?? itemsData['cart_items'] ?? [];
+            if (items is List) {
+              _cartItems = items.map((item) => CartItem.fromJson(item)).toList();
+              if (kDebugMode) debugPrint('Parsed ${_cartItems.length} cart items from nested structure');
+            }
           } else {
             _cartItems = [];
             print('No cart items found in response');
@@ -136,11 +206,45 @@ class _CartPageState extends State<CartPage> {
         });
       }
     } catch (e) {
-      print('Cart fetch error: $e');
+      if (kDebugMode) debugPrint('Cart fetch error: $e');
       setState(() {
         _error = 'Error: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  // Attempt to add a cart item server-side (used for Undo). Returns true on success.
+  Future<bool> _addCartItemServer(CartItem item) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/cart'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'product_id': item.productId, 'quantity': item.quantity}),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final respData = json.decode(response.body);
+        if (kDebugMode) debugPrint('Add cart response: $respData');
+
+        // If server returned a cart id, update the local item's cartItemId
+        final newId = respData['data']?['cart_id'] ?? respData['cart_id'] ?? respData['id'];
+        if (newId != null) {
+          setState(() {
+            final idx = _cartItems.indexWhere((i) => i.productId == item.productId && i.cartItemId == 0);
+            if (idx != -1) {
+              _cartItems[idx].cartItemId = int.tryParse(newId.toString()) ?? _cartItems[idx].cartItemId;
+            }
+          });
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Error adding cart item: $e');
+      return false;
     }
   }
 
@@ -269,7 +373,7 @@ class _CartPageState extends State<CartPage> {
         final data = json.decode(response.body);
         final products = data['data'] as List;
         final product = products.firstWhere(
-              (p) => p['id'] == item.productId,
+              (p) => (p['product_id'] ?? p['id']) == item.productId,
           orElse: () => null,
         );
         if (product != null) {
@@ -310,6 +414,22 @@ class _CartPageState extends State<CartPage> {
         ),
         centerTitle: true,
         actions: [
+          // Refresh button to re-fetch cart items
+          IconButton(
+            icon: _isLoading
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.0,
+                    ),
+                  )
+                : const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _isLoading ? null : _fetchCartItems,
+            tooltip: 'Refresh Cart',
+          ),
+
           if (_cartItems.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.white),
@@ -383,129 +503,199 @@ class _CartPageState extends State<CartPage> {
               itemCount: _cartItems.length,
               itemBuilder: (context, index) {
                 final item = _cartItems[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProductDetailScreen(
-                          productId: item.productId,
-                          token: _token ?? widget.token ?? '',
+
+                // Wrap each item in a Dismissible for swipe-to-delete UX
+                return Dismissible(
+                  key: ValueKey(item.cartItemId != 0 ? item.cartItemId : item.productId),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.red[400],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  confirmDismiss: (direction) async {
+                    // show a confirmation dialog before deleting
+                    final result = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Remove Item'),
+                        content: Text('Remove ${item.name} from your cart?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Remove', style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    );
+                    return result ?? false;
+                  },
+                  onDismissed: (direction) {
+                    // Temporarily store removed item for undo
+                    final removedItem = item;
+                    final removedIndex = index;
+                    setState(() {
+                      _cartItems.removeAt(removedIndex);
+                    });
+
+                    // Call API to remove the item in background
+                    _removeCartItem(removedItem.cartItemId);
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${removedItem.name} removed'),
+                        action: SnackBarAction(
+                          label: 'Undo',
+                          onPressed: () async {
+                            // Re-insert locally first for instant UX
+                            setState(() {
+                              _cartItems.insert(removedIndex, removedItem);
+                            });
+                            // Attempt to restore on server
+                            final success = await _addCartItemServer(removedItem);
+                            if (!success) {
+                              // If server restore failed, remove locally again and notify user
+                              setState(() {
+                                _cartItems.removeWhere((ci) => ci.productId == removedItem.productId && ci.cartItemId == removedItem.cartItemId);
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Could not restore item on server')),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Item restored')),
+                              );
+                            }
+                          },
                         ),
                       ),
                     );
                   },
-                  child: Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    color: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.green[100]!, width: 1),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: item.isSelected,
-                            activeColor: Colors.green[600],
-                            onChanged: (value) {
-                              setState(() {
-                                item.isSelected = value ?? false;
-                                _selectAll = _cartItems.every((item) => item.isSelected);
-                              });
-                            },
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProductDetailScreen(
+                            productId: item.productId,
+                            token: _token ?? widget.token ?? '',
                           ),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: item.images.isNotEmpty
-                                ? Image.network(
-                              item.images.split(',')[0],
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: Colors.grey[200],
-                                    child: const Icon(Icons.image, color: Colors.grey),
-                                  ),
-                            )
-                                : Container(
-                              width: 80,
-                              height: 80,
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.image, color: Colors.grey),
+                        ),
+                      );
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      color: Colors.white,
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.green[100]!, width: 1),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: item.isSelected,
+                              activeColor: Colors.green[600],
+                              onChanged: (value) {
+                                setState(() {
+                                  item.isSelected = value ?? false;
+                                  _selectAll = _cartItems.every((item) => item.isSelected);
+                                });
+                              },
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item.description,
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Category: ${item.category}',
-                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '₹${item.price.toStringAsFixed(2)}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.green,
-                                  ),
-                                ),
-                              ],
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: item.images.isNotEmpty
+                                  ? Image.network(
+                                      item.images,
+                                      width: 80,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.grey[200],
+                                        child: const Icon(Icons.broken_image, color: Colors.grey),
+                                      ),
+                                    )
+                                  : Container(
+                                      width: 80,
+                                      height: 80,
+                                      color: Colors.grey[200],
+                                      child: const Icon(Icons.image, color: Colors.grey),
+                                    ),
                             ),
-                          ),
-                          Column(
-                            children: [
-                              Row(
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  IconButton(
-                                    onPressed: () => _decreaseQuantity(item),
-                                    icon: const Icon(Icons.remove_circle_outline),
-                                    color: Colors.green[700],
-                                  ),
                                   Text(
-                                    '${item.quantity}',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    item.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  IconButton(
-                                    onPressed: () => _increaseQuantity(item),
-                                    icon: const Icon(Icons.add_circle_outline),
-                                    color: Colors.green[700],
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.description,
+                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Category: ${item.category}',
+                                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '₹${item.price.toStringAsFixed(2)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.green,
+                                    ),
                                   ),
                                 ],
                               ),
-                              IconButton(
-                                onPressed: () => _removeCartItem(item.cartItemId),
-                                icon: const Icon(Icons.delete_outline),
-                                color: Colors.green[700],
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                            Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () => _decreaseQuantity(item),
+                                      icon: const Icon(Icons.remove_circle_outline),
+                                      color: Colors.green[700],
+                                    ),
+                                    Text(
+                                      '${item.quantity}',
+                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                    IconButton(
+                                      onPressed: () => _increaseQuantity(item),
+                                      icon: const Icon(Icons.add_circle_outline),
+                                      color: Colors.green[700],
+                                    ),
+                                  ],
+                                ),
+                                IconButton(
+                                  onPressed: () => _removeCartItem(item.cartItemId),
+                                  icon: const Icon(Icons.delete_outline),
+                                  color: Colors.green[700],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -532,68 +722,109 @@ class _CartPageState extends State<CartPage> {
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total ($selectedCount items)',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '₹${cartTotal.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: selectedCount > 0 ? () {
-                      final selectedItems = _cartItems.where((item) => item.isSelected).toList();
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OrderConfirmPage(
-                            cartItems: selectedItems.map((item) => {
-                              'name': item.name,
-                              'description': item.description,
-                              'price': item.price,
-                              'quantity': item.quantity,
-                              'images': item.images,
-                              'product_id': item.productId,
-                              'id': item.productId,
-                            }).toList(),
-                            token: widget.token,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Total',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '₹${cartTotal.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            // Selected count summary
+                            Text(
+                              '$selectedCount items selected',
+                              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                        // Checkout button remains on the right
+                        SizedBox(
+                          width: 170,
+                          child: ElevatedButton(
+                            onPressed: selectedCount > 0
+                                ? () {
+                                    final selectedItems = _cartItems.where((item) => item.isSelected).toList();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => OrderConfirmPage(
+                                          cartItems: selectedItems.map((item) => {
+                                                'name': item.name,
+                                                'description': item.description,
+                                                'price': item.price,
+                                                'quantity': item.quantity,
+                                                'images': item.images,
+                                                'product_id': item.productId,
+                                                'id': item.productId,
+                                              }).toList(),
+                                          token: widget.token,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                : null,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[600],
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                            child: const Text(
+                              'Proceed to Checkout',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
-                      );
-                    } : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
+                      ],
                     ),
-                    child: const Text(
-                      'Proceed to Checkout',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    const SizedBox(height: 12),
+                    // Delivery estimation / shipping preview
+                    Row(
+                      children: [
+                        Icon(Icons.local_shipping, color: Colors.grey[700], size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Estimated delivery: 2-4 days · Free shipping over ₹499',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // simple info dialog for shipping details
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Shipping & Delivery'),
+                                content: const Text('Orders are typically delivered within 2-4 business days. Shipping is free for orders over ₹499.'),
+                                actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+                              ),
+                            );
+                          },
+                          child: const Text('Details'),
+                        ),
+                      ],
                     ),
-                  ),
-
-                ),
               ],
             ),
           ),

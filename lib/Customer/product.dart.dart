@@ -30,13 +30,23 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    String imageUrl = '';
+    var imageData = json['image_urls'];
+    if (imageData is List && imageData.isNotEmpty) {
+      imageUrl = imageData.join(',');
+    } else if (imageData is String && imageData.isNotEmpty) {
+      imageUrl = imageData;
+    } else {
+      imageUrl = json['images']?.toString() ?? '';
+    }
+
     return Product(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id'].toString()) ?? 0,
       name: json['name'] ?? 'Not Available',
       description: json['description'] ?? 'Not Available',
-      price: json['price'] is double ? json['price'] : double.tryParse(json['price'].toString()) ?? 0.0,
+      price: json['price'] is double ? json['price'] : double.tryParse((json['price'] ?? json['current_price']).toString()) ?? 0.0,
       quantity: json['quantity'] is int ? json['quantity'] : int.tryParse(json['quantity'].toString()) ?? 0,
-      images: json['images']?.toString() ?? '',
+      images: imageUrl,
       category: json['category'] ?? 'Not Available',
       status: json['status'] ?? 'Not Available',
       lastPriceUpdate: json['last_price_update'] ?? 'Not Available',

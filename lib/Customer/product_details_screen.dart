@@ -148,6 +148,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     return value.toString();
   }
 
+  String? _getProductImage() {
+    if (productData == null) return null;
+    var imageData = productData!['image_urls'];
+    if (imageData is List && imageData.isNotEmpty) {
+      return imageData[0];
+    } else if (imageData is String && imageData.isNotEmpty) {
+      return imageData;
+    }
+    return productData!['images']?.toString();
+  }
+
   String _formatDate(dynamic dateValue) {
     if (dateValue == null || dateValue.toString().trim().isEmpty) {
       return 'Not Available';
@@ -621,11 +632,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
               colors: [Colors.green[100]!, Colors.green[50]!],
             ),
           ),
-          child: productData!['images'] != null && productData!['images'].toString().isNotEmpty
+          child: _getProductImage() != null && _getProductImage()!.isNotEmpty
               ? Stack(
             children: [
               Image.network(
-                productData!['images'],
+                _getProductImage()!,
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,

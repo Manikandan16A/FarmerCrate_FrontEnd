@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'customerhomepage.dart';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'profile.dart';
-import 'wishlist.dart';
-import 'FAQpage.dart';
+// removed unused imports: shared_preferences, wishlist, FAQpage
 
 
 class CustomerNavigationUtils {
@@ -100,34 +98,20 @@ class CustomerNavigationUtils {
               ),
               label: 'Cart',
             ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: currentIndex == 3 ? Colors.green[50] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+              BottomNavigationBarItem(
+                icon: Container(
+                  padding: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: currentIndex == 3 ? Colors.green[50] : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    currentIndex == 3 ? Icons.person : Icons.person_outline,
+                    size: 22,
+                  ),
                 ),
-                child: Icon(
-                  currentIndex == 3 ? Icons.help : Icons.help_outline,
-                  size: 22,
-                ),
+                label: 'Profile',
               ),
-              label: 'FAQ',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: currentIndex == 4 ? Colors.green[50] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  currentIndex == 4 ? Icons.person : Icons.person_outline,
-                  size: 22,
-                ),
-              ),
-              label: 'Profile',
-            ),
           ],
         ),
       ),
@@ -147,9 +131,6 @@ class CustomerNavigationUtils {
         targetPage = CartPage(token: token);
         break;
       case 3:
-        targetPage = FAQPage(token: token);
-        break;
-      case 4:
         targetPage = CustomerProfilePage(token: token);
         break;
       default:

@@ -6,7 +6,14 @@ import '../Customer/customerhomepage.dart';
 import '../auth/Signin.dart';
 import 'Categories.dart';
 import 'Cart.dart';
-import 'FAQpage.dart';
+import 'OrderHistory.dart';
+import 'AppInfo.dart';
+import 'HelpSupportPage.dart';
+import 'wishlist.dart';
+import 'AppSettingsPage.dart';
+import 'NotificationsPage.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/cloudinary_upload.dart';
@@ -518,7 +525,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                     title,
                     style: const TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                       color: Color(0xFF2D3748),
                     ),
                   ),
@@ -526,7 +533,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       color: Colors.grey[600],
                     ),
                   ),
@@ -700,6 +707,111 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
     );
   }
 
+  void _contactUs() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Contact Us',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.email, color: Color(0xFF4CAF50)),
+              title: const Text('Email'),
+              subtitle: const Text('support@farmercrate.com'),
+              onTap: () async {
+                final uri = Uri.parse('mailto:support@farmercrate.com');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.phone, color: Color(0xFF4CAF50)),
+              title: const Text('Phone'),
+              subtitle: const Text('+91 1234567890'),
+              onTap: () async {
+                final uri = Uri.parse('tel:+911234567890');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language, color: Color(0xFF4CAF50)),
+              title: const Text('Website'),
+              subtitle: const Text('www.farmercrate.com'),
+              onTap: () async {
+                final uri = Uri.parse('https://www.farmercrate.com');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareApp() {
+    Share.share(
+      'Check out Farmer Crate - Fresh produce directly from farmers! Download now: https://play.google.com/store/apps/farmercrate',
+      subject: 'Farmer Crate App',
+    );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldLogout == true) {
+      // Clear stored tokens and navigate to login
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('auth_token');
+        await prefs.remove('jwt_token');
+      } catch (e) {
+        // ignore errors silently; still continue to logout
+      }
+
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => LoginPage()),
+            (Route<dynamic> route) => false,
+      );
+    }
+  }
+
   void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
       String? token = widget.token;
@@ -801,7 +913,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
         ],
       ),
       drawer: _buildSideNav(),
-      bottomNavigationBar: _buildBottomNav(),
+  bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -978,6 +1090,177 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
             _buildContactInfoCard(),
             const SizedBox(height: 20),
             _buildLocationInfoCard(),
+            const SizedBox(height: 20),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.history, color: Colors.green[700]),
+                      title: const Text('Order History'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => OrderHistoryPage(token: widget.token)),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.favorite_outline, color: Colors.green[700]),
+                      title: const Text('My Wishlist'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => WishlistPage(token: widget.token)),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.notifications_outlined, color: Colors.green[700]),
+                      title: const Text('Notifications'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => NotificationsPage(token: widget.token)),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.settings_outlined, color: Colors.green[700]),
+                      title: const Text('Settings'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => AppSettingsPage(token: widget.token)),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.info_outline, color: Colors.green[700]),
+                      title: const Text('App Info / Privacy Policy'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const AppInfoPage()),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.help_outline, color: Colors.green[700]),
+                      title: const Text('Help & Support'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => HelpSupportPage(token: widget.token)),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.contact_mail_outlined, color: Colors.green[700]),
+                      title: const Text('Contact Us'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: _contactUs,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.share_outlined, color: Colors.green[700]),
+                      title: const Text('Share App'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: _shareApp,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: Icon(Icons.logout_outlined, color: Colors.red[700]),
+                      title: const Text('Logout'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext dialogContext) {
+                            return Dialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFF5722),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.logout, color: Colors.white, size: 24),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Confirm Logout',
+                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Are you sure you want to logout?',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(fontSize: 14, color: Colors.grey),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextButton(
+                                            onPressed: () => Navigator.pop(dialogContext),
+                                            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                              Navigator.pop(dialogContext);
+                                              try {
+                                                final prefs = await SharedPreferences.getInstance();
+                                                await prefs.remove('auth_token');
+                                                await prefs.remove('jwt_token');
+                                              } catch (e) {}
+                                              Navigator.pushAndRemoveUntil(
+                                                context,
+                                                MaterialPageRoute(builder: (context) => LoginPage()),
+                                                (Route<dynamic> route) => false,
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: const Color(0xFFFF5722),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                            ),
+                                            child: const Text('Logout'),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
             if (_isEditMode) ...[
               const SizedBox(height: 32),
               _buildSaveButton(),
@@ -1683,10 +1966,74 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
               icon: Icons.logout_outlined,
               title: 'Logout',
               onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                      (Route<dynamic> route) => false,
+                showDialog(
+                  context: context,
+                  builder: (BuildContext dialogContext) {
+                    return Dialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFF5722),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.logout, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Confirm Logout',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Are you sure you want to logout?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 14, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                    child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      Navigator.pop(dialogContext);
+                                      try {
+                                        final prefs = await SharedPreferences.getInstance();
+                                        await prefs.remove('auth_token');
+                                        await prefs.remove('jwt_token');
+                                      } catch (e) {}
+                                      Navigator.pushAndRemoveUntil(
+                                        context,
+                                        MaterialPageRoute(builder: (context) => LoginPage()),
+                                        (Route<dynamic> route) => false,
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFFF5722),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    child: const Text('Logout'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -1772,7 +2119,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
           elevation: 0,
           selectedItemColor: const Color(0xFF4CAF50),
           unselectedItemColor: Colors.grey[500],
-          currentIndex: 4,
+          currentIndex: 3,
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 12,
@@ -1805,14 +2152,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                 );
                 break;
               case 3:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => FAQPage(token: widget.token)),
-                );
-                break;
-              case 4:
-              // Already on profile page
+                // Already on profile page
                 break;
             }
           },
@@ -1882,28 +2222,6 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                 child: const Icon(Icons.shopping_cart),
               ),
               label: 'Cart',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.help_outline),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.2),
-                      const Color(0xFF2E7D32).withOpacity(0.2),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Icon(Icons.help),
-              ),
-              label: 'FAQ',
             ),
             BottomNavigationBarItem(
               icon: Container(

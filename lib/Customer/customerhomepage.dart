@@ -2,11 +2,14 @@ import 'package:farmer_crate/Customer/profile.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 import 'Categories.dart';
 import 'Cart.dart';
-
+import 'navigation_utils.dart';
 import 'FAQpage.dart';
 import 'product_details_screen.dart';
+import 'TrendingPage.dart';
+import 'OrderHistory.dart';
 
 class CustomerHomePage extends StatefulWidget {
   final String? token;
@@ -25,8 +28,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   List<Product> products = [];
   List<Product> topBuys = [];
   int _currentIndex = 0;
-
-
+  bool _isSearchVisible = false;
 
   // Animation controllers
   late AnimationController _fadeController;
@@ -199,10 +201,6 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         targetPage = CartPage(token: widget.token);
         break;
       case 3:
-        targetPage = FAQPage(token: widget.token);
-        break;
-
-      case 4:
         targetPage = CustomerProfilePage(token: widget.token);
         break;
       default:
@@ -693,7 +691,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   Future<void> _addToCart(Product product) async {
-    if (widget.token == null) {
+    if (widget.token == null || widget.token!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -712,22 +710,33 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     }
 
     try {
-      print('Adding product ${product.id} to cart with token: ${widget.token!.substring(0, 10)}...');
+      print('=== ADD TO CART DEBUG ===');
+      print('Product ID: ${product.id}');
+      print('Product Name: ${product.name}');
+      print('Token: ${widget.token!.substring(0, min(20, widget.token!.length))}...');
+
+      // Try multiple possible formats
+      final requestBody = {
+        'product_id': product.id,
+        'productId': product.id,
+        'quantity': 1,
+      };
+      print('Request URL: https://farmercrate.onrender.com/api/cart');
+      print('Request body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
         },
-        body: jsonEncode({
-          'productId': product.id,
-          'quantity': 1,
-        }),
+        body: jsonEncode(requestBody),
       );
 
-      print('Add to cart response status: ${response.statusCode}');
-      print('Add to cart response body: ${response.body}');
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+      print('=== END DEBUG ===');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -736,14 +745,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
               children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 8),
-                Text('${product.name} added to cart!'),
+                Expanded(child: Text('${product.name} added to cart!')),
               ],
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             action: SnackBarAction(
-              label: 'View Cart',
+              label: 'View',
               textColor: Colors.white,
               onPressed: () {
                 Navigator.push(
@@ -757,31 +766,40 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           ),
         );
       } else {
-        final errorData = jsonDecode(response.body);
-        final errorMessage = errorData['message'] ?? 'Failed to add to cart';
+        String errorMessage = 'Failed to add to cart (Status: ${response.statusCode})';
+        try {
+          final errorData = jsonDecode(response.body);
+          errorMessage = errorData['message'] ?? errorData['error'] ?? errorMessage;
+          print('Error from API: $errorMessage');
+        } catch (e) {
+          print('Error parsing error response: $e');
+          errorMessage = 'Failed to add to cart. Response: ${response.body}';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error, color: Colors.white),
                 SizedBox(width: 8),
-                Text(errorMessage),
+                Expanded(child: Text(errorMessage)),
               ],
             ),
             backgroundColor: Colors.red[600],
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: Duration(seconds: 5),
           ),
         );
       }
     } catch (e) {
+      print('Exception in _addToCart: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               Icon(Icons.error, color: Colors.white),
               SizedBox(width: 8),
-              Text('Network error. Please try again.'),
+              Expanded(child: Text('Network error: ${e.toString()}')),
             ],
           ),
           backgroundColor: Colors.red[600],
@@ -815,9 +833,8 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             child: CustomScrollView(
               physics: BouncingScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(child: SizedBox(height: 100)),
+                SliverToBoxAdapter(child: SizedBox(height: 8)),
                 _buildWelcomeSection(),
-                _buildSearchBar(),
                 _buildCategories(),
                 _buildTopBuysSection(),
                 _buildSuggestedSection(),
@@ -851,84 +868,138 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       leading: Builder(
         builder: (context) => IconButton(
           icon: Container(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: Colors.green.withOpacity(0.2),
-                  blurRadius: 8,
+                  blurRadius: 6,
                   offset: Offset(0, 2),
                 ),
               ],
             ),
-            child: Icon(Icons.menu, color: Colors.green[800], size: 20),
+            child: Icon(Icons.menu, color: Colors.green[800], size: 18),
           ),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
-      title: ShaderMask(
-        shaderCallback: (bounds) => LinearGradient(
-          colors: [Colors.green[800]!, Colors.green[600]!],
-        ).createShader(bounds),
-        child: Text(
-          'FarmerCrate',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
+      title: _isSearchVisible
+          ? Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (value) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                ),
+                style: TextStyle(fontSize: 14),
+              ),
+            )
+          : ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [Colors.green[800]!, Colors.green[600]!],
+              ).createShader(bounds),
+              child: Text(
+                'FarmerCrate',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
       actions: [
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.refresh, color: Colors.green[800], size: 20),
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-            onPressed: _fetchProducts,
-            tooltip: 'Refresh Products',
+            child: Icon(Icons.search, color: Colors.green[800], size: 18),
           ),
+          onPressed: () {
+            setState(() {
+              _isSearchVisible = !_isSearchVisible;
+              if (!_isSearchVisible) {
+                _searchController.clear();
+              }
+            });
+          },
         ),
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 20),
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
-              );
-            },
+            child: Icon(Icons.refresh, color: Colors.green[800], size: 18),
           ),
+          onPressed: _fetchProducts,
+        ),
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 18),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+            );
+          },
         ),
       ],
     );
@@ -997,42 +1068,34 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       child: SlideTransition(
         position: _slideAnimation,
         child: Container(
-          margin: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          margin: EdgeInsets.fromLTRB(20, 8, 20, 8),
+          padding: EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.green[50]!, Colors.white],
+            ),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: Offset(0,4)),
+            ],
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Main welcome headline simplified and customer-specific
               Text(
-                customerName != null && customerName!.isNotEmpty
-                    ? ' $customerName'
-                    : 'Welcome!',
+                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}, to FarmerCrate',
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.green[800],
                 ),
               ),
-              SizedBox(height: 4),
-              ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [Colors.green[800]!, Colors.green[600]!],
-                ).createShader(bounds),
-                child: Text(
-                  'Discover fresh, organic produce',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'from local farms near you',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
-              ),
+
+              SizedBox(height: 14),
+              _buildProfileCard(),
             ],
           ),
         ),
@@ -1040,65 +1103,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
     );
   }
 
-  Widget _buildSearchBar() {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search for fresh products...',
-                  prefixIcon: Container(
-                    margin: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.green[400]!, Colors.green[600]!],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.search, color: Colors.white, size: 20),
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                    icon: Icon(Icons.clear, color: Colors.grey[600]),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() {});
-                    },
-                  )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  hintStyle: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 16,
-                  ),
-                ),
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-            SizedBox(height: 20),
-            _buildProfileCard(),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildProfileCard() {
     return AnimatedBuilder(
@@ -1159,21 +1164,22 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                           ),
                         ),
                         SizedBox(height: 16),
+                        // Customer profile quick action
                         Text(
-                          'Keep your information fresh & up-to-date',
+                          'Keep your information fresh & up to date',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            height: 1.3,
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Tap here to update your profile',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withOpacity(0.95),
                             fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -1242,60 +1248,86 @@ class _CustomerHomePageState extends State<CustomerHomePage>
 
   Widget _buildCategories() {
     return SliverToBoxAdapter(
-      child: Container(
-        height: 60,
-        margin: EdgeInsets.symmetric(vertical: 16),
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          physics: BouncingScrollPhysics(),
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            final isSelected = selectedCategory == category;
+      child: Stack(
+        children: [
+          Container(
+            height: 50,
+            margin: EdgeInsets.symmetric(vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              physics: BouncingScrollPhysics(),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final isSelected = selectedCategory == category;
 
-            return GestureDetector(
-              onTap: () => setState(() => selectedCategory = category),
-              child: AnimatedContainer(
-                duration: Duration(milliseconds: 300),
-                margin: EdgeInsets.only(right: 16),
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: isSelected
-                      ? LinearGradient(
-                    colors: [Colors.green[500]!, Colors.green[700]!],
-                  )
-                      : null,
-                  color: isSelected ? null : Colors.white,
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(
-                    color: isSelected ? Colors.transparent : Colors.green[300]!,
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: isSelected
-                          ? Colors.green.withOpacity(0.4)
-                          : Colors.grey.withOpacity(0.1),
-                      blurRadius: isSelected ? 15 : 10,
-                      offset: Offset(0, isSelected ? 5 : 2),
+                IconData iconFor(String cat) {
+                  switch (cat.toLowerCase()) {
+                    case 'vegetables':
+                      return Icons.grass;
+                    case 'fruits':
+                      return Icons.local_pizza; // placeholder for fruit
+                    case 'herbs':
+                      return Icons.local_florist;
+                    default:
+                      return Icons.category;
+                  }
+                }
+
+                return GestureDetector(
+                  onTap: () => setState(() => selectedCategory = category),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    margin: EdgeInsets.only(right: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? LinearGradient(
+                              colors: [Colors.green[500]!, Colors.green[700]!],
+                            )
+                          : null,
+                      color: isSelected ? null : Colors.white,
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(
+                        color: isSelected ? Colors.transparent : Colors.green[300]!,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isSelected
+                              ? Colors.green.withOpacity(0.4)
+                              : Colors.grey.withOpacity(0.1),
+                          blurRadius: isSelected ? 15 : 10,
+                          offset: Offset(0, isSelected ? 5 : 2),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    category,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.green[700],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      fontSize: 15,
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: isSelected ? Colors.white.withOpacity(0.2) : Colors.green[50],
+                          child: Icon(iconFor(category), size: 16, color: isSelected ? Colors.white : Colors.green[700]),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          category,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.green[700],
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+          // Advanced filter removed per request
+        ],
       ),
     );
   }
@@ -1329,9 +1361,11 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   ),
                 ),
                 Spacer(),
-                Text(
-                  '🔥',
-                  style: TextStyle(fontSize: 20),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => TrendingPage(token: widget.token)));
+                  },
+                  child: Text('View All', style: TextStyle(color: Colors.green[700], fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -1996,21 +2030,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  _currentIndex == 3 ? Icons.help : Icons.help_outline,
-                  size: 22,
-                ),
-              ),
-              label: 'FAQ',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _currentIndex == 4 ? Colors.green[50] : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _currentIndex == 4 ? Icons.person : Icons.person_outline,
+                  _currentIndex == 3 ? Icons.person : Icons.person_outline,
                   size: 22,
                 ),
               ),
@@ -2157,22 +2177,30 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    String? imageUrl;
+    if (json['images'] is List && (json['images'] as List).isNotEmpty) {
+      final imagesList = json['images'] as List;
+      imageUrl = imagesList.first['image_url'];
+    } else if (json['images'] is String) {
+      imageUrl = json['images'];
+    }
+
     return Product(
       id: json['product_id'] ?? 0,
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       price: double.tryParse(json['current_price'] ?? '0.0') ?? 0.0,
       quantity: json['quantity'] ?? 0,
-      images: json['images'],
+      images: imageUrl,
       category: json['category'] ?? 'Uncategorized',
       status: json['status'] ?? 'available',
       harvestDate: json['harvest_date'] != null ? DateTime.parse(json['harvest_date']) : null,
       expiryDate: json['expiry_date'] != null ? DateTime.parse(json['expiry_date']) : null,
       farmerId: json['farmer_id'] ?? 0,
       views: json['views'] ?? 0,
-      rating: 0.0, // Initialize with default value as ratings are managed separately
-      reviewCount: 0, // Initialize with default value as reviews are managed separately
-      reviews: [], // Initialize empty as reviews are fetched separately
+      rating: 0.0,
+      reviewCount: 0,
+      reviews: [],
       farmer: json['farmer'] != null ? Farmer.fromJson(json['farmer']) : Farmer(
         id: 0,
         globalId: '',

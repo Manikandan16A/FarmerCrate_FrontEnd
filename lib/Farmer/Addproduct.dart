@@ -4,6 +4,7 @@ import 'homepage.dart';
 
 import 'ProductEdit.dart';
 import 'farmerprofile.dart';
+import 'orders_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -35,6 +36,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   bool _showSuccessMessage = false;
   DateTime? _harvestDate;
   DateTime? _expiryDate;
+  bool _isAvailable = true;
+  List<File?> _selectedImages = [null, null, null];
 
   final List<String> _categories = [
     'Fruits',
@@ -49,7 +52,6 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     'Other'
   ];
 
-  File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -84,9 +86,12 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
         targetPage = AddProductPage(token: widget.token);
         break;
       case 2:
-        targetPage = FarmerProductsPage(token: widget.token);
+        targetPage = OrdersPage(token: widget.token);
         break;
       case 3:
+        targetPage = FarmerProductsPage(token: widget.token);
+        break;
+      case 4:
         targetPage = FarmerProfilePage(token: widget.token);
         break;
       default:
@@ -158,8 +163,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       _showSuccessMessage = false;
     });
 
-    String? imageUrl;
-    if (_selectedImage != null) {
+    List<String> imageUrls = [];
+    for (var image in _selectedImages.where((img) => img != null)) {
       setState(() {
         _errorMessage = null;
         _isLoading = true;
@@ -189,10 +194,9 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           ),
         );
 
-        // Upload image to Cloudinary
-        imageUrl = await CloudinaryUploader.uploadImage(_selectedImage!);
+        String? url = await CloudinaryUploader.uploadImage(image!);
         
-        if (imageUrl == null) {
+        if (url == null) {
           setState(() {
             _isLoading = false;
             _errorMessage = 'Failed to upload image. Please try again.';
@@ -201,14 +205,8 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           return;
         }
 
-        // Optimize the image URL for better performance
-        imageUrl = CloudinaryUploader.optimizeImageUrl(
-          imageUrl,
-          width: 800,
-          height: 800,
-          quality: 'auto',
-          format: 'auto'
-        );
+        url = CloudinaryUploader.optimizeImageUrl(url, width: 800, height: 800, quality: 'auto', format: 'auto');
+        imageUrls.add(url);
 
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -253,6 +251,25 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     
     headers['Authorization'] = 'Bearer ${widget.token}';
 
+    // Print all product details to console
+    print('\n========== CREATING NEW PRODUCT ==========');
+    print('Product Name: ${_nameController.text.trim()}');
+    print('Description: ${_descriptionController.text.trim()}');
+    print('Price: ₹$price');
+    print('Quantity: $_quantity');
+    print('Category: $_selectedCategory');
+    print('Harvest Date: ${_harvestDate!.toIso8601String().split('T')[0]}');
+    print('Expiry Date: ${_expiryDate!.toIso8601String().split('T')[0]}');
+    print('Status: ${_isAvailable ? 'Available' : 'Unavailable'}');
+    print('Number of Images: ${imageUrls.length}');
+    if (imageUrls.isNotEmpty) {
+      print('Image URLs:');
+      for (int i = 0; i < imageUrls.length; i++) {
+        print('  Image ${i + 1}: ${imageUrls[i]}');
+      }
+    }
+    print('==========================================\n');
+
     try {
       final response = await http.post(
         uri,
@@ -263,10 +280,10 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           'current_price': price,
           'quantity': _quantity,
           'category': _selectedCategory,
-          'images': imageUrl ?? '', // Use the optimized Cloudinary URL
+          'image_urls': imageUrls,
           'harvest_date': _harvestDate!.toIso8601String().split('T')[0],
           'expiry_date': _expiryDate!.toIso8601String().split('T')[0],
-          'status': 'available'
+          'status': _isAvailable ? 'available' : 'unavailable'
         }),
       ).timeout(
         const Duration(seconds: 5),
@@ -349,47 +366,114 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   void _saveProduct() {
     _animationController.forward().then((_) {
       _animationController.reverse();
-      addProduct();
+      _showConfirmationDialog();
     });
   }
 
-  Future<void> _pickImage() async {
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.check_circle, color: Colors.green.shade600, size: 40),
+              ),
+              SizedBox(height: 16),
+              Text('Confirm Product Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              SizedBox(height: 16),
+              _buildConfirmRow('Name', _nameController.text),
+              _buildConfirmRow('Category', _selectedCategory),
+              _buildConfirmRow('Price', '₹${_priceController.text}'),
+              _buildConfirmRow('Quantity', '$_quantity'),
+              _buildConfirmRow('Status', _isAvailable ? 'Available' : 'Not Available'),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel'),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        addProduct();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: Text('Confirm & Save', style: TextStyle(color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirmRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey.shade600)),
+          Text(value, style: TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(int index) async {
     try {
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85, // Slightly higher quality for better visual results
-        maxWidth: 1600,   // Increased max width for better quality on high-res displays
-        maxHeight: 1600,  // Increased max height while maintaining aspect ratio
+        imageQuality: 85,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
       
       if (image != null) {
         setState(() {
-          _selectedImage = File(image.path);
-          _errorMessage = null; // Clear any previous error messages
+          _selectedImages[index] = File(image.path);
+          _errorMessage = null;
         });
         
-        // Show a preview of the selected image
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.image, color: Colors.white),
                 SizedBox(width: 12),
-                Expanded(child: Text('Image selected successfully')),
+                Expanded(child: Text('Image ${index + 1} selected')),
               ],
             ),
             backgroundColor: Colors.green[600],
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: EdgeInsets.all(16),
+            duration: Duration(seconds: 1),
           ),
         );
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to pick image: $e';
-      });
-      _showErrorSnackBar('Failed to pick image. Please try again.');
+      _showErrorSnackBar('Failed to pick image');
     }
   }
 
@@ -400,9 +484,10 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       _priceController.clear();
       _quantity = 0;
       _selectedCategory = 'Fruits';
-      _selectedImage = null;
+      _selectedImages = [null, null, null];
       _harvestDate = null;
       _expiryDate = null;
+      _isAvailable = true;
       _showResetMessage = true;
     });
 
@@ -422,24 +507,27 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FDF8),
         elevation: 0,
-        leading: Builder(
-          builder: (context) => Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.menu, color: Colors.green[700]),
-              onPressed: () => Scaffold.of(context).openDrawer(),
-            ),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.green.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: Icon(Icons.home, color: Colors.green[700]),
+            onPressed: () {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => FarmersHomePage(token: widget.token)),
+              );
+            },
           ),
         ),
         title: Row(
@@ -467,90 +555,111 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
             ),
           ],
         ),
-      ),
-      drawer: Drawer(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green[50]!, Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green[400]!, Colors.green[700]!],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.green[700]),
+            onPressed: () {
+              setState(() {
+                _nameController.clear();
+                _descriptionController.clear();
+                _priceController.clear();
+                _quantity = 0;
+                _selectedCategory = 'Fruits';
+                _selectedImages = [null, null, null];
+                _harvestDate = null;
+                _expiryDate = null;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.refresh, color: Colors.white),
+                      SizedBox(width: 12),
+                      Text('Form refreshed'),
+                    ],
                   ),
+                  backgroundColor: Colors.green[600],
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 2),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.agriculture, color: Colors.white, size: 28),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'FarmerCrate',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+              );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: Colors.red[600]),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange[600]),
+                      SizedBox(width: 12),
+                      Text('Clear All Data?'),
+                    ],
+                  ),
+                  content: Text('This will clear all filled information. Are you sure?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Welcome, Farmer!',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _resetForm();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red[600],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
+                      child: Text('Clear All'),
                     ),
                   ],
                 ),
-              ),
-              _buildDrawerItem(Icons.home, 'Home', () => _onNavItemTapped(0)),
-              _buildDrawerItem(Icons.add_circle, 'Add Product', () => _onNavItemTapped(1)),
-              _buildDrawerItem(Icons.edit, 'Edit Products', () => _onNavItemTapped(2)),
-              _buildDrawerItem(Icons.contact_mail, 'Contact Admin', () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => FarmersHomePage(token: widget.token)),
-                );
-              }),
-              _buildDrawerItem(Icons.person, 'Profile', () => _onNavItemTapped(3)),
-              const Divider(color: Colors.green, thickness: 1),
-              _buildDrawerItem(Icons.logout, 'Logout', () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                      (route) => false,
-                );
-              }, isLogout: true),
-            ],
+              );
+            },
           ),
-        ),
+        ],
       ),
-      body: SingleChildScrollView(
+      body:
+SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildImagePreview(), // Add image preview at the top
+            Row(
+              children: List.generate(3, (index) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: GestureDetector(
+                    onTap: () => _pickImage(index),
+                    child: Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.green.shade200, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.green.shade50,
+                      ),
+                      child: _selectedImages[index] != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(_selectedImages[index]!, fit: BoxFit.cover),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_photo_alternate, color: Colors.green.shade600, size: 30),
+                                SizedBox(height: 4),
+                                Text('Image ${index + 1}', style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              )),
+            ),
             const SizedBox(height: 20),
             Container(
               width: double.infinity,
@@ -827,131 +936,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
               ),
             if (_showResetMessage) const SizedBox(height: 20),
 
-            // Image Upload Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: _pickImage,
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        gradient: _selectedImage != null
-                            ? null
-                            : LinearGradient(
-                          colors: [Colors.green[50]!, Colors.green[100]!],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: Colors.green[200]!,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          Center(
-                            child: _selectedImage != null
-                                ? ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.file(
-                                _selectedImage!,
-                                width: 140,
-                                height: 140,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                                : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.camera_alt,
-                                  size: 40,
-                                  color: Colors.green[600],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Add Photo',
-                                  style: TextStyle(
-                                    color: Colors.green[600],
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 5,
-                            right: 5,
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.green[400]!, Colors.green[600]!],
-                                ),
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.green.withOpacity(0.4),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.add,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.green[50],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '📸 Tap to upload beautiful product photos',
-                      style: TextStyle(
-                        color: Colors.green[700],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 25),
+
 
             // Form Fields Container
             Container(
@@ -1096,6 +1081,35 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
                   ),
                   const SizedBox(height: 20),
 
+                  _buildEnhancedLabel('Availability', Icons.toggle_on),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.green.shade200, width: 1.5),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.green.shade50,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _isAvailable ? 'Currently Available' : 'Not Available',
+                          style: TextStyle(
+                            color: Colors.green.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Switch(
+                          value: _isAvailable,
+                          onChanged: (value) => setState(() => _isAvailable = value),
+                          activeColor: Colors.green.shade600,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
                   // Date Fields
                   Row(
                     children: [
@@ -1196,92 +1210,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 15,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: Colors.green[600],
-            unselectedItemColor: Colors.grey[400],
-            selectedLabelStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.normal,
-            ),
-            currentIndex: _currentIndex,
-            elevation: 0,
-            onTap: _onNavItemTapped,
-            items: [
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == 0 ? Colors.green[100] : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.home, size: 24),
-                ),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == 1 ? Colors.green[100] : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.add_circle, size: 24),
-                ),
-                label: 'Add Product',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == 2 ? Colors.green[100] : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.edit, size: 24),
-                ),
-                label: 'Edit Product',
-              ),
-              BottomNavigationBarItem(
-                icon: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _currentIndex == 3 ? Colors.green[100] : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.person, size: 24),
-                ),
-                label: 'Profile',
-              ),
-            ],
-          ),
-        ),
-      ),
+
     );
   }
 
@@ -1320,95 +1249,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     );
   }
 
-  Widget _buildImagePreview() {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.green[200]!, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.green[50],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.green.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            height: 200,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              color: Colors.white,
-            ),
-            child: _selectedImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                    child: Image.file(
-                      _selectedImage!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(
-                            Icons.error_outline,
-                            color: Colors.red[400],
-                            size: 40,
-                          ),
-                        );
-                      },
-                    ),
-                  )
-                : Center(
-                    child: Icon(
-                      Icons.add_photo_alternate_outlined,
-                      color: Colors.green[300],
-                      size: 40,
-                    ),
-                  ),
-          ),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _pickImage,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.green[200]!, width: 1),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _selectedImage != null ? Icons.edit : Icons.add,
-                      color: Colors.green[600],
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      _selectedImage != null ? 'Change Image' : 'Select Image',
-                      style: TextStyle(
-                        color: Colors.green[600],
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildEnhancedLabel(String text, IconData icon) {
     return Row(

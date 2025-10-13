@@ -329,26 +329,85 @@ class CustomerDrawer extends StatelessWidget {
               );
             },
           ),
-          _buildDrawerItem(
-            icon: Icons.quiz,
-            title: 'FAQ',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => FAQPage(token: token)),
-              );
-            },
-          ),
           Divider(),
           _buildDrawerItem(
             icon: Icons.logout,
             title: 'Logout',
             onTap: () {
-              Navigator.pushAndRemoveUntil(
-                parentContext,
-                MaterialPageRoute(builder: (context) => LoginPage()),
-                (Route<dynamic> route) => false,
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (BuildContext dialogContext) {
+                  return Dialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.logout_outlined, color: Colors.white, size: 32),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Confirm Logout',
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Are you sure you want to logout?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(dialogContext),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.pop(dialogContext);
+                                    Navigator.pushAndRemoveUntil(
+                                      parentContext,
+                                      MaterialPageRoute(builder: (context) => LoginPage()),
+                                      (Route<dynamic> route) => false,
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF5722),
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -407,10 +466,6 @@ class CustomerBottomNavBar extends StatelessWidget {
             label: 'Cart',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.help_outline, size: 24),
-            label: 'FAQ',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.person_outline, size: 24),
             label: 'Profile',
           ),
@@ -436,6 +491,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   // Search controller
   final TextEditingController _searchController = TextEditingController();
+  bool _isSearchVisible = false;
 
   // Filter states
   Map<String, bool> _vegetableFilters = {};
@@ -768,9 +824,6 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
         targetPage = CartPage(token: widget.token);
         break;
       case 3:
-        targetPage = FAQPage(token: widget.token);
-        break;
-      case 4:
         targetPage = CustomerProfilePage(token: widget.token ?? '');
         break;
       default:
@@ -780,6 +833,164 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       context,
       MaterialPageRoute(builder: (context) => targetPage),
       (route) => false,
+    );
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (_, controller) {
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                controller: controller,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 6,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const Text('Sort & Filters', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+
+                    // Sort options
+                    const Text('Sort by', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('Name'),
+                          selected: _sortBy == 'name',
+                          onSelected: (_) { setState(() => _sortBy = 'name'); },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Price'),
+                          selected: _sortBy == 'price',
+                          onSelected: (_) { setState(() => _sortBy = 'price'); },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Farmer'),
+                          selected: _sortBy == 'farmer',
+                          onSelected: (_) { setState(() => _sortBy = 'farmer'); },
+                        ),
+                        ChoiceChip(
+                          label: const Text('Rating'),
+                          selected: _sortBy == 'rating',
+                          onSelected: (_) { setState(() => _sortBy = 'rating'); },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Sort order
+                    Row(
+                      children: [
+                        const Text('Order', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 12),
+                        IconButton(
+                          icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward),
+                          onPressed: () { setState(() => _sortAscending = !_sortAscending); },
+                        ),
+                      ],
+                    ),
+
+                    const Divider(),
+
+                    // Farmer selector
+                    const SizedBox(height: 8),
+                    const Text('Farmer', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    DropdownButton<String>(
+                      value: _selectedFarmer,
+                      isExpanded: true,
+                      hint: const Text('All Farmers'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('All Farmers')),
+                        ..._farmerNames.map((farmer) => DropdownMenuItem<String>(
+                          value: farmer['id'].toString(),
+                          child: Text(farmer['name']),
+                        )).toList(),
+                      ],
+                      onChanged: (val) { setState(() => _selectedFarmer = val); },
+                    ),
+
+                    const Divider(),
+
+                    // Advanced filter checkboxes
+                    const SizedBox(height: 8),
+                    const Text('Vegetables', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Wrap(
+                      spacing: 8,
+                      children: _vegetables.map((v) => FilterChip(
+                        label: Text(v, style: const TextStyle(fontSize: 12)),
+                        selected: _vegetableFilters[v] ?? false,
+                        onSelected: (sel) => setState(() => _vegetableFilters[v] = sel),
+                      )).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Fruits', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Wrap(
+                      spacing: 8,
+                      children: _fruits.map((v) => FilterChip(
+                        label: Text(v, style: const TextStyle(fontSize: 12)),
+                        selected: _fruitFilters[v] ?? false,
+                        onSelected: (sel) => setState(() => _fruitFilters[v] = sel),
+                      )).toList(),
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Text('Varieties', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Wrap(
+                      spacing: 8,
+                      children: _varieties.map((v) => FilterChip(
+                        label: Text(v, style: const TextStyle(fontSize: 12)),
+                        selected: _varietyFilters[v] ?? false,
+                        onSelected: (sel) => setState(() => _varietyFilters[v] = sel),
+                      )).toList(),
+                    ),
+
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            _clearFilters();
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Clear All'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Apply'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -814,7 +1025,8 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
           child: Column(
             children: [
               _buildSearchAndSort(),
-              _buildFiltersSection(),
+              const SizedBox(height: 8),
+              _buildActiveChips(),
               _buildProductsSection(),
             ],
           ),
@@ -842,62 +1054,141 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       leading: Builder(
         builder: (context) => IconButton(
           icon: Container(
-            padding: EdgeInsets.all(8),
+            padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color: Colors.green.withOpacity(0.2),
-                  blurRadius: 8,
+                  blurRadius: 6,
                   offset: Offset(0, 2),
                 ),
               ],
             ),
-            child: Icon(Icons.menu, color: Colors.green[800], size: 20),
+            child: Icon(Icons.menu, color: Colors.green[800], size: 18),
           ),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
-      title: ShaderMask(
-        shaderCallback: (bounds) => LinearGradient(
-          colors: [Colors.green[800]!, Colors.green[600]!],
-        ).createShader(bounds),
-        child: Text(
-          'Farm Fresh Categories',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      actions: [
-        Container(
-          margin: EdgeInsets.only(right: 8),
-          child: IconButton(
-            icon: Container(
-              padding: EdgeInsets.all(8),
+      title: _isSearchVisible
+          ? Container(
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.green.withOpacity(0.2),
+                    color: Colors.grey.withOpacity(0.1),
                     blurRadius: 8,
                     offset: Offset(0, 2),
                   ),
                 ],
               ),
-              child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 20),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: (value) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                ),
+                style: TextStyle(fontSize: 14),
+              ),
+            )
+          : ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [Colors.green[800]!, Colors.green[600]!],
+              ).createShader(bounds),
+              child: Text(
+                'Categories',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
-              );
-            },
+      actions: [
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.search, color: Colors.green[800], size: 18),
           ),
+          onPressed: () {
+            setState(() {
+              _isSearchVisible = !_isSearchVisible;
+              if (!_isSearchVisible) {
+                _searchController.clear();
+              }
+            });
+          },
+        ),
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.refresh, color: Colors.green[800], size: 18),
+          ),
+          onPressed: () {
+            _fetchImages();
+            _fetchFarmerNames();
+          },
+        ),
+        IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 18),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+            );
+          },
         ),
       ],
     );
@@ -907,217 +1198,116 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   Widget _buildSearchAndSort() {
     return Container(
       margin: const EdgeInsets.all(16),
-      child: Column(
+      child: Row(
         children: [
-          // Search Bar
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF4CAF50)),
+              ),
+              child: TextButton.icon(
+                icon: const Icon(Icons.tune, color: Color(0xFF4CAF50)),
+                label: const Text('Filters', style: TextStyle(color: Colors.black87)),
+                onPressed: () => _openFilterSheet(),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ],
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Search products, farmers...',
-                hintStyle: TextStyle(color: Colors.grey[600]),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF4CAF50)),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear, color: Color(0xFF4CAF50)),
-                  onPressed: () {
-                    setState(() {
-                      _searchController.clear();
-                    });
-                  },
-                )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Colors.white.withOpacity(0.9),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Sort and Farmer Selection Row
-          Row(
-            children: [
-              // Sort Dropdown
-              Expanded(
-                child: Container(
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF4CAF50)),
+              ),
+              child: InkWell(
+                onTap: () => _openFilterSheet(),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF4CAF50)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _sortBy,
-                      icon: const Icon(Icons.sort, color: Color(0xFF4CAF50)),
-                      isExpanded: true,
-                      items: const [
-                        DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
-                        DropdownMenuItem(value: 'price', child: Text('Sort by Price')),
-                        DropdownMenuItem(value: 'farmer', child: Text('Sort by Farmer')),
-                        DropdownMenuItem(value: 'rating', child: Text('Sort by Rating')),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _sortBy = value!;
-                        });
-                      },
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.sort, size: 18, color: Color(0xFF4CAF50)),
+                      const SizedBox(width: 8),
+                      Flexible(child: Text(
+                        _sortBy == 'price' ? 'Sorted by Price ${_sortAscending ? '↑' : '↓'}' :
+                        _sortBy == 'farmer' ? 'Sorted by Farmer' :
+                        _sortBy == 'rating' ? 'Sorted by Rating' : 'Sorted by Name',
+                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                      )),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // Sort Order Button
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF4CAF50)),
-                ),
-                child: IconButton(
-                  icon: Icon(
-                    _sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                    color: const Color(0xFF4CAF50),
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _sortAscending = !_sortAscending;
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 7),
-
-              // Farmer Dropdown
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF4CAF50)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedFarmer,
-                      hint: const Text('All Farmers', style: TextStyle(fontSize: 12)),
-                      icon: const Icon(Icons.person, color: Color(0xFF4CAF50)),
-                      isExpanded: true,
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('All Farmers'),
-                        ),
-                        ..._farmerNames.map((farmer) => DropdownMenuItem<String>(
-                          value: farmer['id'].toString(),
-                          child: Text(
-                            farmer['name'],
-                            style: const TextStyle(fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        )).toList(),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedFarmer = value;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFiltersSection() {
+  // Active filter chips row
+  Widget _buildActiveChips() {
+    final chips = <Widget>[];
+
+    if (_selectedFarmer != null && _selectedFarmer!.isNotEmpty) {
+      final farmerName = _farmerNames.firstWhere(
+            (f) => f['id'].toString() == _selectedFarmer,
+        orElse: () => {'name': 'Farmer'},
+      )['name'];
+      chips.add(_filterChip('${farmerName ?? 'Farmer'}', () {
+        setState(() => _selectedFarmer = null);
+      }));
+    }
+
+    // Note: sort chip removed per request — sorting control is in the header controls
+
+    _vegetableFilters.forEach((k, v) {
+      if (v) chips.add(_filterChip(k, () { setState(() => _vegetableFilters[k] = false); }));
+    });
+    _fruitFilters.forEach((k, v) {
+      if (v) chips.add(_filterChip(k, () { setState(() => _fruitFilters[k] = false); }));
+    });
+    _varietyFilters.forEach((k, v) {
+      if (v) chips.add(_filterChip(k, () { setState(() => _varietyFilters[k] = false); }));
+    });
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: ExpansionTile(
-        title: const Text(
-          'Advanced Filters',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        trailing: const Icon(Icons.filter_list, color: Colors.white),
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Filter Options',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: _clearFilters,
-                        child: const Text(
-                          'Clear All',
-                          style: TextStyle(
-                            color: Color(0xFF4CAF50),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-
-                  // Vegetables Section
-                  _buildFilterSection('Vegetables', _vegetables, _vegetableFilters),
-                  const SizedBox(height: 16),
-
-                  // Fruits Section
-                  _buildFilterSection('Fruits', _fruits, _fruitFilters),
-                  const SizedBox(height: 16),
-
-                  // Varieties Section
-                  _buildFilterSection('Varieties', _varieties, _varietyFilters),
-                ],
-              ),
-            ),
-          ),
-        ],
+      alignment: Alignment.centerLeft,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(children: chips.map((c) => Padding(padding: const EdgeInsets.only(right: 8), child: c)).toList()),
       ),
     );
+  }
+
+  Widget _filterChip(String label, VoidCallback onRemove) {
+    return Chip(
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      backgroundColor: Colors.white,
+      shape: StadiumBorder(side: BorderSide(color: const Color(0xFF4CAF50))),
+      onDeleted: onRemove,
+      deleteIcon: const Icon(Icons.close, size: 18),
+    );
+  }
+
+  Widget _buildFiltersSection() {
+    // Advanced filter moved to combined Filters bottom sheet.
+    // Keep this method as a no-op to avoid showing the old ExpansionTile.
+    return const SizedBox.shrink();
   }
 
   Widget _buildFilterSection(String title, List<String> items, Map<String, bool> filterMap) {
@@ -1409,15 +1599,41 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        displayFarmerName,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF4CAF50),
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              displayFarmerName,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF4CAF50),
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Farmer rating badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade100),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                                const SizedBox(width: 4),
+                                Text(
+                                  product.rating > 0 ? product.rating.toStringAsFixed(1) : '—',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 2),
                       Row(
@@ -1622,15 +1838,40 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    displayFarmerName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF4CAF50),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          displayFarmerName,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF4CAF50),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.star, size: 12, color: Colors.amber[700]),
+                            const SizedBox(width: 4),
+                            Text(
+                              product.rating > 0 ? product.rating.toStringAsFixed(1) : '—',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(

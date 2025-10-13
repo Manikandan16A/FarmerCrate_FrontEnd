@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'adddeliveryperson.dart';
+import 'qrscan.dart';
 
 
 
@@ -460,7 +461,13 @@ class _TransporterDashboardState extends State<TransporterDashboard>
               // Dashboard - already on this page
               break;
             case 1:
-              // Analytics
+              // QR Scan
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddProductPage(token: widget.token),
+                ),
+              );
               break;
             case 2:
               // Settings

@@ -9,6 +9,7 @@ import '../auth/Signin.dart';
 import 'Addproduct.dart';
 import 'farmerprofile.dart';
 import 'homepage.dart';
+import 'orders_page.dart';
 import '../utils/cloudinary_upload.dart';
 
 class Product {
@@ -35,14 +36,24 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
+    String? imageUrl;
+    var imageData = json['image_urls'];
+    if (imageData is List && imageData.isNotEmpty) {
+      imageUrl = imageData[0];
+    } else if (imageData is String && imageData.isNotEmpty) {
+      imageUrl = imageData;
+    } else {
+      imageUrl = json['images'] ?? json['image_url'] ?? json['product_image'] ?? json['image'];
+    }
+
     return Product(
       id: json['id'] ?? json['product_id'] ?? 0,
       name: json['name'] ?? json['product_name'] ?? '',
       description: json['description'] ?? '',
-      price: double.tryParse((json['price'] ?? 0).toString()) ?? 0.0,
+      price: double.tryParse((json['price'] ?? json['current_price'] ?? 0).toString()) ?? 0.0,
       quantity: json['quantity'] ?? json['stock'] ?? json['available_quantity'] ?? 0,
       category: json['category'] ?? '',
-      images: json['images'] ?? json['image_url'] ?? json['product_image'] ?? json['image'],
+      images: imageUrl,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) :
       json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) :
@@ -52,13 +63,13 @@ class Product {
 
   Map<String, dynamic> toJson() {
     return {
-      'product_id': id, // Use product_id instead of id to match API format
+      'product_id': id,
       'name': name,
       'description': description,
-      'price': price.toStringAsFixed(2), // Convert to string with 2 decimal places
+      'current_price': price.toStringAsFixed(2),
       'quantity': quantity,
       'category': category,
-      'images': images,
+      'image_urls': images != null ? [images] : [],
       'status': 'available',
       'harvest_date': DateTime.now().toIso8601String().split('T')[0],
       'expiry_date': DateTime.now().add(Duration(days: 30)).toIso8601String().split('T')[0],
@@ -76,7 +87,7 @@ class FarmerProductsPage extends StatefulWidget {
 }
 
 class _FarmerProductsPageState extends State<FarmerProductsPage> {
-  int _currentIndex = 2;
+  int _currentIndex = 1;
   List<Product> products = [];
   List<Product> filteredProducts = [];
   String searchQuery = '';
@@ -85,6 +96,8 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
   bool isAscending = false;
   bool isLoading = false;
   String? errorMessage;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   final List<String> categories = [
     'All',
@@ -341,10 +354,10 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       final updatedProductData = {
         'name': product.name,
         'description': product.description,
-        'current_price': product.price.toStringAsFixed(2), // Use 'current_price' as per API format
+        'current_price': product.price.toStringAsFixed(2),
         'quantity': product.quantity,
         'category': product.category,
-        'images': imageUrl,
+        'image_urls': imageUrl != null ? [imageUrl] : [],
         'status': 'available',
         'harvest_date': DateTime.now().toIso8601String().split('T')[0],
         'expiry_date': DateTime.now().add(Duration(days: 30)).toIso8601String().split('T')[0],
@@ -510,6 +523,219 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     }
   }
 
+  Future<void> deleteProduct(int productId) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      String? effectiveToken = widget.token;
+      if (effectiveToken == null || effectiveToken.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        effectiveToken = prefs.getString('auth_token');
+      }
+
+      final response = await http.delete(
+        Uri.parse('https://farmercrate.onrender.com/api/products/$productId'),
+        headers: {
+          'Authorization': 'Bearer $effectiveToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        await fetchProducts();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Product deleted successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green[600],
+          ),
+        );
+      } else {
+        throw Exception('Failed to delete');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete product'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  void _confirmDelete(Product product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red[700]),
+            SizedBox(width: 8),
+            Text('Delete Product?'),
+          ],
+        ),
+        content: Text('Are you sure you want to delete "${product.name}"? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              deleteProduct(product.id);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red[600],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 10,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF8F9FA), Color(0xFFFFFFFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.logout_outlined, color: Colors.white, size: 32),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Confirm Logout',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3748),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to logout?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => LoginPage()),
+                            (route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF5722),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
+                        ),
+                        child: const Text(
+                          'Logout',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _getProductStatus(Product product) {
+    if (product.quantity == 0) return 'Out of Stock';
+    if (product.quantity < 10) return 'Low Stock';
+    return 'Active';
+  }
+
+  Widget _getStatusIcon(String status) {
+    switch (status) {
+      case 'Active':
+        return Text('🌱', style: TextStyle(fontSize: 20));
+      case 'Low Stock':
+        return Text('⏰', style: TextStyle(fontSize: 20));
+      case 'Out of Stock':
+        return Text('❌', style: TextStyle(fontSize: 20));
+      default:
+        return SizedBox();
+    }
+  }
+
   void _applyFiltersAndSort() {
     setState(() {
       filteredProducts = products.where((product) {
@@ -578,237 +804,321 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              title: Text(isEdit ? 'Edit Product' : 'Add New Product'),
-              content: SingleChildScrollView(
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    colors: [Colors.white, Colors.green.shade50],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: InputDecoration(
-                        labelText: 'Product Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: selectedCategoryDialog,
-                      decoration: InputDecoration(
-                        labelText: 'Category',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: categories.where((cat) => cat != 'All').map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        setDialogState(() {
-                          selectedCategoryDialog = newValue!;
-                        });
-                      },
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: quantityController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: priceController,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      enabled: false, // Disable price editing
-                      decoration: InputDecoration(
-                        labelText: 'Price (₹)',
-                        border: OutlineInputBorder(),
-                        fillColor: Colors.grey[100],
-                        filled: true,
-                        disabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey[400]!),
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.green.shade600, Colors.green.shade400],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        suffixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(isEdit ? Icons.edit : Icons.add_circle, color: Colors.white, size: 28),
+                          SizedBox(width: 12),
+                          Text(
+                            isEdit ? 'Edit Product' : 'Add New Product',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(height: 16),
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton(
-                          onPressed: () async {
-                            final pickedImage = await _pickImageFromGallery();
-                            if (pickedImage != null) {
-                              setDialogState(() {
-                                imagePath = pickedImage;
-                              });
-                            }
-                          },
-                          child: Text('Choose Photo'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final pickedImage = await _pickImageFromCamera();
-                            if (pickedImage != null) {
-                              setDialogState(() {
-                                imagePath = pickedImage;
-                              });
-                            }
-                          },
-                          child: Text('Take Photo'),
-                        ),
-                      ],
-                    ),
-                    if (imagePath != null) ...[
-                      SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: imagePath!.startsWith('http')
-                            ? Image.network(
-                          imagePath!,
-                          height: 100,
-                          width: 100,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextField(
+                              controller: nameController,
+                              decoration: InputDecoration(
+                                labelText: 'Product Name',
+                                prefixIcon: Icon(Icons.shopping_bag, color: Colors.green.shade600),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              height: 100,
-                              width: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
+                            ),
+                            SizedBox(height: 16),
+                            DropdownButtonFormField<String>(
+                              value: selectedCategoryDialog,
+                              decoration: InputDecoration(
+                                labelText: 'Category',
+                                prefixIcon: Icon(Icons.category, color: Colors.green.shade600),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    size: 24,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Error',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 10,
+                              items: categories.where((cat) => cat != 'All').map((String category) {
+                                return DropdownMenuItem<String>(
+                                  value: category,
+                                  child: Text(category),
+                                );
+                              }).toList(),
+                              onChanged: (String? newValue) {
+                                setDialogState(() {
+                                  selectedCategoryDialog = newValue!;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 16),
+                            TextField(
+                              controller: quantityController,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: 'Quantity',
+                                prefixIcon: Icon(Icons.inventory, color: Colors.green.shade600),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            TextField(
+                              controller: priceController,
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              enabled: false,
+                              decoration: InputDecoration(
+                                labelText: 'Price (₹)',
+                                prefixIcon: Icon(Icons.currency_rupee, color: Colors.grey[600]),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                fillColor: Colors.grey[100],
+                                filled: true,
+                                suffixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            TextField(
+                              controller: descriptionController,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                labelText: 'Description',
+                                prefixIcon: Icon(Icons.description, color: Colors.green.shade600),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.green.shade600, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                            ),
+                            SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final pickedImage = await _pickImageFromGallery();
+                                      if (pickedImage != null) {
+                                        setDialogState(() {
+                                          imagePath = pickedImage;
+                                        });
+                                      }
+                                    },
+                                    icon: Icon(Icons.photo_library, size: 20),
+                                    label: Text('Gallery'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade400,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
                                     ),
                                   ),
-                                ],
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final pickedImage = await _pickImageFromCamera();
+                                      if (pickedImage != null) {
+                                        setDialogState(() {
+                                          imagePath = pickedImage;
+                                        });
+                                      }
+                                    },
+                                    icon: Icon(Icons.camera_alt, size: 20),
+                                    label: Text('Camera'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (imagePath != null) ...[
+                              SizedBox(height: 16),
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green.shade200, width: 2),
+                                ),
+                                child: Column(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: imagePath!.startsWith('http')
+                                          ? Image.network(imagePath!, height: 120, width: 120, fit: BoxFit.cover)
+                                          : File(imagePath!).existsSync()
+                                          ? Image.file(File(imagePath!), height: 120, width: 120, fit: BoxFit.cover)
+                                          : Container(
+                                        height: 120,
+                                        width: 120,
+                                        color: Colors.grey.shade200,
+                                        child: Icon(Icons.image, size: 40, color: Colors.grey.shade600),
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    TextButton.icon(
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          imagePath = null;
+                                        });
+                                      },
+                                      icon: Icon(Icons.delete, color: Colors.red, size: 18),
+                                      label: Text('Remove', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            );
-                          },
-                        )
-                            : File(imagePath!).existsSync()
-                            ? Image.file(
-                          File(imagePath!),
-                          height: 100,
-                          width: 100,
-                          fit: BoxFit.cover,
-                        )
-                            : Container(
-                          height: 100,
-                          width: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.image,
-                            size: 30,
-                            color: Colors.grey.shade600,
-                          ),
+                            ],
+                          ],
                         ),
                       ),
-                      SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {
-                          setDialogState(() {
-                            imagePath = null;
-                          });
-                        },
-                        child: Text(
-                          'Remove Photo',
-                          style: TextStyle(color: Colors.red),
+                    ),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
                         ),
                       ),
-                    ],
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(color: Colors.grey.shade300),
+                                ),
+                              ),
+                              child: Text('Cancel', style: TextStyle(fontSize: 16, color: Colors.grey.shade700)),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (nameController.text.isNotEmpty &&
+                                    descriptionController.text.isNotEmpty &&
+                                    quantityController.text.isNotEmpty &&
+                                    priceController.text.isNotEmpty) {
+
+                                  Navigator.of(context).pop();
+
+                                  if (isEdit && product != null) {
+                                    final updatedProduct = Product(
+                                      id: product.id,
+                                      name: nameController.text,
+                                      description: descriptionController.text,
+                                      price: double.tryParse(priceController.text) ?? 0.0,
+                                      quantity: int.tryParse(quantityController.text) ?? 0,
+                                      category: selectedCategoryDialog,
+                                      images: imagePath,
+                                      createdAt: product.createdAt,
+                                      updatedAt: DateTime.now(),
+                                    );
+                                    await updateProduct(updatedProduct);
+                                  } else {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AddProductPage(token: widget.token),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade600,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                isEdit ? 'Update Product' : 'Add Product',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (nameController.text.isNotEmpty &&
-                        descriptionController.text.isNotEmpty &&
-                        quantityController.text.isNotEmpty &&
-                        priceController.text.isNotEmpty) {
-
-                      Navigator.of(context).pop();
-
-                      if (isEdit && product != null) {
-                        // Update existing product
-                        final updatedProduct = Product(
-                          id: product.id,
-                          name: nameController.text,
-                          description: descriptionController.text,
-                          price: double.tryParse(priceController.text) ?? 0.0,
-                          quantity: int.tryParse(quantityController.text) ?? 0,
-                          category: selectedCategoryDialog,
-                          images: imagePath,
-                          createdAt: product.createdAt,
-                          updatedAt: DateTime.now(),
-                        );
-                        await updateProduct(updatedProduct);
-                      } else {
-                        // Navigate to AddProduct page for new products
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddProductPage(token: widget.token),
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  child: Text(isEdit ? 'Update' : 'Add'),
-                ),
-              ],
             );
           },
         );
@@ -840,11 +1150,10 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = AddProductPage(token: widget.token);
+        targetPage = OrdersPage(token: widget.token);
         break;
       case 2:
-        targetPage = FarmerProductsPage(token: widget.token);
-        break;
+        return;
       case 3:
         targetPage = FarmerProfilePage(token: widget.token);
         break;
@@ -962,24 +1271,63 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 5,
+        backgroundColor: Colors.green[600],
+        elevation: 0,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.green[800]),
+            icon: Icon(Icons.menu, color: Colors.white),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        title: Text(
-          'FarmerCrate',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  hintStyle: TextStyle(color: Colors.white70),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    searchQuery = value;
+                  });
+                  _applyFiltersAndSort();
+                },
+              )
+            : Text(
+                'Edit Products',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              _isSearching ? Icons.close : Icons.search,
+              color: Colors.white,
+            ),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchController.clear();
+                  searchQuery = '';
+                  _applyFiltersAndSort();
+                }
+              });
+            },
           ),
-        ),
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.white),
+            onPressed: fetchProducts,
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -1025,40 +1373,14 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.add, color: Colors.green[600]),
-              title: Text('Add Product'),
+              leading: Icon(Icons.shopping_bag, color: Colors.green[600]),
+              title: Text('Orders'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => AddProductPage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit, color: Colors.green[600]),
-              title: Text('Edit Products'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmerProductsPage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.contact_mail, color: Colors.green[600]),
-              title: Text('Contact Admin'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmersHomePage(token: widget.token),
+                    builder: (context) => OrdersPage(token: widget.token),
                   ),
                 );
               },
@@ -1080,13 +1402,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red[600]),
               title: Text('Logout'),
-              onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                      (route) => false,
-                );
-              },
+              onTap: _confirmLogout,
             ),
           ],
         ),
@@ -1095,82 +1411,107 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         children: [
           Container(
             padding: EdgeInsets.all(16),
-            color: Colors.grey.shade50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search products...',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    searchQuery = value;
-                    _applyFiltersAndSort();
-                  },
-                ),
-                SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedCategory,
-                        decoration: InputDecoration(
-                          labelText: 'Category',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        items: categories.map((String category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          selectedCategory = newValue!;
-                          _applyFiltersAndSort();
-                        },
+                        child: DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          decoration: InputDecoration(
+                            labelText: 'Category',
+                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
+                            prefixIcon: Icon(Icons.category, color: Colors.green.shade600, size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: categories.map((String category) {
+                            return DropdownMenuItem<String>(
+                              value: category,
+                              child: Text(category, style: TextStyle(fontSize: 14)),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            selectedCategory = newValue!;
+                            _applyFiltersAndSort();
+                          },
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: sortBy,
-                        decoration: InputDecoration(
-                          labelText: 'Sort By',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
-                        items: [
-                          DropdownMenuItem(value: 'createdAt', child: Text('Date Added')),
-                          DropdownMenuItem(value: 'name', child: Text('Name')),
-                          DropdownMenuItem(value: 'category', child: Text('Category')),
-                          DropdownMenuItem(value: 'price', child: Text('Price')),
-                          DropdownMenuItem(value: 'quantity', child: Text('Quantity')),
-                        ],
-                        onChanged: (String? newValue) {
-                          sortBy = newValue!;
-                          _applyFiltersAndSort();
-                        },
+                        child: DropdownButtonFormField<String>(
+                          value: sortBy,
+                          decoration: InputDecoration(
+                            labelText: 'Sort By',
+                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
+                            prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 20),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          items: [
+                            DropdownMenuItem(value: 'createdAt', child: Text('Date Added', style: TextStyle(fontSize: 14))),
+                            DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 14))),
+                            DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 14))),
+                            DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 14))),
+                            DropdownMenuItem(value: 'quantity', child: Text('Quantity', style: TextStyle(fontSize: 14))),
+                          ],
+                          onChanged: (String? newValue) {
+                            sortBy = newValue!;
+                            _applyFiltersAndSort();
+                          },
+                        ),
                       ),
                     ),
                     SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () {
-                        isAscending = !isAscending;
-                        _applyFiltersAndSort();
-                      },
-                      icon: Icon(
-                        isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                        color: Colors.green.shade700,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade600,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      tooltip: isAscending ? 'Ascending' : 'Descending',
+                      child: IconButton(
+                        onPressed: () {
+                          isAscending = !isAscending;
+                          _applyFiltersAndSort();
+                        },
+                        icon: Icon(
+                          isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                          color: Colors.white,
+                        ),
+                        tooltip: isAscending ? 'Ascending' : 'Descending',
+                      ),
                     ),
                   ],
                 ),
@@ -1311,6 +1652,11 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                     return Card(
                       margin: EdgeInsets.only(bottom: 12),
                       elevation: 2,
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                      ),
                       child: Padding(
                         padding: EdgeInsets.all(16),
                         child: Column(
@@ -1413,7 +1759,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                               ),
                             SizedBox(height: 12),
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
                                   child: Column(
@@ -1439,52 +1784,131 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                     ],
                                   ),
                                 ),
+                                _getStatusIcon(_getProductStatus(product)),
                               ],
                             ),
                             SizedBox(height: 12),
                             Row(
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Icon(Icons.category, size: 16, color: Colors.grey.shade600),
-                                          SizedBox(width: 4),
-                                          Text(product.category),
-                                        ],
-                                      ),
-                                      SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.inventory, size: 16, color: Colors.grey.shade600),
-                                          SizedBox(width: 4),
-                                          Text('${product.quantity} units'),
-                                        ],
-                                      ),
-                                    ],
+                                Icon(Icons.category, size: 16, color: Colors.grey.shade600),
+                                SizedBox(width: 4),
+                                Text(product.category),
+                                Spacer(),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _getProductStatus(product) == 'Active' ? Colors.green.shade100 :
+                                           _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade100 : Colors.red.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _getProductStatus(product),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade700 :
+                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade700 : Colors.red.shade700,
+                                    ),
                                   ),
                                 ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '₹${product.price.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green.shade700,
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          final qtyController = TextEditingController(text: product.quantity.toString());
+                                          return AlertDialog(
+                                            title: Text('Update Quantity'),
+                                            content: TextField(
+                                              controller: qtyController,
+                                              keyboardType: TextInputType.number,
+                                              decoration: InputDecoration(labelText: 'Quantity'),
+                                            ),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  product.quantity = int.tryParse(qtyController.text) ?? product.quantity;
+                                                  Navigator.pop(context);
+                                                  updateProduct(product);
+                                                },
+                                                child: Text('Update'),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.inventory, size: 16, color: Colors.blue.shade700),
+                                          SizedBox(width: 4),
+                                          Text('${product.quantity} units', style: TextStyle(fontWeight: FontWeight.w600)),
+                                          Spacer(),
+                                          Icon(Icons.edit, size: 14, color: Colors.blue.shade700),
+                                        ],
                                       ),
                                     ),
-                                    Text(
-                                      'Price',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          final priceController = TextEditingController(text: product.price.toStringAsFixed(2));
+                                          return AlertDialog(
+                                            title: Text('Update Price'),
+                                            content: TextField(
+                                              controller: priceController,
+                                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                                              decoration: InputDecoration(labelText: 'Price (₹)'),
+                                            ),
+                                            actions: [
+                                              TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  product.price = double.tryParse(priceController.text) ?? product.price;
+                                                  Navigator.pop(context);
+                                                  updateProduct(product);
+                                                },
+                                                child: Text('Update'),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.currency_rupee, size: 16, color: Colors.green.shade700),
+                                          Text('₹${product.price.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.w600)),
+                                          Spacer(),
+                                          Icon(Icons.edit, size: 14, color: Colors.green.shade700),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -1497,13 +1921,24 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                   product.createdAt != null
                                       ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
                                       : 'Date not available',
-                                  style: TextStyle(color: Colors.grey.shade600),
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                 ),
                                 Spacer(),
+                                if (product.images != null)
+                                  IconButton(
+                                    onPressed: () => _showImagePreview(product.images!),
+                                    icon: Icon(Icons.image, color: Colors.purple),
+                                    tooltip: 'View Image',
+                                  ),
                                 IconButton(
                                   onPressed: () => _showAddEditDialog(product: product),
                                   icon: Icon(Icons.edit, color: Colors.blue),
                                   tooltip: 'Edit Product',
+                                ),
+                                IconButton(
+                                  onPressed: () => _confirmDelete(product),
+                                  icon: Icon(Icons.delete, color: Colors.red),
+                                  tooltip: 'Delete Product',
                                 ),
                               ],
                             ),
@@ -1520,7 +1955,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(0.1),
@@ -1557,9 +1992,9 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             BottomNavigationBarItem(
               icon: Container(
                 padding: EdgeInsets.all(4),
-                child: Icon(Icons.explore_outlined, size: 24),
+                child: Icon(Icons.shopping_bag, size: 24),
               ),
-              label: 'Add Product',
+              label: 'Orders',
             ),
             BottomNavigationBarItem(
               icon: Container(

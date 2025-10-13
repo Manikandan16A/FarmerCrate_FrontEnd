@@ -141,6 +141,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   builder: (context) => AdminManagementPage(user: user, token: token),
                 ),
               );
+            } else if (user['role'] == 'delivery') {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DeliveryDashboard(user: user, token: token),
+                ),
+              );
             } else {
               // Unknown role - show error and stay on login page
               ScaffoldMessenger.of(context).showSnackBar(

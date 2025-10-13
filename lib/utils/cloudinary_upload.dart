@@ -10,34 +10,45 @@ class CloudinaryUploader {
       final apiKey = '334646742262894';
       final apiSecret = 'QlFJbjla0epfpzpTib6R0STIEFg';
       final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final folder = 'farmer_crate';
 
-      // For signed upload, create the signature
-      final paramsToSign = 'timestamp=$timestamp';
-      final signature = sha1.convert(utf8.encode(paramsToSign + apiSecret)).toString();
+      print('Starting Cloudinary upload...');
+      print('File path: ${imageFile.path}');
+      print('File exists: ${await imageFile.exists()}');
+      print('File size: ${await imageFile.length()} bytes');
+
+      // Create signature with folder parameter
+      final paramsToSign = 'folder=$folder&timestamp=$timestamp$apiSecret';
+      final signature = sha1.convert(utf8.encode(paramsToSign)).toString();
 
       final url = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/image/upload');
       final request = http.MultipartRequest('POST', url)
         ..fields['api_key'] = apiKey
         ..fields['timestamp'] = timestamp.toString()
         ..fields['signature'] = signature
+        ..fields['folder'] = folder
         ..files.add(await http.MultipartFile.fromPath('file', imageFile.path));
 
+      print('Sending request to Cloudinary...');
       final response = await request.send();
+      print('Response status: ${response.statusCode}');
+      
+      final resStr = await response.stream.bytesToString();
+      print('Response body: $resStr');
       
       if (response.statusCode == 200) {
-        final resStr = await response.stream.bytesToString();
         final resJson = jsonDecode(resStr);
-        return resJson['secure_url'];
+        final secureUrl = resJson['secure_url'];
+        print('Upload successful! URL: $secureUrl');
+        return secureUrl;
       } else {
-        // Log the error for debugging
-        final errorResponse = await response.stream.bytesToString();
         print('Cloudinary upload failed with status: ${response.statusCode}');
-        print('Error response: $errorResponse');
+        print('Error response: $resStr');
         return null;
       }
-    } catch (e) {
-      // Log the exception for debugging
+    } catch (e, stackTrace) {
       print('Exception during Cloudinary upload: $e');
+      print('Stack trace: $stackTrace');
       return null;
     }
   }
@@ -49,29 +60,20 @@ class CloudinaryUploader {
     String format = 'auto',
   }) {
     if (!imageUrl.contains('cloudinary.com')) {
-      return imageUrl; // Return original URL if it's not a Cloudinary URL
+      return imageUrl;
     }
 
     final uri = Uri.parse(imageUrl);
     final pathSegments = uri.pathSegments;
     
     if (pathSegments.length < 3) {
-      return imageUrl; // Return original if URL structure is unexpected
+      return imageUrl;
     }
 
-    // Extract the public_id and format from the original URL
-    final publicId = pathSegments[pathSegments.length - 1];
-    final originalFormat = publicId.contains('.') ? publicId.split('.').last : 'jpg';
-    
     // Build transformation parameters
     final transformations = <String>[];
-    
     if (width != null) transformations.add('w_$width');
     if (height != null) transformations.add('h_$height');
-    if (quality != 'auto') transformations.add('q_$quality');
-    if (format != 'auto') transformations.add('f_$format');
-    
-    // Add quality and format if they're set to auto
     if (quality == 'auto') transformations.add('q_auto');
     if (format == 'auto') transformations.add('f_auto');
     
@@ -79,9 +81,13 @@ class CloudinaryUploader {
         ? transformations.join(',') + '/' 
         : '';
     
-    // Reconstruct the URL with transformations
-    final optimizedUrl = '${uri.scheme}://${uri.host}/${pathSegments[0]}/${pathSegments[1]}/image/upload/$transformationString$publicId';
+    // Find the 'upload' index and reconstruct URL
+    final uploadIndex = pathSegments.indexOf('upload');
+    if (uploadIndex == -1) return imageUrl;
     
-    return optimizedUrl;
+    final beforeUpload = pathSegments.sublist(0, uploadIndex).join('/');
+    final afterUpload = pathSegments.sublist(uploadIndex + 1).join('/');
+    
+    return '${uri.scheme}://${uri.host}/$beforeUpload/upload/$transformationString$afterUpload';
   }
 } 

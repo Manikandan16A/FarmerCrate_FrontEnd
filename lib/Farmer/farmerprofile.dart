@@ -5,10 +5,17 @@ import 'dart:io';
 import '../auth/Signin.dart';
 import 'homepage.dart';
 import 'Addproduct.dart';
+import 'orders_page.dart';
 import 'contact_admin.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/cloudinary_upload.dart';
+import '../Customer/NotificationsPage.dart';
+import '../Customer/AppSettingsPage.dart';
+import '../Customer/AppInfo.dart';
+import '../Customer/HelpSupportPage.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class FarmerProfilePage extends StatefulWidget {
   final String? token;
@@ -130,14 +137,14 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = AddProductPage(token: widget.token);
+        targetPage = OrdersPage(token: widget.token);
         break;
       case 2:
         targetPage = FarmerProductsPage(token: widget.token);
         break;
       case 3:
       default:
-        targetPage = FarmerProfilePage(token: widget.token);
+        return;
     }
 
     Navigator.pushReplacement(
@@ -707,25 +714,29 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.green[600],
       elevation: 5,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: Icon(Icons.menu, color: Colors.green[800]),
+          icon: Icon(Icons.menu, color: Colors.white),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       title: Text(
         'Farmer Profile',
         style: TextStyle(
-          color: Colors.black,
+          color: Colors.white,
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
       ),
       actions: [
         IconButton(
-          icon: Icon(_isEditMode ? Icons.close_rounded : Icons.edit_outlined, color: Colors.green[800]),
+          icon: Icon(Icons.refresh, color: Colors.white),
+          onPressed: _fetchFarmerProfile,
+        ),
+        IconButton(
+          icon: Icon(_isEditMode ? Icons.close_rounded : Icons.edit_outlined, color: Colors.white),
           onPressed: _isEditMode ? _cancelEdit : _showEditConfirmation,
         ),
       ],
@@ -794,6 +805,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             _buildContactInfoCard(),
             const SizedBox(height: 16),
             _buildLocationInfoCard(),
+            const SizedBox(height: 16),
+            _buildProfileMenuCard(),
             if (_isEditMode) ...[
               const SizedBox(height: 24),
               _buildSaveButton(),
@@ -802,6 +815,339 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileMenuCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.account_balance_wallet, color: Colors.green[700]),
+            title: const Text('Wallet / Earnings'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Wallet feature coming soon!'), backgroundColor: Colors.green[600]),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.star_rate, color: Colors.green[700]),
+            title: const Text('My Ratings / Reviews'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Colors.green[600]),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.history, color: Colors.green[700]),
+            title: const Text('Order History'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => OrdersPage(token: widget.token)),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.notifications_outlined, color: Colors.green[700]),
+            title: const Text('Notifications'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => NotificationsPage(token: widget.token)),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.settings_outlined, color: Colors.green[700]),
+            title: const Text('Settings'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AppSettingsPage(token: widget.token)),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.info_outline, color: Colors.green[700]),
+            title: const Text('App Info / Privacy Policy'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AppInfoPage()),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.help_outline, color: Colors.green[700]),
+            title: const Text('Help & Support / Contact Us'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _showHelpSupportOptions,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: Icon(Icons.share_outlined, color: Colors.green[700]),
+            title: const Text('Share App'),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            onTap: _shareApp,
+          ),
+          const Divider(height: 1, thickness: 2),
+          Container(
+            color: Colors.red[50],
+            child: ListTile(
+              leading: Icon(Icons.logout, color: Colors.red[700]),
+              title: Text('Logout', style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold)),
+              trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red[700]),
+              onTap: _confirmLogout,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpSupportOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Help & Support / Contact Us',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.question_answer, color: Color(0xFF4CAF50)),
+              title: const Text('FAQ'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => HelpSupportPage(token: widget.token)),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.feedback, color: Color(0xFF4CAF50)),
+              title: const Text('Feedback'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Feedback feature coming soon!'), backgroundColor: Colors.green[600]),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.contact_mail, color: Color(0xFF4CAF50)),
+              title: const Text('Contact Us'),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                _contactUs();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _contactUs() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Contact Us',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.email, color: Color(0xFF4CAF50)),
+              title: const Text('Email'),
+              subtitle: const Text('support@farmercrate.com'),
+              onTap: () async {
+                final uri = Uri.parse('mailto:support@farmercrate.com');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.phone, color: Color(0xFF4CAF50)),
+              title: const Text('Phone'),
+              subtitle: const Text('+91 1234567890'),
+              onTap: () async {
+                final uri = Uri.parse('tel:+911234567890');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.language, color: Color(0xFF4CAF50)),
+              title: const Text('Website'),
+              subtitle: const Text('www.farmercrate.com'),
+              onTap: () async {
+                final uri = Uri.parse('https://www.farmercrate.com');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _shareApp() {
+    Share.share(
+      'Check out Farmer Crate - Fresh produce directly from farmers! Download now: https://play.google.com/store/apps/farmercrate',
+      subject: 'Farmer Crate App',
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20)),
+          elevation: 10,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF8F9FA), Color(0xFFFFFFFF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                      Icons.logout_outlined, color: Colors.white, size: 32),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Confirm Logout',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3748),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Are you sure you want to logout?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: Colors.grey.shade300),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => LoginPage()),
+                            (route) => false,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF5722),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 4,
+                        ),
+                        child: const Text(
+                          'Logout',
+                          style: TextStyle(fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1369,11 +1715,6 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             onTap: () => _onNavItemTapped(0),
           ),
           ListTile(
-            leading: Icon(Icons.add, color: Colors.green[600]),
-            title: Text('Add Product'),
-            onTap: () => _onNavItemTapped(1),
-          ),
-          ListTile(
             leading: Icon(Icons.edit, color: Colors.green[600]),
             title: Text('Edit Products'),
             onTap: () => _onNavItemTapped(2),
@@ -1397,13 +1738,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           ListTile(
             leading: Icon(Icons.logout, color: Colors.red[600]),
             title: Text('Logout'),
-            onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => LoginPage()),
-                    (route) => false,
-              );
-            },
+            onTap: _confirmLogout,
           ),
         ],
       ),
@@ -1447,8 +1782,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add, size: 24),
-            label: 'Add Product',
+            icon: Icon(Icons.shopping_bag, size: 24),
+            label: 'Orders',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.edit, size: 24),
