@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:geolocator/geolocator.dart';
 import 'findtrans.dart';
 import '../utils/qr_generator.dart';
 import 'customerhomepage.dart';
@@ -31,6 +32,7 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
   final _phoneController = TextEditingController();
   final _zoneController = TextEditingController();
   final _pincodeController = TextEditingController();
+  bool isLoadingLocation = false;
 
   @override
   void initState() {
@@ -51,23 +53,112 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
     super.dispose();
   }
 
+  Future<void> _getCurrentLocation() async {
+    setState(() {
+      isLoadingLocation = true;
+    });
+
+    try {
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw Exception('Location permission denied');
+        }
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      print('Current location: ${position.latitude}, ${position.longitude}');
+
+      // Call API with actual coordinates
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/orders/current-location'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'lat': position.latitude, 'lng': position.longitude}),
+      );
+
+      print('Location API Status: ${response.statusCode}');
+      print('Location API Response: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('Parsed data: $data');
+        
+        final locationData = data['data'] ?? data;
+        String fullAddress = locationData['address']?.toString() ?? '';
+        
+        // Parse address to extract zone and pincode
+        // Example: "4RXJ+9H7, K.R.Nagar, Kovilpatti, Nallatinputhur, Tamil Nadu 628503, India"
+        String zone = '';
+        String pincode = '';
+        
+        // Extract pincode (6 digits)
+        RegExp pincodeRegex = RegExp(r'\b(\d{6})\b');
+        Match? pincodeMatch = pincodeRegex.firstMatch(fullAddress);
+        if (pincodeMatch != null) {
+          pincode = pincodeMatch.group(1) ?? '';
+        }
+        
+        // Extract zone (city name before state)
+        List<String> parts = fullAddress.split(',').map((e) => e.trim()).toList();
+        if (parts.length >= 3) {
+          // Try to find the main city/town (usually before state name)
+          for (int i = 0; i < parts.length; i++) {
+            if (parts[i].contains('Tamil Nadu') || parts[i].contains('India')) {
+              if (i > 0) {
+                zone = parts[i - 1];
+              }
+              break;
+            }
+          }
+          // If no zone found, use the second or third part
+          if (zone.isEmpty && parts.length >= 2) {
+            zone = parts[1];
+          }
+        }
+        
+        setState(() {
+          _addressController.text = fullAddress;
+          _zoneController.text = zone;
+          _pincodeController.text = pincode;
+        });
+        
+        print('Address: ${_addressController.text}');
+        print('Zone: ${_zoneController.text}');
+        print('Pincode: ${_pincodeController.text}');
+        
+        _showSuccessSnackBar('Location details filled successfully!');
+      } else {
+        _showErrorSnackBar('Failed to get location details');
+      }
+    } catch (e) {
+      print('Location error: $e');
+      _showErrorSnackBar('Error: $e');
+    } finally {
+      setState(() {
+        isLoadingLocation = false;
+      });
+    }
+  }
+
   Future<void> _createOrder() async {
     // Validate required fields
     if (_addressController.text.isEmpty ||
         _phoneController.text.isEmpty ||
         _zoneController.text.isEmpty ||
         _pincodeController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please fill all required fields')),
-      );
+      _showWarningSnackBar('Please fill all required fields');
       return;
     }
 
     // Validate phone number format
     if (!RegExp(r'^[0-9]{10}$').hasMatch(_phoneController.text)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter a valid 10-digit phone number')),
-      );
+      _showWarningSnackBar('Please enter a valid 10-digit phone number');
       return;
     }
 
@@ -132,25 +223,19 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
         });
         final errorData = jsonDecode(response.body);
         final errorMessage = errorData['message'] ?? 'Failed to create order';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $errorMessage (${response.statusCode})')),
-        );
+        _showErrorSnackBar('Error: $errorMessage (${response.statusCode})');
       }
     } catch (e) {
       setState(() {
         isCreatingOrder = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error creating order: $e')),
-      );
+      _showErrorSnackBar('Error creating order: $e');
     }
   }
 
   void _openRazorpayCheckout() {
     if (paymentDetails == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Payment details not available')),
-      );
+      _showErrorSnackBar('Payment details not available');
       return;
     }
 
@@ -176,9 +261,7 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
     try {
       _razorpay.open(options);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to open payment gateway: $e')),
-      );
+      _showErrorSnackBar('Failed to open payment gateway: $e');
     }
   }
 
@@ -364,31 +447,144 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
         setState(() {
           isProcessingPayment = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error completing payment: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorSnackBar('Error completing payment: $e');
       }
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     print('Payment error: ${response.code} - ${response.message}');
+    _showErrorSnackBar('Payment Failed: ${response.message ?? "Unknown error"}');
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    _showInfoSnackBar('External Wallet: ${response.walletName}');
+  }
+
+  void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Payment Failed: ${response.message ?? "Unknown error"}'),
-        backgroundColor: Colors.red,
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.check_circle, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFF4CAF50),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
       ),
     );
   }
 
-  void _handleExternalWallet(ExternalWalletResponse response) {
+  void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('External Wallet: ${response.walletName}'),
-        backgroundColor: Colors.blue,
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.error, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFFE53935),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.warning, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFFFFA726),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showInfoSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.info, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFF2196F3),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
       ),
     );
   }
@@ -410,26 +606,53 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                 // Order Summary Header
                 Container(
                   width: double.infinity,
-                  padding: EdgeInsets.all(20),
+                  padding: EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF2E7D32).withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        widget.orderData['product_name'] ?? 'Product',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.shopping_bag, color: Colors.white, size: 20),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.orderData['product_name'] ?? 'Product',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
+                      SizedBox(height: 16),
+                      Container(
+                        height: 1,
+                        color: Colors.white.withOpacity(0.3),
+                      ),
+                      SizedBox(height: 16),
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -504,12 +727,64 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Delivery Details',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF2E7D32).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.local_shipping, color: Color(0xFF2E7D32), size: 20),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Delivery Details',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Color(0xFF2E7D32).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: isLoadingLocation ? null : _getCurrentLocation,
+                          icon: isLoadingLocation
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                )
+                              : Icon(Icons.my_location, color: Colors.white, size: 22),
+                          label: Text(
+                            isLoadingLocation ? 'Getting Location...' : 'Use Current Location',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
                         ),
                       ),
                       SizedBox(height: 16),
@@ -517,12 +792,13 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.2), width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 15,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
@@ -532,8 +808,22 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                               controller: _addressController,
                               decoration: InputDecoration(
                                 labelText: 'Delivery Address *',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.location_on),
+                                hintText: 'Enter your full delivery address',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                                ),
+                                prefixIcon: Icon(Icons.location_on, color: Color(0xFF2E7D32)),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
                               ),
                               maxLines: 2,
                             ),
@@ -545,8 +835,21 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                                     controller: _zoneController,
                                     decoration: InputDecoration(
                                       labelText: 'Zone *',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.map),
+                                      hintText: 'City/Town',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.grey.shade300),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                                      ),
+                                      prefixIcon: Icon(Icons.map, color: Color(0xFF2E7D32)),
+                                      filled: true,
+                                      fillColor: Colors.grey.shade50,
                                     ),
                                   ),
                                 ),
@@ -556,8 +859,22 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                                     controller: _pincodeController,
                                     decoration: InputDecoration(
                                       labelText: 'Pincode *',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.pin_drop),
+                                      hintText: '6 digits',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Colors.grey.shade300),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                                      ),
+                                      prefixIcon: Icon(Icons.pin_drop, color: Color(0xFF2E7D32)),
+                                      filled: true,
+                                      fillColor: Colors.grey.shade50,
+                                      counterText: '',
                                     ),
                                     keyboardType: TextInputType.number,
                                     maxLength: 6,
@@ -570,8 +887,22 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                               controller: _phoneController,
                               decoration: InputDecoration(
                                 labelText: 'Phone Number *',
-                                border: OutlineInputBorder(),
-                                prefixIcon: Icon(Icons.phone),
+                                hintText: '10 digit mobile number',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Color(0xFF2E7D32), width: 2),
+                                ),
+                                prefixIcon: Icon(Icons.phone, color: Color(0xFF2E7D32)),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                counterText: '',
                               ),
                               keyboardType: TextInputType.phone,
                               maxLength: 10,
@@ -579,14 +910,27 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                           ],
                         ),
                       ),
-                      SizedBox(height: 20),
-                      Text(
-                        'Payment Methods',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
+                      SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFF2E7D32).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(Icons.payment, color: Color(0xFF2E7D32), size: 20),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            'Payment Methods',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2E7D32),
+                            ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 20),
 
@@ -596,12 +940,13 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.2), width: 1),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: Offset(0, 2),
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 15,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
@@ -611,14 +956,16 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                             Row(
                               children: [
                                 Container(
-                                  padding: EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: Color(0xFF2E7D32).withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
+                                    gradient: LinearGradient(
+                                      colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Icon(
                                     Icons.payment,
-                                    color: Color(0xFF2E7D32),
+                                    color: Colors.white,
                                     size: 24,
                                   ),
                                 ),
@@ -778,27 +1125,62 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
       ),
       bottomNavigationBar: Container(
         padding: EdgeInsets.all(20),
-        child: ElevatedButton(
-          onPressed: isCreatingOrder ? null : _createOrder,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xFF2E7D32),
-            padding: EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
             ),
+          ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF2E7D32).withOpacity(0.4),
+                blurRadius: 12,
+                offset: Offset(0, 6),
+              ),
+            ],
           ),
-          child: isCreatingOrder
-              ? SizedBox(
-            height: 20,
-            width: 20,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+          child: ElevatedButton(
+            onPressed: isCreatingOrder ? null : _createOrder,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-          )
-              : Text(
-            'Pay ₹${_calculateTotal().toStringAsFixed(2)}',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            child: isCreatingOrder
+                ? SizedBox(
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+                : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock, color: Colors.white, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'Pay ₹${_calculateTotal().toStringAsFixed(2)}',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ],
+            ),
           ),
         ),
       ),
