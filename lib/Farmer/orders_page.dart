@@ -105,8 +105,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     try {
-      final endpoint = status == 'accepted' ? 'accept' : 'reject';
-      final uri = Uri.parse('https://farmercrate.onrender.com/api/farmers/orders/$orderId/$endpoint');
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/farmers/orders/$orderId/status');
       Map<String, String> headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -114,12 +113,19 @@ class _OrdersPageState extends State<OrdersPage> {
           'Authorization': 'Bearer ${widget.token}',
       };
 
-      final response = await http.put(uri, headers: headers);
+      final body = jsonEncode({'status': status});
+      print('Updating order $orderId to status: $status');
+      print('Request URL: $uri');
+      print('Request body: $body');
+
+      final response = await http.put(uri, headers: headers, body: body);
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         try {
           final responseData = jsonDecode(response.body);
-          if (responseData['success'] == true) {
+          if (responseData['success'] == true || responseData['message'] != null) {
             setState(() {
               orders.removeWhere((order) => order.id == orderId);
             });
@@ -143,13 +149,14 @@ class _OrdersPageState extends State<OrdersPage> {
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(responseData['message'] ?? 'Failed to ${status == 'accepted' ? 'accept' : 'reject'} order'),
+                content: Text(responseData['message'] ?? 'Failed to update order'),
                 backgroundColor: Colors.red,
                 duration: Duration(seconds: 4),
               ),
             );
           }
         } catch (e) {
+          print('Error parsing response: $e');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Invalid response from server'),
@@ -158,18 +165,20 @@ class _OrdersPageState extends State<OrdersPage> {
           );
         }
       } else {
+        print('Error: Status code ${response.statusCode}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('API endpoint not available. Contact backend team.'),
+            content: Text('Error: ${response.statusCode}. Response: ${response.body}'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 4),
           ),
         );
       }
     } catch (e) {
+      print('Network error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Network error occurred'),
+          content: Text('Network error: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -313,6 +322,37 @@ class _OrdersPageState extends State<OrdersPage> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (order.productImages.isNotEmpty) ...[
+                Container(
+                  height: 120,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: order.productImages.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: EdgeInsets.only(right: 8),
+                        width: 120,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green[200]!, width: 2),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            order.productImages[index],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               _buildEnhancedDetailRow('Product', order.productName, Icons.inventory),
               _buildEnhancedDetailRow('Quantity', '${order.quantity} kg', Icons.scale),
               _buildEnhancedDetailRow('Total Price', '₹${order.totalPrice.toStringAsFixed(2)}', Icons.currency_rupee),
@@ -1186,19 +1226,59 @@ class _OrdersPageState extends State<OrdersPage> {
           onTap: _onNavItemTapped,
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 0 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 1 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 1 ? Icons.shopping_bag : Icons.shopping_bag_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Orders',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.edit, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 2 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 2 ? Icons.edit : Icons.edit_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Edit Product',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 3 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 3 ? Icons.person : Icons.person_outline,
+                  size: 22,
+                ),
+              ),
               label: 'Profile',
             ),
           ],
@@ -1216,7 +1296,7 @@ class Order {
   final double totalPrice;
   final String status;
   final DateTime orderDate;
-  final String? productImage;
+  final List<String> productImages;
   final String? customerImage;
   final String? customerAddress;
 
@@ -1228,18 +1308,20 @@ class Order {
     required this.totalPrice,
     required this.status,
     required this.orderDate,
-    this.productImage,
+    required this.productImages,
     this.customerImage,
     this.customerAddress,
   });
 
+  String? get productImage => productImages.isNotEmpty ? productImages[0] : null;
+
   factory Order.fromJson(Map<String, dynamic> json) {
-    String? productImage;
+    List<String> images = [];
     var imageData = json['product']?['image_urls'];
-    if (imageData is List && imageData.isNotEmpty) {
-      productImage = imageData[0];
+    if (imageData is List) {
+      images = imageData.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
     } else if (imageData is String && imageData.isNotEmpty) {
-      productImage = imageData;
+      images = [imageData];
     }
 
     return Order(
@@ -1250,7 +1332,7 @@ class Order {
       totalPrice: double.tryParse(json['total_price']?.toString() ?? '0') ?? 0.0,
       status: json['current_status']?.toLowerCase() ?? 'pending',
       orderDate: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      productImage: productImage,
+      productImages: images,
       customerImage: json['customer']?['image_url'],
       customerAddress: json['customer']?['address'],
     );

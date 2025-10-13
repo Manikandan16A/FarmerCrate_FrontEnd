@@ -721,19 +721,59 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           onTap: _onNavItemTapped,
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 0 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_bag, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 1 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 1 ? Icons.shopping_bag : Icons.shopping_bag_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Orders',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.edit, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 2 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 2 ? Icons.edit : Icons.edit_outlined,
+                  size: 22,
+                ),
+              ),
               label: 'Edit Product',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline, size: 24),
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: _currentIndex == 3 ? Colors.green[50] : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  _currentIndex == 3 ? Icons.person : Icons.person_outline,
+                  size: 22,
+                ),
+              ),
               label: 'Profile',
             ),
           ],

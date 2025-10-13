@@ -5,7 +5,8 @@ import 'dart:io';
 import '../auth/Signin.dart';
 import 'homepage.dart';
 import 'Addproduct.dart';
-import 'orders_page.dart';
+import 'Fullorders.dart';
+import 'Orders_history.dart' as OrderHistory;
 import 'contact_admin.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -137,7 +138,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = OrdersPage(token: widget.token);
+        targetPage = OrdersPage();
         break;
       case 2:
         targetPage = FarmerProductsPage(token: widget.token);
@@ -853,7 +854,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => OrdersPage(token: widget.token)),
+                MaterialPageRoute(builder: (context) => OrderHistory.OrdersPage()),
               );
             },
           ),
@@ -1778,19 +1779,59 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         onTap: _onNavItemTapped,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 24),
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _currentIndex == 0 ? Colors.green[50] : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _currentIndex == 0 ? Icons.home : Icons.home_outlined,
+                size: 22,
+              ),
+            ),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_bag, size: 24),
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _currentIndex == 1 ? Colors.green[50] : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _currentIndex == 1 ? Icons.shopping_bag : Icons.shopping_bag_outlined,
+                size: 22,
+              ),
+            ),
             label: 'Orders',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.edit, size: 24),
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _currentIndex == 2 ? Colors.green[50] : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _currentIndex == 2 ? Icons.edit : Icons.edit_outlined,
+                size: 22,
+              ),
+            ),
             label: 'Edit Product',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline, size: 24),
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: _currentIndex == 3 ? Colors.green[50] : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                _currentIndex == 3 ? Icons.person : Icons.person_outline,
+                size: 22,
+              ),
+            ),
             label: 'Profile',
           ),
         ],
