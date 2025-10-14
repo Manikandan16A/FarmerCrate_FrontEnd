@@ -1439,7 +1439,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                   child: Row(
                     children: [
                       Container(
-                        width: 170,
+                        width: 180,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(10),
@@ -1457,7 +1457,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical:6 ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
                           items: categories.map((String category) {
                             return DropdownMenuItem<String>(
@@ -1473,7 +1473,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                       ),
                       SizedBox(width: 9),
                       Container(
-                        width: 140,
+                        width: 150,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(13),
@@ -1491,7 +1491,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                           ),
                           items: [
                             DropdownMenuItem(value: 'createdAt', child: Text('Date Added', style: TextStyle(fontSize: 12))),
@@ -1506,7 +1506,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           },
                         ),
                       ),
-                      SizedBox(width:1),
+                      SizedBox(width:1.3),
                       Container(
                         decoration: BoxDecoration(
                           color: Colors.green.shade600,
@@ -1677,14 +1677,16 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                             if (product.images != null)
                               GestureDetector(
                                 onTap: () => _showImagePreview(product.images!),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: product.images!.startsWith('http')
-                                      ? Image.network(
-                                    product.images!,
-                                    height: 150,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: product.images!.startsWith('http')
+                                          ? Image.network(
+                                        product.images!,
+                                        height: 150,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
                                     loadingBuilder: (context, child, loadingProgress) {
                                       if (loadingProgress == null) return child;
                                       return Container(
@@ -1753,6 +1755,34 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       color: Colors.grey.shade600,
                                     ),
                                   ),
+                                ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.7),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.image, color: Colors.white, size: 14),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              '1',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             else

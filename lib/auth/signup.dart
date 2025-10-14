@@ -1350,18 +1350,17 @@ return null;
 const SizedBox(height: 24),
 _buildSignUpButton(),
 const SizedBox(height: 16),
-Row(
-mainAxisAlignment: MainAxisAlignment.center,
+Wrap(
+alignment: WrapAlignment.center,
 children: [
 Text(
-'Already have an account?',
+'Already have an account? ',
 style: TextStyle(
 fontSize: 14,
 color: Colors.grey[600],
 fontWeight: FontWeight.w400,
 ),
 ),
-SizedBox(width: 8),
 GestureDetector(
 onTap: () {
 Navigator.pushReplacement(
