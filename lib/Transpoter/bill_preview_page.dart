@@ -5,16 +5,12 @@ import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:barcode/barcode.dart' as barcode;
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import '../utils/cloudinary_upload.dart';
 
 class BillPreviewPage extends StatefulWidget {
-  final dynamic order;
+  final dynamic order;  
   final String? token;
 
   const BillPreviewPage({super.key, required this.order, this.token});
@@ -90,151 +86,6 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
     setState(() => _billGenerated = true);
   }
 
-  Future<pw.Document> _createPdf() async {
-    final product = widget.order['product'];
-    final customer = widget.order['customer'];
-    final orderDate = widget.order['order_date'] != null ? DateTime.parse(widget.order['order_date']) : DateTime.now();
-    final invoiceDate = DateTime.now();
-    final priceValue = widget.order['total_price'];
-    final price = priceValue is String ? double.tryParse(priceValue) ?? 0.0 : (priceValue ?? 0).toDouble();
-    final quantity = widget.order['quantity'] ?? 1;
-    final deliveryChargeValue = widget.order['transport_charge'];
-    final deliveryCharge = deliveryChargeValue is String ? double.tryParse(deliveryChargeValue) ?? 0.0 : (deliveryChargeValue ?? 0).toDouble();
-    final adminCommissionValue = widget.order['admin_commission'];
-    final adminCommission = adminCommissionValue is String ? double.tryParse(adminCommissionValue) ?? 0.0 : (adminCommissionValue ?? 0).toDouble();
-    final totalWithTax = price + deliveryCharge + adminCommission;
-
-    final greenColor = PdfColor.fromHex('#2E7D32');
-    final lightGreen = PdfColor.fromHex('#E8F5E9');
-    final greyColor = PdfColor.fromHex('#757575');
-
-    final pdf = pw.Document();
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Container(
-            color: PdfColors.white,
-            padding: pw.EdgeInsets.all(20),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                pw.Center(child: pw.Text('FarmerCrate', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                pw.SizedBox(height: 8),
-                pw.Center(child: pw.Text('Contact us: +91 9551084651 || farmercrate@gmail.com', style: pw.TextStyle(fontSize: 12, color: greyColor))),
-                pw.SizedBox(height: 8),
-                pw.Center(child: pw.Text('FarmerCrate Retail Private Limited', style: pw.TextStyle(fontSize: 11, color: greyColor))),
-                pw.Divider(height: 32, thickness: 2),
-                pw.Text('Tax Invoice #: FC-${widget.order['order_id']}-${invoiceDate.year}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                pw.SizedBox(height: 16),
-                pw.Text('Order Date: ${DateFormat('dd-MM-yyyy').format(orderDate)}', style: pw.TextStyle(fontSize: 12)),
-                pw.Text('Invoice Date: ${DateFormat('dd-MM-yyyy').format(invoiceDate)}', style: pw.TextStyle(fontSize: 12)),
-                pw.Divider(height: 32),
-                pw.Row(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Expanded(
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('Billing Address', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: greenColor)),
-                          pw.SizedBox(height: 8),
-                          pw.Text(customer?['name'] ?? 'N/A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(widget.order['delivery_address'] ?? 'N/A', style: pw.TextStyle(fontSize: 11, color: greyColor)),
-                          pw.Text('Phone: ${customer?['mobile_number'] ?? 'N/A'}', style: pw.TextStyle(fontSize: 11, color: greyColor)),
-                        ],
-                      ),
-                    ),
-                    pw.SizedBox(width: 16),
-                    pw.Expanded(
-                      child: pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text('Shipping Address', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: greenColor)),
-                          pw.SizedBox(height: 8),
-                          pw.Text(customer?['name'] ?? 'N/A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                          pw.Text(widget.order['delivery_address'] ?? 'N/A', style: pw.TextStyle(fontSize: 11, color: greyColor)),
-                          pw.Text('Phone: ${customer?['mobile_number'] ?? 'N/A'}', style: pw.TextStyle(fontSize: 11, color: greyColor)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                pw.Divider(height: 32),
-                pw.Text('Product Details', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: greenColor)),
-                pw.SizedBox(height: 12),
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300, width: 1),
-                  columnWidths: {
-                    0: pw.FlexColumnWidth(3),
-                    1: pw.FlexColumnWidth(1),
-                    2: pw.FlexColumnWidth(1.5),
-                    3: pw.FlexColumnWidth(1.5),
-                    4: pw.FlexColumnWidth(1.5),
-                  },
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: lightGreen),
-                      children: [
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('Product', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('Qty', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('Price (Rs.)', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('Delivery (Rs.)', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('Platform (Rs.)', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: greenColor))),
-                      ],
-                    ),
-                    pw.TableRow(
-                      children: [
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(product?['name'] ?? 'N/A', style: pw.TextStyle(fontSize: 11))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text('$quantity', style: pw.TextStyle(fontSize: 11))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(price.toStringAsFixed(2), style: pw.TextStyle(fontSize: 11))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(deliveryCharge.toStringAsFixed(2), style: pw.TextStyle(fontSize: 11))),
-                        pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(adminCommission.toStringAsFixed(2), style: pw.TextStyle(fontSize: 11))),
-                      ],
-                    ),
-                  ],
-                ),
-                pw.Divider(height: 32),
-                pw.Container(
-                  padding: pw.EdgeInsets.all(12),
-                  decoration: pw.BoxDecoration(
-                    color: lightGreen,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    children: [
-                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Total Qty:', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)), pw.Text('$quantity', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold))]),
-                      pw.SizedBox(height: 4),
-                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Price (Rs.):', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)), pw.Text(price.toStringAsFixed(2), style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold))]),
-                      pw.SizedBox(height: 4),
-                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Delivery Charge (Rs.):', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)), pw.Text(deliveryCharge.toStringAsFixed(2), style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold))]),
-                      pw.SizedBox(height: 4),
-                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Platform Charge (Rs.):', style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)), pw.Text(adminCommission.toStringAsFixed(2), style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold))]),
-                      pw.Divider(height: 16),
-                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Grand Total:', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: greenColor)), pw.Text('Rs. ${totalWithTax.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: greenColor))]),
-                    ],
-                  ),
-                ),
-                pw.SizedBox(height: 16),
-                pw.Center(
-                  child: pw.BarcodeWidget(
-                    barcode: barcode.Barcode.qrCode(),
-                    data: '${widget.order['order_id']}',
-                    width: 120,
-                    height: 120,
-                  ),
-                ),
-                pw.SizedBox(height: 8),
-                pw.Center(child: pw.Text('Keep this invoice for warranty purposes.', style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic, color: greyColor))),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-    return pdf;
-  }
-
   Future<void> _printBill() async {
     setState(() => _isProcessing = true);
     try {
@@ -252,49 +103,13 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
       
       if (billUrl != null) {
         await _saveBillUrlToDatabase(billUrl);
-        
-        final imageBytes = await file.readAsBytes();
-        final img = pw.MemoryImage(imageBytes);
-        
-        final pdf = pw.Document();
-        pdf.addPage(
-          pw.Page(
-            pageFormat: PdfPageFormat.a4,
-            build: (pw.Context context) {
-              return pw.Center(
-                child: pw.Image(img, fit: pw.BoxFit.contain),
-              );
-            },
-          ),
-        );
-        
         await file.delete();
-        
-        await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
-        _showSuccessSnackBar('Bill saved to database and printed successfully!');
+        _showSuccessSnackBar('Bill saved to database successfully!');
       } else {
         _showErrorSnackBar('Failed to save bill to database');
       }
     } catch (e) {
       _showErrorSnackBar('Print failed: $e');
-    } finally {
-      setState(() => _isProcessing = false);
-    }
-  }
-
-  Future<void> _downloadPdf() async {
-    setState(() => _isProcessing = true);
-    try {
-      final pdf = await _createPdf();
-      final pdfBytes = await pdf.save();
-      final filePath = '/storage/emulated/0/Download/Bill_FC-${widget.order['order_id']}.pdf';
-      final file = File(filePath);
-      await file.writeAsBytes(pdfBytes);
-      print('[DOWNLOAD] PDF saved to: $filePath');
-      _showSuccessSnackBar('PDF downloaded to Downloads folder!');
-    } catch (e) {
-      print('[DOWNLOAD ERROR] $e');
-      _showErrorSnackBar('Download failed: $e');
     } finally {
       setState(() => _isProcessing = false);
     }

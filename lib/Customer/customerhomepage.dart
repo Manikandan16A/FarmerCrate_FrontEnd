@@ -6,6 +6,7 @@ import 'dart:math';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'navigation_utils.dart';
+
 import 'product_details_screen.dart';
 import 'TrendingPage.dart';
 import 'OrderHistory.dart';
