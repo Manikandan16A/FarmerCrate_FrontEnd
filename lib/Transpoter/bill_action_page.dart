@@ -5,9 +5,6 @@ import 'package:flutter/rendering.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import '../utils/cloudinary_upload.dart';
@@ -26,149 +23,22 @@ class _BillActionPageState extends State<BillActionPage> {
   final GlobalKey _billKey = GlobalKey();
   bool _isProcessing = false;
 
-  Future<pw.Document> _createPdf() async {
-    final product = widget.order['product'];
-    final customer = widget.order['customer'];
-    final orderDate = widget.order['order_date'] != null ? DateTime.parse(widget.order['order_date']) : DateTime.now();
-    final invoiceDate = DateTime.now();
-    final priceValue = widget.order['total_price'];
-    final price = priceValue is String ? double.tryParse(priceValue) ?? 0.0 : (priceValue ?? 0).toDouble();
-    final quantity = widget.order['quantity'] ?? 1;
-    final deliveryChargeValue = widget.order['transport_charge'];
-    final deliveryCharge = deliveryChargeValue is String ? double.tryParse(deliveryChargeValue) ?? 0.0 : (deliveryChargeValue ?? 0).toDouble();
-    final adminCommissionValue = widget.order['admin_commission'];
-    final adminCommission = adminCommissionValue is String ? double.tryParse(adminCommissionValue) ?? 0.0 : (adminCommissionValue ?? 0).toDouble();
-    final totalWithTax = price + deliveryCharge + adminCommission;
-
-    print('=== BILL DETAILS ===');
-    print('Order ID: ${widget.order['order_id']}');
-    print('Product: ${product?['name']}');
-    print('Customer: ${customer?['name']}');
-    print('Phone: ${customer?['mobile_number']}');
-    print('Address: ${widget.order['delivery_address']}');
-    print('Quantity: $quantity');
-    print('Price: ₹$price');
-    print('Delivery Charge: ₹$deliveryCharge');
-    print('Platform Charge: ₹$adminCommission');
-    print('Grand Total: ₹$totalWithTax');
-    print('Order Date: ${DateFormat('dd-MM-yyyy').format(orderDate)}');
-    print('Invoice Date: ${DateFormat('dd-MM-yyyy').format(invoiceDate)}');
-    print('===================');
-
-    final pdf = pw.Document();
-    pdf.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Center(child: pw.Text('FarmerCrate', style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold))),
-              pw.SizedBox(height: 8),
-              pw.Center(child: pw.Text('Contact us: +91 9551084651 || farmercrate@gmail.com', style: pw.TextStyle(fontSize: 12))),
-              pw.SizedBox(height: 8),
-              pw.Center(child: pw.Text('FarmerCrate Retail Private Limited', style: pw.TextStyle(fontSize: 11))),
-              pw.Divider(height: 32, thickness: 2),
-              pw.Text('Tax Invoice #: FC-${widget.order['order_id']}-${invoiceDate.year}', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 16),
-              pw.Text('Order Date: ${DateFormat('dd-MM-yyyy').format(orderDate)}', style: pw.TextStyle(fontSize: 12)),
-              pw.Text('Invoice Date: ${DateFormat('dd-MM-yyyy').format(invoiceDate)}', style: pw.TextStyle(fontSize: 12)),
-              pw.Divider(height: 32),
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Billing Address', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(height: 8),
-                        pw.Text(customer?['name'] ?? 'N/A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                        pw.Text(widget.order['delivery_address'] ?? 'N/A', style: pw.TextStyle(fontSize: 11)),
-                        pw.Text('Phone: ${customer?['mobile_number'] ?? 'N/A'}', style: pw.TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                  pw.SizedBox(width: 16),
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text('Shipping Address', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-                        pw.SizedBox(height: 8),
-                        pw.Text(customer?['name'] ?? 'N/A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                        pw.Text(widget.order['delivery_address'] ?? 'N/A', style: pw.TextStyle(fontSize: 11)),
-                        pw.Text('Phone: ${customer?['mobile_number'] ?? 'N/A'}', style: pw.TextStyle(fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              pw.Divider(height: 32),
-              pw.Text('Product Details', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 12),
-              pw.Table.fromTextArray(
-                headers: ['Product', 'Qty', 'Price (₹)', 'Delivery (₹)', 'Platform (₹)'],
-                data: [
-                  [product?['name'] ?? 'N/A', '$quantity', price.toStringAsFixed(2), deliveryCharge.toStringAsFixed(2), adminCommission.toStringAsFixed(2)],
-                ],
-              ),
-              pw.Divider(height: 32),
-              pw.Container(
-                padding: pw.EdgeInsets.all(12),
-                decoration: pw.BoxDecoration(border: pw.Border.all()),
-                child: pw.Column(
-                  children: [
-                    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Total Qty:'), pw.Text('$quantity')]),
-                    pw.SizedBox(height: 4),
-                    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Price (₹):'), pw.Text(price.toStringAsFixed(2))]),
-                    pw.SizedBox(height: 4),
-                    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Delivery Charge (₹):'), pw.Text(deliveryCharge.toStringAsFixed(2))]),
-                    pw.SizedBox(height: 4),
-                    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Platform Charge (₹):'), pw.Text(adminCommission.toStringAsFixed(2))]),
-                    pw.Divider(height: 16),
-                    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [pw.Text('Grand Total:', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)), pw.Text('₹ ${totalWithTax.toStringAsFixed(2)}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold))]),
-                  ],
-                ),
-              ),
-              pw.SizedBox(height: 16),
-              pw.Center(child: pw.Text('Keep this invoice for warranty purposes.', style: pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic))),
-            ],
-          );
-        },
-      ),
-    );
-    return pdf;
-  }
-
-  Future<void> _printBill() async {
+  Future<void> _saveBillImage() async {
     setState(() => _isProcessing = true);
     try {
-      final pdf = await _createPdf();
-      final pdfBytes = await pdf.save();
-      await Printing.directPrintPdf(printer: Printer(url: ''), onLayout: (PdfPageFormat format) async => pdfBytes);
-      _showSuccessSnackBar('Bill printed successfully!');
-    } catch (e) {
-      print('Print Error: $e');
-      _showErrorSnackBar('Print failed: $e');
-    } finally {
-      setState(() => _isProcessing = false);
-    }
-  }
+      final boundary = _billKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
 
-  Future<void> _downloadPdf() async {
-    setState(() => _isProcessing = true);
-    try {
-      final pdf = await _createPdf();
-      final pdfBytes = await pdf.save();
       final directory = await getExternalStorageDirectory();
-      final filePath = '${directory!.path}/Bill_FC-${widget.order['order_id']}-${DateTime.now().year}.pdf';
+      final filePath = '${directory!.path}/Bill_FC-${widget.order['order_id']}.png';
       final file = File(filePath);
-      await file.writeAsBytes(pdfBytes);
-      _showSuccessSnackBar('PDF downloaded to: $filePath');
+      await file.writeAsBytes(pngBytes);
+      _showSuccessSnackBar('Bill saved to: $filePath');
     } catch (e) {
-      print('Download Error: $e');
-      _showErrorSnackBar('Download failed: $e');
+      print('Save Error: $e');
+      _showErrorSnackBar('Save failed: $e');
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -398,20 +268,9 @@ class _BillActionPageState extends State<BillActionPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: _printBill,
-                  icon: Icon(Icons.print, color: Colors.white),
-                  label: Text('Connect Printer & Print', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF2E7D32), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                ),
-              ),
-              SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _downloadPdf,
-                  icon: Icon(Icons.download, color: Colors.white),
-                  label: Text('Download PDF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+                  onPressed: _saveBillImage,
+                  icon: Icon(Icons.save, color: Colors.white),
+                  label: Text('Save Bill as Image', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                   style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF4CAF50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 ),
               ),
