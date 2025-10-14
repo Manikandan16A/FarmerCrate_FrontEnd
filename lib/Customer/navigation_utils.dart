@@ -3,7 +3,8 @@ import 'customerhomepage.dart';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'profile.dart';
-// removed unused imports: shared_preferences, wishlist, FAQpage
+import 'order history.dart';
+
 
 
 class CustomerNavigationUtils {
@@ -153,8 +154,7 @@ class CustomerNavigationUtils {
     }
 
     try {
-      // This would typically make an API call to get customer profile
-      // For now, we'll return default values
+
       return {
         'customerImageUrl': null,
         'customerName': null,
@@ -167,5 +167,145 @@ class CustomerNavigationUtils {
         'isLoadingProfile': false,
       };
     }
+  }
+}
+
+class CustomerDrawer extends StatelessWidget {
+  final BuildContext parentContext;
+  final String? token;
+  final String? customerImageUrl;
+  final String? customerName;
+  final bool isLoadingProfile;
+
+  const CustomerDrawer({
+    Key? key,
+    required this.parentContext,
+    required this.token,
+    this.customerImageUrl,
+    this.customerName,
+    this.isLoadingProfile = false,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.green[50]!, Colors.white],
+          ),
+        ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.green[600]!, Colors.green[400]!],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundImage: customerImageUrl != null && customerImageUrl!.isNotEmpty
+                        ? NetworkImage(customerImageUrl!)
+                        : null,
+                    child: customerImageUrl == null || customerImageUrl!.isEmpty
+                        ? Icon(Icons.person, size: 30, color: Colors.white)
+                        : null,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    customerName ?? 'Customer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Welcome to FarmerCrate',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home, color: Colors.green[600]),
+              title: Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerHomePage(token: token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.shopping_bag, color: Colors.green[600]),
+              title: Text('Orders'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => OrderHistoryPage(token: token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.category, color: Colors.green[600]),
+              title: Text('Categories'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CategoryPage(token: token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.shopping_cart, color: Colors.green[600]),
+              title: Text('Cart'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CartPage(token: token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.person, color: Colors.green[600]),
+              title: Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerProfilePage(token: token),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -13,7 +13,7 @@ import '../utils/cloudinary_upload.dart';
 import '../Customer/NotificationsPage.dart';
 import '../Customer/AppSettingsPage.dart';
 import '../Customer/AppInfo.dart';
-import '../Customer/HelpSupportPage.dart';
+import '../common/help_support_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -946,7 +946,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => HelpSupportPage(token: widget.token)),
+                  MaterialPageRoute(builder: (context) => const HelpSupportPage()),
                 );
               },
             ),

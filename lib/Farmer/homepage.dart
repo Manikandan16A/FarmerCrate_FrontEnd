@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
-import '../Customer/Cart.dart';
 import '../auth/Signin.dart';
 import 'Addproduct.dart';
 import 'contact_admin.dart';
 import 'farmerprofile.dart';
 import 'ProductEdit.dart';
 import 'orders_page.dart';
+import 'farmer_product_detail.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/cloudinary_upload.dart';
@@ -873,17 +873,24 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       String description,
       String? imageUrl,
       ) {
+    final product = products.firstWhere((p) => p.name == name);
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ProductDetailPage(
-              title: name,
+            builder: (context) => FarmerProductDetailPage(
+              productId: product.id.toString(),
+              name: name,
               price: price,
-              rating: '4.5',
-              bgColor: Colors.green[50]!,
-              emoji: '🌾',
+              description: description,
+              imageUrl: imageUrl,
+              quantity: product.quantity,
+              token: widget.token,
+              category: product.category,
+              harvestDate: product.harvestDate,
+              expiryDate: product.expiryDate,
+              grade: product.grade,
             ),
           ),
         );
@@ -1006,251 +1013,3 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   }
 }
 
-class ProductDetailPage extends StatefulWidget {
-  final String title;
-  final String price;
-  final String rating;
-  final Color bgColor;
-  final String emoji;
-  final String? imageUrl;
-  final String? description;
-
-  const ProductDetailPage({
-    super.key,
-    required this.title,
-    required this.price,
-    required this.rating,
-    required this.bgColor,
-    required this.emoji,
-    this.imageUrl,
-    this.description,
-  });
-
-  @override
-  State<ProductDetailPage> createState() => _ProductDetailPageState();
-}
-
-class _ProductDetailPageState extends State<ProductDetailPage> {
-  int quantity = 1;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
-                              spreadRadius: 1,
-                              blurRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: Icon(Icons.arrow_back, color: Colors.black),
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            spreadRadius: 1,
-                            blurRadius: 5,
-                          ),
-                        ],
-                      ),
-                      child: Icon(Icons.favorite_border, color: Colors.redAccent),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                height: MediaQuery.of(context).size.height * 0.3,
-                width: double.infinity,
-                margin: EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: widget.bgColor,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Center(
-                  child: Text(
-                    widget.emoji,
-                    style: TextStyle(fontSize: 120),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      spreadRadius: 2,
-                      blurRadius: 10,
-                      offset: Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.green[600],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            widget.price,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.green, size: 25),
-                        SizedBox(width: 4),
-                        Text(
-                          widget.rating,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Add more items',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Text(
-                      'Invoice Details',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    _buildInvoiceRow('Original Price', widget.price),
-                    _buildInvoiceRow('Delivery', '₹15'),
-                    _buildInvoiceRow('GST', '₹18'),
-                    _buildInvoiceRow('Discount', '-₹20', color: Colors.green[600]),
-                    Divider(thickness: 1, color: Colors.grey[300]),
-                    _buildInvoiceRow('Total', '₹1386', fontWeight: FontWeight.bold),
-                    SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CartPage(token: null), // No token for farmer view
-                          ),
-                        );
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.green[400]!, Colors.green[600]!],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          'Proceed to Checkout',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInvoiceRow(String title, String amount, {Color? color, FontWeight? fontWeight}) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: fontWeight == FontWeight.bold ? 16 : 14,
-              fontWeight: fontWeight ?? FontWeight.normal,
-              color: color ?? Colors.grey[700],
-            ),
-          ),
-          Text(
-            amount,
-            style: TextStyle(
-              fontSize: fontWeight == FontWeight.bold ? 16 : 14,
-              fontWeight: fontWeight ?? FontWeight.normal,
-              color: color ?? Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

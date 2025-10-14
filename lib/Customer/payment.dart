@@ -3,7 +3,6 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
-import 'findtrans.dart';
 import '../utils/qr_generator.dart';
 import 'customerhomepage.dart';
 
@@ -615,7 +614,7 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Color(0xFF2E7D32).withOpacity(0.3),
+                        color: Color(0xFF2E7D32).withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: Offset(0, 5),
                       ),
@@ -650,7 +649,7 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                       SizedBox(height: 16),
                       Container(
                         height: 1,
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
                       SizedBox(height: 16),
                       GestureDetector(
@@ -690,7 +689,7 @@ class _FarmerCratePaymentPageState extends State<FarmerCratePaymentPage> {
                         Container(
                           padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Column(

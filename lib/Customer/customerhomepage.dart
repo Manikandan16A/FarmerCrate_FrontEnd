@@ -816,7 +816,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       backgroundColor: Color(0xFFF8FDF8),
       extendBodyBehindAppBar: true,
       appBar: _buildGlassmorphicAppBar(),
-      drawer: CustomerDrawer(
+      drawer: nav_utils.CustomerDrawer(
         parentContext: context,
         token: widget.token,
         customerImageUrl: customerImageUrl,
@@ -1817,22 +1817,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Container(
-              height: imageHeight,
-              decoration: BoxDecoration(
+              ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                child: _buildProductImage(
-                  product.images,
-                  double.infinity,
-                  imageHeight,
-                  _getProductIcon(product.name),
-                  55,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: imageHeight,
+                  child: _buildProductImage(
+                    product.images,
+                    double.infinity,
+                    imageHeight,
+                    _getProductIcon(product.name),
+                    55,
+                  ),
                 ),
               ),
-            ),
             Expanded(
               child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.75),
@@ -2249,32 +2247,7 @@ class ProductReview {
 // Placeholder pages - you'll need to create these separately
 
 
-class OrdersPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('My Orders'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
-            Text(
-              'No Orders Yet',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+
 
 class SettingsPage extends StatelessWidget {
   @override

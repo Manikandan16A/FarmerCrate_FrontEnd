@@ -8,10 +8,10 @@ import 'Categories.dart';
 import 'Cart.dart';
 import 'OrderHistory.dart';
 import 'AppInfo.dart';
-import 'HelpSupportPage.dart';
 import 'wishlist.dart';
 import 'AppSettingsPage.dart';
 import 'NotificationsPage.dart';
+import '../common/help_support_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
@@ -1163,7 +1163,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => HelpSupportPage(token: widget.token)),
+                          MaterialPageRoute(builder: (context) => const HelpSupportPage()),
                         );
                       },
                     ),
@@ -1946,7 +1946,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => OrdersPage()),
+                  MaterialPageRoute(builder: (context) => OrderHistoryPage()),
                 );
               },
             ),

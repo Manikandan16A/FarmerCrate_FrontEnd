@@ -1,5 +1,4 @@
 import 'package:farmer_crate/Customer/profile.dart';
-import 'package:farmer_crate/Customer/FAQpage.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -7,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../auth/Signin.dart';
 import 'Cart.dart';
+import 'OrderHistory.dart';
 import 'customerhomepage.dart';
 
 // Enhanced Data Models (API Ready)
@@ -314,7 +314,7 @@ class CustomerDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (context) => OrdersPage()),
+                MaterialPageRoute(builder: (context) => OrderHistoryPage()),
               );
             },
           ),
