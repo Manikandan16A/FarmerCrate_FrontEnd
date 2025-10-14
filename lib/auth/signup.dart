@@ -360,6 +360,96 @@ print('API Test Error: $e');
 }
 }
 
+void _showSuccessDialog(String title, String message, {required VoidCallback onOk}) {
+showDialog(
+context: context,
+barrierDismissible: false,
+builder: (BuildContext context) {
+return Dialog(
+shape: RoundedRectangleBorder(
+borderRadius: BorderRadius.circular(20),
+),
+child: Container(
+padding: const EdgeInsets.all(24),
+decoration: BoxDecoration(
+color: Colors.white,
+borderRadius: BorderRadius.circular(20),
+border: Border.all(color: const Color(0xFF4CAF50), width: 2),
+),
+child: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+// Success icon with green background
+Container(
+width: 80,
+height: 80,
+decoration: const BoxDecoration(
+color: Color(0xFF4CAF50),
+shape: BoxShape.circle,
+),
+child: const Icon(
+Icons.check,
+color: Colors.white,
+size: 50,
+),
+),
+const SizedBox(height: 20),
+// Title
+Text(
+title,
+style: const TextStyle(
+fontSize: 24,
+fontWeight: FontWeight.bold,
+color: Color(0xFF2E7D32),
+),
+textAlign: TextAlign.center,
+),
+const SizedBox(height: 16),
+// Message
+Text(
+message,
+style: const TextStyle(
+fontSize: 16,
+color: Color(0xFF424242),
+height: 1.4,
+),
+textAlign: TextAlign.center,
+),
+const SizedBox(height: 24),
+// OK Button
+SizedBox(
+width: double.infinity,
+child: ElevatedButton(
+onPressed: () {
+Navigator.of(context).pop();
+onOk();
+},
+style: ElevatedButton.styleFrom(
+backgroundColor: const Color(0xFF4CAF50),
+foregroundColor: Colors.white,
+padding: const EdgeInsets.symmetric(vertical: 16),
+shape: RoundedRectangleBorder(
+borderRadius: BorderRadius.circular(12),
+),
+elevation: 2,
+),
+child: const Text(
+'OK',
+style: TextStyle(
+fontSize: 16,
+fontWeight: FontWeight.w600,
+),
+),
+),
+),
+],
+),
+),
+);
+},
+);
+}
+
 void _handleSignUp() async {
 if (_formKey.currentState!.validate()) {
 if (_selectedImage == null) {
@@ -689,42 +779,16 @@ successMessage = "Your account created successfully.";
 }
 
 // Show success dialog
-showSuccessDialog(
+_showSuccessDialog(
 title,
 successMessage,
 onOk: () {
-if (apiRole == 'farmer') {
 Navigator.pushReplacement(
 context,
 MaterialPageRoute(
 builder: (context) => LoginPage(),
 ),
 );
-} else if (apiRole == 'customer') {
-
-Navigator.pushReplacement(
-context,
-MaterialPageRoute(
-builder: (context) => LoginPage(),
-),
-);
-} else if (apiRole == 'transporter') {
-
-Navigator.pushReplacement(
-context,
-MaterialPageRoute(
-builder: (context) => LoginPage(),
-),
-);
-} else {
-
-Navigator.pushReplacement(
-context,
-MaterialPageRoute(
-builder: (context) => LoginPage(),
-),
-);
-}
 },
 );
 } else {

@@ -1421,41 +1421,43 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(19),
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.1),
                   blurRadius: 10,
-                  offset: Offset(0, 4),
+                  offset: Offset(0, 6),
                 ),
               ],
             ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 170,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: DropdownButtonFormField<String>(
+                        child: DropdownButtonFormField<String> (
                           value: selectedCategory,
                           decoration: InputDecoration(
                             labelText: 'Category',
-                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
-                            prefixIcon: Icon(Icons.category, color: Colors.green.shade600, size: 20),
+                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w500),
+                            prefixIcon: Icon(Icons.category, color: Colors.green.shade600, size: 15),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(25),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical:6 ),
                           ),
                           items: categories.map((String category) {
                             return DropdownMenuItem<String>(
@@ -1469,13 +1471,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           },
                         ),
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
+                      SizedBox(width: 9),
+                      Container(
+                        width: 140,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(13),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
                         child: DropdownButtonFormField<String>(
@@ -1483,21 +1484,21 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           decoration: InputDecoration(
                             labelText: 'Sort By',
                             labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
-                            prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 20),
+                            prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 13),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(90),
                               borderSide: BorderSide.none,
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                           ),
                           items: [
-                            DropdownMenuItem(value: 'createdAt', child: Text('Date Added', style: TextStyle(fontSize: 14))),
-                            DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 14))),
-                            DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 14))),
-                            DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 14))),
-                            DropdownMenuItem(value: 'quantity', child: Text('Quantity', style: TextStyle(fontSize: 14))),
+                            DropdownMenuItem(value: 'createdAt', child: Text('Date Added', style: TextStyle(fontSize: 12))),
+                            DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 12))),
+                            DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 12))),
+                            DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 12))),
+                            DropdownMenuItem(value: 'quantity', child: Text('Quantity', style: TextStyle(fontSize: 12))),
                           ],
                           onChanged: (String? newValue) {
                             sortBy = newValue!;
@@ -1505,27 +1506,27 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           },
                         ),
                       ),
-                    ),
-                    SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade600,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          isAscending = !isAscending;
-                          _applyFiltersAndSort();
-                        },
-                        icon: Icon(
-                          isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                          color: Colors.white,
+                      SizedBox(width:1),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade600,
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        tooltip: isAscending ? 'Ascending' : 'Descending',
+                        child: IconButton(
+                          onPressed: () {
+                            isAscending = !isAscending;
+                            _applyFiltersAndSort();
+                          },
+                          icon: Icon(
+                            isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: Colors.white,
+                          ),
+                          tooltip: isAscending ? 'Ascending' : 'Descending',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                )
               ],
             ),
           ),
