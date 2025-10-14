@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'OrderHistory.dart';
 import 'navigation_utils.dart';
 import 'payment.dart';
 import '../utils/order_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'findtrans.dart';
+ // Import OrderHistoryPage
 
 
 class OrderConfirmPage extends StatefulWidget {
@@ -385,15 +387,11 @@ class _OrderConfirmPageState extends State<OrderConfirmPage> {
           ),
         );
 
-        // Navigate to delivery tracking
-        Navigator.pushReplacement(
+        
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DeliveryTrackingPage(
-              orderId: result['data']['order_id']?.toString() ?? 'ORD${DateTime.now().millisecondsSinceEpoch}',
-              customerName: _userName,
-              customerAddress: _selectedAddress,
-            ),
+            builder: (context) => OrderHistoryPage(token: widget.token),
           ),
         );
       } else {

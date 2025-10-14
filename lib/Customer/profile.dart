@@ -1946,7 +1946,7 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => OrdersPage()),
+                  MaterialPageRoute(builder: (context) => OrderHistoryPage()),
                 );
               },
             ),
