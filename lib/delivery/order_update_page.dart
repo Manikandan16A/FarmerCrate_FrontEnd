@@ -20,40 +20,123 @@ class OrderUpdatePage extends StatefulWidget {
 
 class _OrderUpdatePageState extends State<OrderUpdatePage> {
   bool _isUpdating = false;
+  bool _isLoading = true;
+  String _currentStatus = 'IN_TRANSIT';
+  Map<String, dynamic>? _orderData;
 
-  Future<void> _updateOrderStatus() async {
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrderStatus();
+  }
+
+  Future<void> _fetchOrderStatus() async {
+    try {
+      print('\n=== FETCHING ORDER STATUS ===');
+      print('Order ID: ${widget.orderId}');
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/delivery-persons/orders'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final orders = responseData['data'] as List;
+          final order = orders.firstWhere(
+            (o) => o['order_id']?.toString() == widget.orderId,
+            orElse: () => null,
+          );
+          
+          if (order != null) {
+            setState(() {
+              _currentStatus = order['current_status']?.toString().toUpperCase() ?? 'IN_TRANSIT';
+              _orderData = order;
+              _isLoading = false;
+            });
+            print('Current Status from DB: $_currentStatus');
+          }
+        }
+      }
+    } catch (e) {
+      print('Error fetching order status: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+    print('=============================\n');
+  }
+
+  Future<void> _updateOrderStatus(String newStatus) async {
     setState(() {
       _isUpdating = true;
     });
 
     try {
+      print('\n=== UPDATE ORDER STATUS ===');
+      print('Order ID: ${widget.orderId}');
+      print('New Status: $newStatus');
+      print('Token: ${widget.token}');
+      
+      final url = 'https://farmercrate.onrender.com/api/orders/status';
+      print('URL: $url');
+      
+      final requestBody = jsonEncode({
+        'order_id': int.parse(widget.orderId),
+        'status': newStatus
+      });
+      print('Request Body: $requestBody');
+      
       final response = await http.put(
-        Uri.parse('https://farmercrate.onrender.com/api/orders/${widget.orderId}/status'),
+        Uri.parse(url),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'status': 'DELIVERED'}),
+        body: requestBody,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+      print('===========================\n');
+
+      if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
         if (mounted) {
-          Navigator.pop(context, true);
+          setState(() {
+            _currentStatus = newStatus;
+          });
+          
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Order marked as delivered successfully'),
+              content: Text(newStatus == 'OUT_FOR_DELIVERY' ? 'Order marked as out for delivery' : 'Order completed successfully'),
               backgroundColor: Colors.green,
             ),
           );
+          
+          // Navigate back to dashboard after successful update
+          await Future.delayed(Duration(milliseconds: 500));
+          Navigator.pop(context, true);
         }
+      } else if (response.statusCode == 403) {
+        print('[ERROR] Access denied. Delivery person does not have permission to update order status.');
+        print('[ERROR] Backend needs to allow delivery role to access PUT /api/orders/status endpoint');
+        throw Exception('Access denied. Please contact administrator.');
       } else {
-        throw Exception('Failed to update order');
+        print('[ERROR] Failed to update order. Status: ${response.statusCode}');
+        throw Exception('Failed to update order: ${response.statusCode}');
       }
     } catch (e) {
+      print('[EXCEPTION] Error updating order status: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update order status'),
+            content: Text('Failed to update order status: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -73,16 +156,23 @@ class _OrderUpdatePageState extends State<OrderUpdatePage> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text('Update Order', style: TextStyle(color: Colors.white)),
         backgroundColor: Color(0xFF4CAF50),
         elevation: 0,
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Color(0xFF4CAF50)))
+          : SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
+              width: double.infinity,
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -94,13 +184,12 @@ class _OrderUpdatePageState extends State<OrderUpdatePage> {
               ),
               child: Column(
                 children: [
-                  Icon(Icons.check_circle_outline, size: 64, color: Colors.white),
-                  SizedBox(height: 16),
                   Text(
-                    'Order #${widget.orderId}',
+                    order['productName'] ?? 'Product',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   SizedBox(height: 8),
+                
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -108,7 +197,7 @@ class _OrderUpdatePageState extends State<OrderUpdatePage> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      'IN TRANSIT',
+                      _currentStatus.replaceAll('_', ' '),
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -150,20 +239,29 @@ class _OrderUpdatePageState extends State<OrderUpdatePage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton.icon(
-                onPressed: _isUpdating ? null : _updateOrderStatus,
+                onPressed: _isUpdating ? null : () => _updateOrderStatus(
+                  _currentStatus == 'IN_TRANSIT' ? 'OUT_FOR_DELIVERY' : 'COMPLETED'
+                ),
                 icon: _isUpdating
                     ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
-                    : Icon(Icons.check_circle, size: 24),
+                    : Icon(
+                        _currentStatus == 'IN_TRANSIT' ? Icons.local_shipping : Icons.check_circle,
+                        size: 24,
+                      ),
                 label: Text(
-                  _isUpdating ? 'Updating...' : 'Mark as Delivered',
+                  _isUpdating
+                      ? 'Updating...'
+                      : _currentStatus == 'IN_TRANSIT'
+                          ? 'Mark as Out for Delivery'
+                          : 'Order Completed',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF4CAF50),
+                  backgroundColor: _currentStatus == 'IN_TRANSIT' ? Color(0xFFFF9800) : Color(0xFF4CAF50),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 4,

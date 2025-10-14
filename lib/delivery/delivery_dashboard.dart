@@ -48,6 +48,55 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
 
   get bold => null;
 
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF4CAF50);
+      icon = Icons.check_circle;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        elevation: 6,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -128,10 +177,10 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               };
             }).toList();
 
-            // Filter delivery orders (IN_TRANSIT status)
+            // Filter delivery orders (IN_TRANSIT or OUT_FOR_DELIVERY status)
             _deliveryOrders = orders.where((order) {
               final status = order['current_status']?.toString().toUpperCase() ?? '';
-              return status == 'IN_TRANSIT';
+              return status == 'IN_TRANSIT' || status == 'OUT_FOR_DELIVERY';
             }).map((order) {
               final customer = order['customer'];
               final product = order['product'];
@@ -157,15 +206,19 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               return status == 'DELIVERED' || status == 'COMPLETED';
             }).map((order) {
               final customer = order['customer'];
-              final totalPrice = order['total_price'];
-              final price = totalPrice is String ? double.tryParse(totalPrice) ?? 0.0 : (totalPrice ?? 0).toDouble();
+              final product = order['product'];
+              final transporterCharge = order['transporter_charge'];
+              final charge = transporterCharge is String ? double.tryParse(transporterCharge) ?? 0.0 : (transporterCharge ?? 0).toDouble();
+              final deliveryEarning = charge / 2;
               
               return {
                 'id': order['order_id']?.toString() ?? 'N/A',
                 'customerName': customer?['name'] ?? 'Customer',
+                'productName': product?['name'] ?? 'Product',
                 'address': order['delivery_address'] ?? 'No address provided',
                 'deliveredAt': order['updated_at'] ?? 'Unknown date',
-                'totalAmount': price,
+                'totalAmount': deliveryEarning,
+                'transporterCharge': charge,
               };
             }).toList();
 
@@ -184,9 +237,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           print('===========================================\n');
         }
       } else if (response.statusCode == 401) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Session expired. Please login again.'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Session expired. Please login again.', isError: true);
         await Future.delayed(Duration(seconds: 2));
         _logout();
       } else {
@@ -195,9 +246,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     } catch (e) {
       print('Error loading delivery data: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load orders'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Failed to load orders', isError: true);
       }
       setState(() {
         _deliveryStats = _deliveryStats ?? {
@@ -241,9 +290,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.white),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('No new notifications')),
-              );
+              _showSnackBar('No new notifications', isInfo: true);
             },
           ),
           IconButton(
@@ -273,18 +320,38 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => QRScannerPage()),
-          );
-          if (result != null && mounted) {
-            await _handleQRScan(result);
-          }
-        },
-        backgroundColor: Color(0xFF4CAF50),
-        child: Icon(Icons.qr_code_scanner),
+      floatingActionButton: Container(
+        height: 65,
+        width: 65,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF4CAF50).withOpacity(0.4),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => QRScannerPage()),
+            );
+            if (result != null && mounted) {
+              await _handleQRScan(result);
+            }
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Icon(Icons.qr_code_scanner, size: 32, color: Colors.white),
+        ),
       ),
     );
   }
@@ -413,7 +480,11 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
   }
 
   Widget _buildPickupOrdersList() {
-    if (_pickupOrders.isEmpty) {
+    final filteredOrders = _statusFilter == 'all' || _statusFilter == 'pending'
+        ? _pickupOrders
+        : <Map<String, dynamic>>[];
+
+    if (filteredOrders.isEmpty) {
       return Container(
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -433,12 +504,16 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     }
 
     return Column(
-      children: _pickupOrders.map((order) => _buildOrderCard(order, isPickup: true)).toList(),
+      children: filteredOrders.map((order) => _buildOrderCard(order, isPickup: true)).toList(),
     );
   }
 
   Widget _buildDeliveryOrdersList() {
-    if (_deliveryOrders.isEmpty) {
+    final filteredOrders = _statusFilter == 'all' || _statusFilter == 'in_transit'
+        ? _deliveryOrders
+        : <Map<String, dynamic>>[];
+
+    if (filteredOrders.isEmpty) {
       return Container(
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -458,7 +533,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     }
 
     return Column(
-      children: _deliveryOrders.map((order) => _buildOrderCard(order, isPickup: false)).toList(),
+      children: filteredOrders.map((order) => _buildOrderCard(order, isPickup: false)).toList(),
     );
   }
 
@@ -547,9 +622,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not launch phone dialer'), backgroundColor: Colors.red),
-      );
+      _showSnackBar('Could not launch phone dialer', isError: true);
     }
   }
 
@@ -563,9 +636,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open maps'), backgroundColor: Colors.red),
-      );
+      _showSnackBar('Could not open maps', isError: true);
     }
   }
 
@@ -578,9 +649,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     
     if (match == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid QR code format'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Invalid QR code format', isError: true);
       }
       return;
     }
@@ -596,13 +665,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
 
     if (order.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order not found or not IN_TRANSIT'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        _showSnackBar('Order not found or not IN_TRANSIT', isWarning: true);
       }
       return;
     }
@@ -647,26 +710,16 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
       print('Update Response: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Order status updated to $newStatus'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        _showSnackBar('Order status updated to $newStatus');
         
         // Reload orders
         await _loadDeliveryData();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update order status'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Failed to update order status', isError: true);
       }
     } catch (e) {
       print('Error updating status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
@@ -734,9 +787,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Export feature coming soon!')),
-                    );
+                    _showSnackBar('Export feature coming soon!', isInfo: true);
                   },
                   icon: Icon(Icons.download, size: 16),
                   label: Text('Download Report'),
@@ -877,9 +928,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: () {
               _loadDeliveryData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Refreshing earnings...'), duration: Duration(seconds: 1)),
-              );
+              _showSnackBar('Refreshing earnings...', isInfo: true);
             },
           ),
         ],
@@ -1172,9 +1221,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Withdrawal request submitted!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Withdrawal request submitted!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF4CAF50),
@@ -1317,9 +1364,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               IconButton(
                 icon: Icon(Icons.share, size: 18, color: Colors.blue),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Share feature coming soon!')),
-                  );
+                  _showSnackBar('Share feature coming soon!', isInfo: true);
                 },
                 tooltip: 'Share',
               ),
@@ -1371,9 +1416,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                         right: 0,
                         child: GestureDetector(
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Edit profile picture coming soon!')),
-                            );
+                            _showSnackBar('Edit profile picture coming soon!', isInfo: true);
                           },
                           child: Container(
                             padding: EdgeInsets.all(6),
@@ -1406,9 +1449,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Edit profile coming soon!')),
-                      );
+                      _showSnackBar('Edit profile coming soon!', isInfo: true);
                     },
                     icon: Icon(Icons.edit, color: Colors.white, size: 16),
                     label: Text('Edit Profile', style: TextStyle(color: Colors.white)),
@@ -1520,9 +1561,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('My Ratings / Reviews'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Ratings feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1543,9 +1582,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('Notifications'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Notifications feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Notifications feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1561,9 +1598,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('App Info / Privacy Policy'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('App Info coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('App Info coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1579,9 +1614,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('Share App'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Share feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Share feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1, thickness: 2),
@@ -1757,13 +1790,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   setState(() {
                     _notificationsEnabled = value;
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(_notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled'),
-                      backgroundColor: Color(0xFF4CAF50),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
+                  _showSnackBar(_notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled');
                 },
                 activeColor: Color(0xFF4CAF50),
               ),
@@ -1819,9 +1846,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
             RadioListTile<String>(
@@ -1834,9 +1859,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
             RadioListTile<String>(
@@ -1849,9 +1872,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
           ],
@@ -1880,9 +1901,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedTheme = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Theme changed to $_selectedTheme'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Theme changed to $_selectedTheme');
               },
             ),
             RadioListTile<String>(
@@ -1896,9 +1915,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedTheme = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Theme changed to $_selectedTheme'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Theme changed to $_selectedTheme');
               },
             ),
           ],
@@ -1939,9 +1956,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Thank you for your feedback!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF4CAF50),
@@ -2127,17 +2142,13 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               setState(() {
                 _selectedLanguage = value;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Language changed to $value'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Language changed to $value');
             },
             onThemeChanged: (value) {
               setState(() {
                 _selectedTheme = value;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Theme changed to $value'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Theme changed to $value');
             },
             onLogout: _logout,
           ),
