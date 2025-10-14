@@ -7,6 +7,7 @@ import 'ProductEdit.dart';
 import 'farmerprofile.dart';
 import '../auth/Signin.dart';
 import '../utils/cloudinary_upload.dart';
+import 'order_tracking_page.dart';
 
 class OrdersPage extends StatefulWidget {
   final String? token;
@@ -871,6 +872,33 @@ class _OrdersPageState extends State<OrdersPage> {
                             ),
                           ),
                         ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OrderTrackingPage(
+                                orderId: order.id,
+                                token: widget.token,
+                              ),
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[600],
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          icon: const Icon(Icons.track_changes, size: 16),
+                          label: const Text('Track Order', style: TextStyle(fontSize: 12)),
+                        ),
                       ),
                     ],
                   ],
