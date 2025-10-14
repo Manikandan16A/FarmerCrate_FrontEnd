@@ -8,17 +8,9 @@ class QRGenerator {
     try {
       print('Generating QR code for order data: $orderData');
 
-      // Create compact JSON string for QR code (easier to scan)
-      final qrJson = {
-        'order_id': orderData['order_id'],
-        'quantity': orderData['quantity'],
-        'total': orderData['total'],
-        'address': orderData['address'],
-        'zone': orderData['zone'],
-        'pincode': orderData['pincode'],
-      };
-
-      String qrData = qrJson.toString();
+      // Use only order_id for QR code (simpler and easier to scan)
+      final orderId = orderData['order_id'];
+      String qrData = 'order_id: $orderId';
       print('QR data string: $qrData');
 
       // Generate QR code image
