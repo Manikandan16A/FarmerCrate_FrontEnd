@@ -2,8 +2,6 @@ import 'package:farmer_crate/Customer/transpoterlive.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
-import 'payment.dart';
-
 
 class DeliveryTrackingPage extends StatefulWidget {
   final String orderId;

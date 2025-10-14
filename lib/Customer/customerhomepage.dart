@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'Categories.dart';
 import 'Cart.dart';
-import 'navigation_utils.dart';
+import 'navigation_utils.dart' as nav_utils;
 import 'FAQpage.dart';
 import 'product_details_screen.dart';
 import 'TrendingPage.dart';
@@ -816,7 +816,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       backgroundColor: Color(0xFFF8FDF8),
       extendBodyBehindAppBar: true,
       appBar: _buildGlassmorphicAppBar(),
-      drawer: CustomerDrawer(
+      drawer: nav_utils.CustomerDrawer(
         parentContext: context,
         token: widget.token,
         customerImageUrl: customerImageUrl,
@@ -2249,32 +2249,7 @@ class ProductReview {
 // Placeholder pages - you'll need to create these separately
 
 
-class OrdersPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('My Orders'),
-        backgroundColor: Colors.green[600],
-        foregroundColor: Colors.white,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.receipt_long, size: 64, color: Colors.grey[400]),
-            SizedBox(height: 16),
-            Text(
-              'No Orders Yet',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+
 
 class SettingsPage extends StatelessWidget {
   @override
