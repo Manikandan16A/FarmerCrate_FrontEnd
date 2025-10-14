@@ -136,8 +136,19 @@ class DeliveryEarningsPage extends StatelessWidget {
 
   Widget _buildEarningsGraph() {
     final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final earnings = [450.0, 620.0, 380.0, 720.0, 550.0, 680.0, 590.0];
-    final maxEarning = earnings.reduce((a, b) => a > b ? a : b);
+    final now = DateTime.now();
+    final earnings = List.generate(7, (index) {
+      final targetDay = now.subtract(Duration(days: 6 - index));
+      return completedDeliveries
+          .where((d) {
+            final deliveryDate = DateTime.parse(d['deliveryDate'] ?? d['createdAt'] ?? now.toString());
+            return deliveryDate.year == targetDay.year &&
+                   deliveryDate.month == targetDay.month &&
+                   deliveryDate.day == targetDay.day;
+          })
+          .fold(0.0, (sum, d) => sum + (d['totalAmount'] as double));
+    });
+    final maxEarning = earnings.isEmpty || earnings.every((e) => e == 0) ? 1.0 : earnings.reduce((a, b) => a > b ? a : b);
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -195,13 +206,25 @@ class DeliveryEarningsPage extends StatelessWidget {
   }
 
   Widget _buildDeliveryEarningsList(BuildContext context) {
-    final deliveries = [
-      {'date': '2024-01-15', 'orderId': 'ORD001', 'amount': 150.0, 'status': 'Paid'},
-      {'date': '2024-01-15', 'orderId': 'ORD002', 'amount': 200.0, 'status': 'Paid'},
-      {'date': '2024-01-14', 'orderId': 'ORD003', 'amount': 180.0, 'status': 'Pending'},
-      {'date': '2024-01-14', 'orderId': 'ORD004', 'amount': 220.0, 'status': 'Paid'},
-      {'date': '2024-01-13', 'orderId': 'ORD005', 'amount': 170.0, 'status': 'Paid'},
-    ];
+    if (completedDeliveries.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Text('No completed deliveries yet', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    final deliveries = completedDeliveries.map((d) => {
+      'date': (d['deliveryDate'] ?? d['createdAt'] ?? DateTime.now().toString()).toString().split(' ')[0],
+      'orderId': d['orderId'].toString(),
+      'amount': d['totalAmount'] as double,
+      'status': 'Paid',
+    }).toList();
 
     return Container(
       decoration: BoxDecoration(
