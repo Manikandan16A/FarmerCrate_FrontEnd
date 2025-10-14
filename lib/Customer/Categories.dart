@@ -1,14 +1,12 @@
 import 'package:farmer_crate/Customer/profile.dart';
-import 'package:farmer_crate/Customer/FAQpage.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-
 import '../auth/Signin.dart';
 import 'Cart.dart';
-import 'OrderHistory.dart';
 import 'customerhomepage.dart';
+import 'OrderHistory.dart';
+import 'product_details_screen.dart';
 
 // Enhanced Data Models (API Ready)
 class Farmer {
@@ -157,15 +155,9 @@ class ApiService {
     throw UnimplementedError('API not implemented yet');
   }
 
-  // Search products
+
   static Future<List<Product>> searchProducts(String query) async {
-    // Implementation will be added when API is ready
-    // Example:
-    // final response = await http.get(Uri.parse('$baseUrl/products/search?q=$query'));
-    // if (response.statusCode == 200) {
-    //   List<dynamic> data = json.decode(response.body);
-    //   return data.map((product) => Product.fromJson(product)).toList();
-    // }
+
     throw UnimplementedError('API not implemented yet');
   }
 
@@ -173,16 +165,28 @@ class ApiService {
     final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/products'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      final List products = data['data'];
-      // Extract only the image URLs
-      return products.map<String>((product) => product['images'] as String).toList();
+      final List products = data['data'] ?? [];
+      return products.map<String>((product) {
+        final images = product['images'];
+        if (images is List && images.isNotEmpty) {
+          // Prefer primary image, else first
+          final primary = images.firstWhere(
+                (img) => (img is Map) && (img['is_primary'] == true),
+            orElse: () => images.first,
+          );
+          if (primary is Map && primary['image_url'] != null) {
+            return primary['image_url'].toString();
+          }
+        }
+        return '';
+      }).toList();
     } else {
       throw Exception('Failed to load product images');
     }
   }
 }
 
-// --- Drawer and BottomNavBar Widgets copied from customerhomepage.dart ---
+
 
 class CustomerDrawer extends StatelessWidget {
   final BuildContext parentContext;
@@ -243,16 +247,16 @@ class CustomerDrawer extends StatelessWidget {
                       : null,
                   child: isLoadingProfile
                       ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
-                          ),
-                        )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+                    ),
+                  )
                       : (customerImageUrl == null || customerImageUrl!.isEmpty)
-                          ? Icon(Icons.person, size: 40, color: Colors.green[700])
-                          : null,
+                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
+                      : null,
                 ),
                 SizedBox(height: 10),
                 Text(
@@ -315,7 +319,7 @@ class CustomerDrawer extends StatelessWidget {
               Navigator.pop(context);
               Navigator.push(
                 parentContext,
-                MaterialPageRoute(builder: (context) => OrderHistoryPage()),
+                MaterialPageRoute(builder: (context) => OrderHistoryPage(token: token)),
               );
             },
           ),
@@ -391,7 +395,7 @@ class CustomerDrawer extends StatelessWidget {
                                     Navigator.pushAndRemoveUntil(
                                       parentContext,
                                       MaterialPageRoute(builder: (context) => LoginPage()),
-                                      (Route<dynamic> route) => false,
+                                          (Route<dynamic> route) => false,
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -499,6 +503,9 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   Map<String, bool> _fruitFilters = {};
   Map<String, bool> _varietyFilters = {};
 
+  // Category filter (All, Vegetables, Fruits)
+  String? _selectedCategory; // null => All
+
   // Selected farmer
   String? _selectedFarmer;
 
@@ -594,6 +601,11 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       filtered = filtered.where((product) => product.farmerId == _selectedFarmer).toList();
     }
 
+    // Category filter (simple top-level from API)
+    if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
+      filtered = filtered.where((product) => product.category == _selectedCategory).toList();
+    }
+
     // Vegetable subcategory filter
     List<String> selectedVegetables = _vegetableFilters.entries
         .where((entry) => entry.value)
@@ -671,29 +683,74 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       final response = await http.get(Uri.parse('https://farmercrate.onrender.com/api/products'));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final List products = data['data'];
+        final List products = data['data'] ?? [];
         setState(() {
           _allProducts = products.map<Product>((product) {
-            // Farmer info may be nested under 'farmer'
+            // Normalize image URL from images array if present
+            String imageUrl = '';
+            final images = product['images'];
+            if (images is List && images.isNotEmpty) {
+              final primary = images.firstWhere(
+                    (img) => (img is Map) && (img['is_primary'] == true),
+                orElse: () => images.first,
+              );
+              if (primary is Map && primary['image_url'] != null) {
+                imageUrl = primary['image_url'].toString();
+              }
+            } else if (images is String) {
+              imageUrl = images; // fallback if backend sends string
+            }
+
+            // Farmer info nested under 'farmer' with keys 'farmer_id', 'name'
             final farmer = product['farmer'];
+            final String farmerId = farmer != null
+                ? (farmer['farmer_id']?.toString() ?? '')
+                : (product['farmer_id']?.toString() ?? '');
+            final String farmerName = farmer != null ? (farmer['name']?.toString() ?? '') : '';
+
+            // Determine stock based on status and quantity (if available)
+            final String status = (product['status']?.toString() ?? '').toLowerCase();
+            final int quantityVal = int.tryParse(product['quantity']?.toString() ?? '') ?? 0;
+            final bool inStock = status == 'available' && quantityVal > 0;
+
             return Product(
-              id: product['id'].toString(),
-              name: product['name'] ?? '',
-              imageUrl: product['images'] ?? '',
-              price: double.tryParse(product['price'].toString()) ?? 0.0,
-              quantity: product['quantity'].toString(),
-              farmerId: farmer != null ? farmer['id'].toString() : (product['farmer_id']?.toString() ?? ''),
-              farmerName: farmer != null ? farmer['name'] ?? '' : '',
-              category: product['category'] ?? '',
+              id: product['product_id']?.toString() ?? product['id']?.toString() ?? '',
+              name: product['name']?.toString() ?? '',
+              imageUrl: imageUrl,
+              price: double.tryParse(product['current_price']?.toString() ?? product['price']?.toString() ?? '0') ?? 0.0,
+              quantity: product['quantity']?.toString() ?? '0',
+              farmerId: farmerId,
+              farmerName: farmerName,
+              category: product['category']?.toString() ?? '',
               subcategory: '', // Not available in API
-              variety: [], // Not available in API
+              variety: const [], // Not available in API
               rating: 0.0, // Not available in API
               discount: 0, // Not available in API
-              inStock: product['status'] == 'available',
-              description: product['description'] ?? '',
+              inStock: inStock,
+              description: product['description']?.toString() ?? '',
             );
           }).toList();
-          _apiProducts = products;
+
+          // Keep a normalized copy of API products with a computed primary image URL
+          _apiProducts = products.map((p) {
+            String primaryImage = '';
+            final imgs = p['images'];
+            if (imgs is List && imgs.isNotEmpty) {
+              final primary = imgs.firstWhere(
+                    (img) => (img is Map) && (img['is_primary'] == true),
+                orElse: () => imgs.first,
+              );
+              if (primary is Map && primary['image_url'] != null) {
+                primaryImage = primary['image_url'].toString();
+              }
+            } else if (imgs is String) {
+              primaryImage = imgs;
+            }
+            return {
+              ...p,
+              'primary_image_url': primaryImage,
+            };
+          }).toList();
           _isLoadingImages = false;
         });
       } else {
@@ -760,21 +817,32 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   // Helper to get API price by product name (or id if available)
   String? _getApiPrice(Product product) {
-    final apiProduct = _apiProducts.firstWhere(
-          (p) => (p['name'] == product.name),
-      orElse: () => null,
-    );
-    if (apiProduct != null && apiProduct['price'] != null) {
-      return apiProduct['price'].toString();
+    for (final p in _apiProducts) {
+      try {
+        if (p is Map && p['name'] == product.name) {
+          final price = p['current_price'] ?? p['price'];
+          if (price != null) return price.toString();
+          break;
+        }
+      } catch (_) {
+        // ignore malformed entries
+      }
     }
     return null;
   }
   // New: Helper to get API product by id
   Map<String, dynamic>? _getApiProductById(String id) {
-    return _apiProducts.firstWhere(
-          (p) => p['id'].toString() == id,
-      orElse: () => null,
-    );
+    for (final p in _apiProducts) {
+      try {
+        if (p is Map) {
+          final pid = (p['product_id']?.toString() ?? p['id']?.toString() ?? '');
+          if (pid == id) return p as Map<String, dynamic>;
+        }
+      } catch (_) {
+        // ignore malformed entries
+      }
+    }
+    return null;
   }
 
   // Helper to get API farmer name by farmerId
@@ -833,7 +901,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
-      (route) => false,
+          (route) => false,
     );
   }
 
@@ -1026,6 +1094,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
           child: Column(
             children: [
               _buildSearchAndSort(),
+              _buildCategoryChips(),
               const SizedBox(height: 8),
               _buildActiveChips(),
               _buildProductsSection(),
@@ -1074,53 +1143,53 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       ),
       title: _isSearchVisible
           ? Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                autofocus: true,
-                onChanged: (value) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'Search products...',
-                  prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-                ),
-                style: TextStyle(fontSize: 14),
-              ),
-            )
-          : ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [Colors.green[800]!, Colors.green[600]!],
-              ).createShader(bounds),
-              child: Text(
-                'Categories',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              blurRadius: 8,
+              offset: Offset(0, 2),
             ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          onChanged: (value) => setState(() {}),
+          decoration: InputDecoration(
+            hintText: 'Search products...',
+            prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+              icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
+              onPressed: () {
+                _searchController.clear();
+                setState(() {});
+              },
+            )
+                : null,
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+          style: TextStyle(fontSize: 14),
+        ),
+      )
+          : ShaderMask(
+        shaderCallback: (bounds) => LinearGradient(
+          colors: [Colors.green[800]!, Colors.green[600]!],
+        ).createShader(bounds),
+        child: Text(
+          'Categories',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
       actions: [
         IconButton(
           icon: Container(
@@ -1220,38 +1289,6 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF4CAF50)),
-              ),
-              child: InkWell(
-                onTap: () => _openFilterSheet(),
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.sort, size: 18, color: Color(0xFF4CAF50)),
-                      const SizedBox(width: 8),
-                      Flexible(child: Text(
-                        _sortBy == 'price' ? 'Sorted by Price ${_sortAscending ? '↑' : '↓'}' :
-                        _sortBy == 'farmer' ? 'Sorted by Farmer' :
-                        _sortBy == 'rating' ? 'Sorted by Rating' : 'Sorted by Name',
-                        style: const TextStyle(fontSize: 13, color: Colors.black87),
-                        overflow: TextOverflow.ellipsis,
-                      )),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1283,6 +1320,10 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       if (v) chips.add(_filterChip(k, () { setState(() => _varietyFilters[k] = false); }));
     });
 
+    if (_selectedCategory != null && _selectedCategory!.isNotEmpty) {
+      chips.add(_filterChip(_selectedCategory!, () { setState(() => _selectedCategory = null); }));
+    }
+
     if (chips.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -1291,6 +1332,84 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(children: chips.map((c) => Padding(padding: const EdgeInsets.only(right: 8), child: c)).toList()),
+      ),
+    );
+  }
+
+  // Simple category selector chips
+  Widget _buildCategoryChips() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 8,
+        children: [
+          ChoiceChip(
+            label: const Text('All'),
+            selected: _selectedCategory == null,
+            onSelected: (_) { setState(() => _selectedCategory = null); },
+          ),
+          ChoiceChip(
+            label: const Text('Vegetables'),
+            selected: _selectedCategory == 'Vegetables',
+            onSelected: (_) { setState(() => _selectedCategory = 'Vegetables'); },
+          ),
+          ChoiceChip(
+            label: const Text('Fruits'),
+            selected: _selectedCategory == 'Fruits',
+            onSelected: (_) { setState(() => _selectedCategory = 'Fruits'); },
+          ),
+          ChoiceChip(
+            label: const Text('Grains'),
+            selected: _selectedCategory == 'Grains',
+            onSelected: (_) { setState(() => _selectedCategory = 'Grains'); },
+          ),
+          ChoiceChip(
+            label: const Text('Pulses'),
+            selected: _selectedCategory == 'Pulses',
+            onSelected: (_) { setState(() => _selectedCategory = 'Pulses'); },
+          ),
+          ChoiceChip(
+            label: const Text('Dairy'),
+            selected: _selectedCategory == 'Dairy',
+            onSelected: (_) { setState(() => _selectedCategory = 'Dairy'); },
+          ),
+          ChoiceChip(
+            label: const Text('Eggs'),
+            selected: _selectedCategory == 'Eggs',
+            onSelected: (_) { setState(() => _selectedCategory = 'Eggs'); },
+          ),
+          ChoiceChip(
+            label: const Text('Meat'),
+            selected: _selectedCategory == 'Meat',
+            onSelected: (_) { setState(() => _selectedCategory = 'Meat'); },
+          ),
+          ChoiceChip(
+            label: const Text('Herbs'),
+            selected: _selectedCategory == 'Herbs',
+            onSelected: (_) { setState(() => _selectedCategory = 'Herbs'); },
+          ),
+          ChoiceChip(
+            label: const Text('Spices'),
+            selected: _selectedCategory == 'Spices',
+            onSelected: (_) { setState(() => _selectedCategory = 'Spices'); },
+          ),
+          ChoiceChip(
+            label: const Text('Beverages'),
+            selected: _selectedCategory == 'Beverages',
+            onSelected: (_) { setState(() => _selectedCategory = 'Beverages'); },
+          ),
+          ChoiceChip(
+            label: const Text('Flowers'),
+            selected: _selectedCategory == 'Flowers',
+            onSelected: (_) { setState(() => _selectedCategory = 'Flowers'); },
+          ),
+          ChoiceChip(
+            label: const Text('Others'),
+            selected: _selectedCategory == 'Others',
+            onSelected: (_) { setState(() => _selectedCategory = 'Others'); },
+          ),
+        ],
       ),
     );
   }
@@ -1445,9 +1564,16 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       itemBuilder: (context, index) {
         return GestureDetector(
           onTap: () {
-            setState(() {
-              _selectedProduct = _filteredProducts[index];
-            });
+            final product = _filteredProducts[index];
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductDetailScreen(
+                  productId: int.tryParse(product.id) ?? 0,
+                  token: widget.token ?? '',
+                ),
+              ),
+            );
           },
           child: _buildProductCard(_filteredProducts[index]),
         );
@@ -1462,9 +1588,16 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
       itemBuilder: (context, index) {
         return GestureDetector(
           onTap: () {
-            setState(() {
-              _selectedProduct = _filteredProducts[index];
-            });
+            final product = _filteredProducts[index];
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductDetailScreen(
+                  productId: int.tryParse(product.id) ?? 0,
+                  token: widget.token ?? '',
+                ),
+              ),
+            );
           },
           child: _buildProductListItem(_filteredProducts[index]),
         );
@@ -1478,8 +1611,24 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     final apiProduct = _getApiProductById(product.id);
     final displayName = apiProduct != null && apiProduct['name'] != null ? apiProduct['name'] : product.name;
     final displayDescription = apiProduct != null && apiProduct['description'] != null ? apiProduct['description'] : product.description;
-    final displayImage = apiProduct != null && apiProduct['images'] != null && apiProduct['images'].toString().isNotEmpty ? apiProduct['images'] : product.imageUrl;
-    final displayPrice = apiProduct != null && apiProduct['price'] != null ? apiProduct['price'].toString() : product.price.toString();
+    final displayImage = () {
+      if (apiProduct == null) return product.imageUrl;
+      // Prefer normalized primary image URL
+      final primary = apiProduct['primary_image_url'];
+      if (primary != null && primary.toString().isNotEmpty) return primary.toString();
+      // Fallback to images list/string
+      final imgs = apiProduct['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        final first = imgs.first;
+        if (first is Map && first['image_url'] != null) return first['image_url'].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        return imgs;
+      }
+      return product.imageUrl;
+    }();
+    final displayPrice = apiProduct != null && (apiProduct['current_price'] != null || apiProduct['price'] != null)
+        ? (apiProduct['current_price'] ?? apiProduct['price']).toString()
+        : product.price.toString();
     // Get farmer name from API if available
     final displayFarmerName = _getApiFarmerName(product.farmerId).isNotEmpty ? _getApiFarmerName(product.farmerId) : product.farmerName;
     return Container(
@@ -1758,8 +1907,22 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     final apiProduct = _getApiProductById(product.id);
     final displayName = apiProduct != null && apiProduct['name'] != null ? apiProduct['name'] : product.name;
     final displayDescription = apiProduct != null && apiProduct['description'] != null ? apiProduct['description'] : product.description;
-    final displayImage = apiProduct != null && apiProduct['images'] != null && apiProduct['images'].toString().isNotEmpty ? apiProduct['images'] : product.imageUrl;
-    final displayPrice = apiProduct != null && apiProduct['price'] != null ? apiProduct['price'].toString() : product.price.toString();
+    final displayImage = () {
+      if (apiProduct == null) return product.imageUrl;
+      final primary = apiProduct['primary_image_url'];
+      if (primary != null && primary.toString().isNotEmpty) return primary.toString();
+      final imgs = apiProduct['images'];
+      if (imgs is List && imgs.isNotEmpty) {
+        final first = imgs.first;
+        if (first is Map && first['image_url'] != null) return first['image_url'].toString();
+      } else if (imgs is String && imgs.isNotEmpty) {
+        return imgs;
+      }
+      return product.imageUrl;
+    }();
+    final displayPrice = apiProduct != null && (apiProduct['current_price'] != null || apiProduct['price'] != null)
+        ? (apiProduct['current_price'] ?? apiProduct['price']).toString()
+        : product.price.toString();
     // Get farmer name from API if available
     final displayFarmerName = _getApiFarmerName(product.farmerId).isNotEmpty ? _getApiFarmerName(product.farmerId) : product.farmerName;
     return Container(

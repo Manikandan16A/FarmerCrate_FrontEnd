@@ -22,6 +22,9 @@ class Product {
   String? images;
   DateTime? createdAt;
   DateTime? updatedAt;
+  DateTime? harvestDate;
+  DateTime? expiryDate;
+  String? grade;
 
   Product({
     required this.id,
@@ -33,6 +36,9 @@ class Product {
     this.images,
     this.createdAt,
     this.updatedAt,
+    this.harvestDate,
+    this.expiryDate,
+    this.grade,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -69,6 +75,9 @@ class Product {
       json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
       updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) :
       json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
+      harvestDate: json['harvest_date'] != null ? DateTime.parse(json['harvest_date']) : null,
+      expiryDate: json['expiry_date'] != null ? DateTime.parse(json['expiry_date']) : null,
+      grade: json['grade'] ?? json['quality'],
     );
   }
 

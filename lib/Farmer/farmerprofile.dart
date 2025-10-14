@@ -13,7 +13,7 @@ import '../utils/cloudinary_upload.dart';
 import '../Customer/NotificationsPage.dart';
 import '../Customer/AppSettingsPage.dart';
 import '../Customer/AppInfo.dart';
-import '../Customer/HelpSupportPage.dart';
+import '../common/help_support_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -183,59 +183,59 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-    if (data['success'] == true && data['data'] != null) {
-    final farmerData = data['data'];
-    setState(() {
-    _nameController.text = farmerData['name']?.toString() ?? '';
-    _emailController.text = farmerData['email']?.toString() ?? '';
-    _phoneController.text = farmerData['mobile_number']?.toString() ?? '';
-    _addressController.text = farmerData['address']?.toString() ?? '';
-    _zoneController.text = farmerData['zone']?.toString() ?? '';
-    // Handle state with proper case conversion
-    String? stateValue = farmerData['state']?.toString();
-    if (stateValue != null && stateValue.isNotEmpty) {
-    _selectedState = _southStates.contains(stateValue) ? stateValue : null;
-    } else {
-    _selectedState = null;
-    }
+        if (data['success'] == true && data['data'] != null) {
+          final farmerData = data['data'];
+          setState(() {
+            _nameController.text = farmerData['name']?.toString() ?? '';
+            _emailController.text = farmerData['email']?.toString() ?? '';
+            _phoneController.text = farmerData['mobile_number']?.toString() ?? '';
+            _addressController.text = farmerData['address']?.toString() ?? '';
+            _zoneController.text = farmerData['zone']?.toString() ?? '';
+            // Handle state with proper case conversion
+            String? stateValue = farmerData['state']?.toString();
+            if (stateValue != null && stateValue.isNotEmpty) {
+              _selectedState = _southStates.contains(stateValue) ? stateValue : null;
+            } else {
+              _selectedState = null;
+            }
 
-    String? districtValue = farmerData['district']?.toString();
-    if (districtValue != null && districtValue.isNotEmpty) {
-    _selectedDistrict = _tamilNaduDistricts.contains(districtValue) ? districtValue : null;
-    } else {
-    _selectedDistrict = null;
-    }
+            String? districtValue = farmerData['district']?.toString();
+            if (districtValue != null && districtValue.isNotEmpty) {
+              _selectedDistrict = _tamilNaduDistricts.contains(districtValue) ? districtValue : null;
+            } else {
+              _selectedDistrict = null;
+            }
 
-    _farmerImageUrl = farmerData['image_url']?.toString();
-    });
-    _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
-    } else {
-    throw Exception('Invalid data format received from server');
-    }
-    } else if (response.statusCode == 401) {
-    _showSnackBar('Authentication failed. Please login again.', Colors.red);
-    // Handle token expiration - navigate to login
-    Navigator.pushAndRemoveUntil(
-    context,
-    MaterialPageRoute(builder: (context) => LoginPage()),
-    (route) => false,
-    );
-    } else if (response.statusCode == 404) {
-    _showSnackBar('Profile not found. Please contact support.', Colors.orange);
-    print('404 Error: Endpoint not found or profile does not exist');
-    } else {
-    _showSnackBar('Failed to load profile. Error: ${response.statusCode}', Colors.red);
-    print('Error ${response.statusCode}: ${response.body}');
-    }
+            _farmerImageUrl = farmerData['image_url']?.toString();
+          });
+          _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
+        } else {
+          throw Exception('Invalid data format received from server');
+        }
+      } else if (response.statusCode == 401) {
+        _showSnackBar('Authentication failed. Please login again.', Colors.red);
+        // Handle token expiration - navigate to login
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => LoginPage()),
+              (route) => false,
+        );
+      } else if (response.statusCode == 404) {
+        _showSnackBar('Profile not found. Please contact support.', Colors.orange);
+        print('404 Error: Endpoint not found or profile does not exist');
+      } else {
+        _showSnackBar('Failed to load profile. Error: ${response.statusCode}', Colors.red);
+        print('Error ${response.statusCode}: ${response.body}');
+      }
     } catch (e) {
-    print('Error loading profile: $e');
-    _showSnackBar('Error loading profile: ${e.toString()}', Colors.red);
+      print('Error loading profile: $e');
+      _showSnackBar('Error loading profile: ${e.toString()}', Colors.red);
     } finally {
-    if (mounted) {
-    setState(() {
-    _isLoading = false;
-    });
-    }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -682,23 +682,23 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
           },
           body: jsonEncode(updateData),
         );
-    if (response.statusCode == 200) {
-    setState(() {
-    _isEditMode = false;
-    });
-    _showSnackBar('Profile updated successfully!', Colors.green[600]!);
-    _fetchFarmerProfile();
-    } else {
-    _showSnackBar('Failed to update profile: ${response.statusCode}', Colors.red);
+        if (response.statusCode == 200) {
+          setState(() {
+            _isEditMode = false;
+          });
+          _showSnackBar('Profile updated successfully!', Colors.green[600]!);
+          _fetchFarmerProfile();
+        } else {
+          _showSnackBar('Failed to update profile: ${response.statusCode}', Colors.red);
+        }
+      } catch (e) {
+        _showSnackBar('Error: $e', Colors.red);
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
-    } catch (e) {
-    _showSnackBar('Error: $e', Colors.red);
-    } finally {
-    setState(() {
-    _isLoading = false;
-    });
-    }
-  }
   }
 
   @override
@@ -819,37 +819,47 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   }
 
   Widget _buildProfileMenuCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.white, Color(0xFFF0F8F0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          ListTile(
-            leading: Icon(Icons.account_balance_wallet, color: Colors.green[700]),
-            title: const Text('Wallet / Earnings'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildMenuItem(
+            icon: Icons.account_balance_wallet,
+            title: 'Wallet / Earnings',
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Wallet feature coming soon!'), backgroundColor: Colors.green[600]),
+                SnackBar(content: Text('Wallet feature coming soon!'), backgroundColor: Color(0xFF2E7D32)),
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.star_rate, color: Colors.green[700]),
-            title: const Text('My Ratings / Reviews'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.star_rate,
+            title: 'My Ratings / Reviews',
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Colors.green[600]),
+                SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Color(0xFF2E7D32)),
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.history, color: Colors.green[700]),
-            title: const Text('Order History'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.history,
+            title: 'Order History',
             onTap: () {
               Navigator.push(
                 context,
@@ -857,11 +867,10 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.notifications_outlined, color: Colors.green[700]),
-            title: const Text('Notifications'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
             onTap: () {
               Navigator.push(
                 context,
@@ -869,11 +878,10 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.settings_outlined, color: Colors.green[700]),
-            title: const Text('Settings'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.settings_outlined,
+            title: 'Settings',
             onTap: () {
               Navigator.push(
                 context,
@@ -881,11 +889,10 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.info_outline, color: Colors.green[700]),
-            title: const Text('App Info / Privacy Policy'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.info_outline,
+            title: 'App Info / Privacy Policy',
             onTap: () {
               Navigator.push(
                 context,
@@ -893,31 +900,121 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               );
             },
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.help_outline, color: Colors.green[700]),
-            title: const Text('Help & Support / Contact Us'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.help_outline,
+            title: 'Help & Support / Contact Us',
             onTap: _showHelpSupportOptions,
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.share_outlined, color: Colors.green[700]),
-            title: const Text('Share App'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          _buildDivider(),
+          _buildMenuItem(
+            icon: Icons.share_outlined,
+            title: 'Share App',
             onTap: _shareApp,
           ),
-          const Divider(height: 1, thickness: 2),
-          Container(
-            color: Colors.red[50],
-            child: ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[700]),
-              title: Text('Logout', style: TextStyle(color: Colors.red[700], fontWeight: FontWeight.bold)),
-              trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red[700]),
-              onTap: _confirmLogout,
-            ),
-          ),
+          _buildDivider(),
+          _buildLogoutItem(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMenuItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2E7D32).withOpacity(0.1), Color(0xFF4CAF50).withOpacity(0.1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: Color(0xFF2E7D32), size: 20),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF2D3748),
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Color(0xFF2E7D32).withOpacity(0.1),
+      indent: 16,
+      endIndent: 16,
+    );
+  }
+
+  Widget _buildLogoutItem() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _confirmLogout,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red[50]!, Colors.red[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red[700]?.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.logout, color: Colors.red[700], size: 20),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  'Logout',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red[700]),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -930,47 +1027,162 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Color(0xFFF0F8F0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Help & Support / Contact Us',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.help_outline, color: Color(0xFF2E7D32), size: 32),
             ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.question_answer, color: Color(0xFF4CAF50)),
-              title: const Text('FAQ'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            SizedBox(height: 16),
+            Text(
+              'Help & Support',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3748),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Choose an option to get help',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            SizedBox(height: 24),
+            _buildHelpOption(
+              icon: Icons.question_answer,
+              title: 'FAQ',
+              subtitle: 'Frequently asked questions',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => HelpSupportPage(token: widget.token)),
+                  MaterialPageRoute(builder: (context) => const HelpSupportPage()),
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.feedback, color: Color(0xFF4CAF50)),
-              title: const Text('Feedback'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            SizedBox(height: 12),
+            _buildHelpOption(
+              icon: Icons.feedback,
+              title: 'Feedback',
+              subtitle: 'Share your feedback with us',
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Feedback feature coming soon!'), backgroundColor: Colors.green[600]),
+                  SnackBar(content: Text('Feedback feature coming soon!'), backgroundColor: Color(0xFF2E7D32)),
                 );
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.contact_mail, color: Color(0xFF4CAF50)),
-              title: const Text('Contact Us'),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            SizedBox(height: 12),
+            _buildHelpOption(
+              icon: Icons.contact_mail,
+              title: 'Contact Us',
+              subtitle: 'Get in touch with our team',
               onTap: () {
                 Navigator.pop(context);
                 _contactUs();
               },
             ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Close',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHelpOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.05),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Color(0xFF2E7D32).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Color(0xFF2E7D32), size: 24),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D3748),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)),
+            ],
+          ),
         ),
       ),
     );
@@ -984,18 +1196,47 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
       ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.white, Color(0xFFF0F8F0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Contact Us',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.contact_mail, color: Color(0xFF2E7D32), size: 32),
             ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.email, color: Color(0xFF4CAF50)),
-              title: const Text('Email'),
-              subtitle: const Text('support@farmercrate.com'),
+            SizedBox(height: 16),
+            Text(
+              'Contact Us',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2D3748),
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Choose your preferred contact method',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            SizedBox(height: 24),
+            _buildContactOption(
+              icon: Icons.email,
+              title: 'Email',
+              subtitle: 'support@farmercrate.com',
               onTap: () async {
                 final uri = Uri.parse('mailto:support@farmercrate.com');
                 if (await canLaunchUrl(uri)) {
@@ -1003,10 +1244,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.phone, color: Color(0xFF4CAF50)),
-              title: const Text('Phone'),
-              subtitle: const Text('+91 1234567890'),
+            SizedBox(height: 12),
+            _buildContactOption(
+              icon: Icons.phone,
+              title: 'Phone',
+              subtitle: '+91 1234567890',
               onTap: () async {
                 final uri = Uri.parse('tel:+911234567890');
                 if (await canLaunchUrl(uri)) {
@@ -1014,10 +1256,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 }
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.language, color: Color(0xFF4CAF50)),
-              title: const Text('Website'),
-              subtitle: const Text('www.farmercrate.com'),
+            SizedBox(height: 12),
+            _buildContactOption(
+              icon: Icons.language,
+              title: 'Website',
+              subtitle: 'www.farmercrate.com',
               onTap: () async {
                 final uri = Uri.parse('https://www.farmercrate.com');
                 if (await canLaunchUrl(uri)) {
@@ -1025,7 +1268,91 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 }
               },
             ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: Text(
+                'Close',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContactOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.1)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.05),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Color(0xFF2E7D32).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Color(0xFF2E7D32), size: 24),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D3748),
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)),
+            ],
+          ),
         ),
       ),
     );
@@ -1051,8 +1378,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF8F9FA), Color(0xFFFFFFFF)],
+              gradient: LinearGradient(
+                colors: [Colors.white, Color(0xFFF0F8F0)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1063,19 +1390,19 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
+                    gradient: LinearGradient(
+                      colors: [Colors.red[600]!, Colors.red[800]!],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                      Icons.logout_outlined, color: Colors.white, size: 32),
+                      Icons.exit_to_app, color: Colors.white, size: 32),
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Confirm Logout',
+                  'Ready to Leave?',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -1084,7 +1411,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Are you sure you want to logout?',
+                  'Are you sure you want to logout from your account?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -1102,13 +1429,13 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.grey.shade300),
+                            side: BorderSide(color: Color(0xFF2E7D32).withOpacity(0.3)),
                           ),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: Color(0xFF2E7D32),
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
                           ),
@@ -1123,11 +1450,11 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => LoginPage()),
-                            (route) => false,
+                                (route) => false,
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5722),
+                          backgroundColor: Colors.red[700],
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -1499,18 +1826,18 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
-    filled: true,
-    fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
-    labelStyle: TextStyle(
-    color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
-    fontWeight: FontWeight.w600,
-    fontSize: 14,
-    ),
-    counterText: maxLength != null ? null : "",
-    contentPadding: const EdgeInsets.symmetric(
-    horizontal: 20, vertical: 18),
-    ),
-    ),
+          filled: true,
+          fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
+          labelStyle: TextStyle(
+            color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+          counterText: maxLength != null ? null : "",
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20, vertical: 18),
+        ),
+      ),
     );
   }
 
@@ -1526,87 +1853,87 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     final validValue = items.contains(value) ? value : null;
 
     return Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: _isEditMode ? [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ] : [],
-        ),
-        child: DropdownButtonFormField<String>(
-          value: validValue,
-          items: items.map((String item) {
-            return DropdownMenuItem<String>(
-              value: item,
-              child: Text(
-                item,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF2D3748),
-                ),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: _isEditMode ? [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ] : [],
+      ),
+      child: DropdownButtonFormField<String>(
+        value: validValue,
+        items: items.map((String item) {
+          return DropdownMenuItem<String>(
+            value: item,
+            child: Text(
+              item,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF2D3748),
               ),
-            );
-          }).toList(),
-          onChanged: _isEditMode ? onChanged : null,
-          validator: validator,
-          decoration: InputDecoration(
-            labelText: label,
-    prefixIcon: Container(
-    margin: const EdgeInsets.all(12),
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-    gradient: LinearGradient(
-    colors: [
-    Colors.green[600]!.withOpacity(0.2),
-    Colors.green[400]!.withOpacity(0.2),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    ),
-    borderRadius: BorderRadius.circular(8),
-    ),
-    child: Icon(icon, color: Colors.green[600]!, size: 20),
-    ),
-    border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: BorderSide(color: Colors.grey.shade200),
-    ),
-    enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: BorderSide(color: Colors.grey.shade200),
-    ),
-    focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(16),
-    borderSide: BorderSide(color: Colors.green[600]!, width: 2),
-    ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
-            focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.red, width: 2),
+          );
+        }).toList(),
+        onChanged: _isEditMode ? onChanged : null,
+        validator: validator,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Container(
+            margin: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.green[600]!.withOpacity(0.2),
+                  Colors.green[400]!.withOpacity(0.2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
-            filled: true,
-            fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
-            labelStyle: TextStyle(
-              color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 20, vertical: 18),
+            child: Icon(icon, color: Colors.green[600]!, size: 20),
           ),
-          isExpanded: true,
-          icon: Icon(
-            Icons.keyboard_arrow_down_rounded,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.green[600]!, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.red, width: 2),
+          ),
+          filled: true,
+          fillColor: _isEditMode ? Colors.white : const Color(0xFFF8F9FA),
+          labelStyle: TextStyle(
             color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20, vertical: 18),
         ),
+        isExpanded: true,
+        icon: Icon(
+          Icons.keyboard_arrow_down_rounded,
+          color: _isEditMode ? Colors.green[600]! : Colors.grey[600],
+        ),
+      ),
     );
   }
 

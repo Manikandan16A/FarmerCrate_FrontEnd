@@ -5,6 +5,7 @@ import 'homepage.dart';
 import 'Addproduct.dart';
 import 'ProductEdit.dart';
 import 'farmerprofile.dart';
+import '../auth/Signin.dart';
 
 class OrdersPage extends StatefulWidget {
   final String? token;
@@ -105,7 +106,8 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Future<void> updateOrderStatus(String orderId, String status) async {
     try {
-      final uri = Uri.parse('https://farmercrate.onrender.com/api/farmers/orders/$orderId/status');
+      final endpoint = status == 'accepted' ? 'accept' : 'reject';
+      final uri = Uri.parse('https://farmercrate.onrender.com/api/farmers/orders/$orderId/$endpoint');
       Map<String, String> headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -113,12 +115,10 @@ class _OrdersPageState extends State<OrdersPage> {
           'Authorization': 'Bearer ${widget.token}',
       };
 
-      final body = jsonEncode({'status': status});
       print('Updating order $orderId to status: $status');
       print('Request URL: $uri');
-      print('Request body: $body');
 
-      final response = await http.put(uri, headers: headers, body: body);
+      final response = await http.put(uri, headers: headers);
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
       
@@ -985,7 +985,11 @@ class _OrdersPageState extends State<OrdersPage> {
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => LoginPage()),
+                            (route) => false,
+                          );
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5722),

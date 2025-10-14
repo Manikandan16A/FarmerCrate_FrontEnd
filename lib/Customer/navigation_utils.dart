@@ -4,6 +4,7 @@ import 'Categories.dart';
 import 'Cart.dart';
 import 'profile.dart';
 import 'order history.dart';
+import '../auth/Signin.dart';
 
 
 
@@ -299,6 +300,19 @@ class CustomerDrawer extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => CustomerProfilePage(token: token),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red[600]),
+              title: Text('Logout'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => LoginPage(),
                   ),
                 );
               },
