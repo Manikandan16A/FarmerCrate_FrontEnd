@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/Signin.dart';
 import 'delivery_history_page.dart';
 import 'delivery_earnings_page.dart';
 import 'delivery_profile_page.dart';
 import 'qr_scanner_page.dart';
+import 'order_update_page.dart';
 
 
 class DeliveryDashboard extends StatefulWidget {
@@ -36,7 +38,8 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
   String _earningsPeriod = 'week';
 
   // Sample data - replace with actual API calls
-  List<Map<String, dynamic>> _assignedOrders = [];
+  List<Map<String, dynamic>> _pickupOrders = [];
+  List<Map<String, dynamic>> _deliveryOrders = [];
   List<Map<String, dynamic>> _completedDeliveries = [];
   Map<String, dynamic>? _deliveryStats;
 
@@ -44,6 +47,55 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
   late Animation<double> _fadeAnimation;
 
   get bold => null;
+
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF4CAF50);
+      icon = Icons.check_circle;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        elevation: 6,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -80,115 +132,123 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     });
 
     try {
+      print('\n=== FETCHING DELIVERY PERSON ORDERS ===');
+      print('Delivery Person ID: ${widget.user['id']}');
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/delivery-persons/orders'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
 
-      final endpoint = 'https://farmercrate.onrender.com/api/delivery-persons/orders';
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
-      http.Response? response;
-      String? lastError;
-
-      try {
-        response = await http.get(
-          Uri.parse(endpoint),
-          headers: {
-            'Authorization': 'Bearer ${widget.token}',
-            'Content-Type': 'application/json',
-          },
-        );
-      } catch (e) {
-        lastError = e.toString();
-      }
-
-      // If no working endpoint found, handle error
-      if (response == null || response.statusCode == 404) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to load delivery data. Please try again.'),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      if (response!.statusCode == 200) {
+      if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
 
         if (responseData['success'] == true && responseData['data'] != null) {
-          setState(() {
-            // Filter assigned orders (OUT_FOR_DELIVERY status)
-            _assignedOrders = List<Map<String, dynamic>>.from(
-                responseData['data'].where((order) =>
-                order['status'] == 'OUT_FOR_DELIVERY'
-                ).map((order) => {
-                  'id': order['order_id']?.toString() ?? 'N/A',
-                  'customerName': 'Customer', // Will be fetched from order details
-                  'address': order['delivery_address'] ?? 'No address provided',
-                  'phone': 'N/A', // Will be fetched from order details
-                  'items': 0, // Will be fetched from order details
-                  'totalAmount': 0.0, // Will be fetched from order details
-                  'status': order['status'] ?? 'unknown',
-                  'deliveryTime': order['assigned_at'] ?? 'Not specified',
-                  'orderDate': order['assigned_at'] ?? 'Unknown date',
-                })
-            );
+          final orders = responseData['data'] as List;
+          print('Total Orders: ${orders.length}');
 
-            // Filter completed deliveries (COMPLETED status)
-            _completedDeliveries = List<Map<String, dynamic>>.from(
-                responseData['data'].where((order) =>
-                order['status'] == 'COMPLETED'
-                ).map((order) => {
-                  'id': order['order_id']?.toString() ?? 'N/A',
-                  'customerName': 'Customer', // Will be fetched from order details
-                  'address': order['delivery_address'] ?? 'No address provided',
-                  'deliveredAt': order['assigned_at'] ?? 'Unknown date',
-                  'totalAmount': 0.0, // Will be fetched from order details
-                })
-            );
+          setState(() {
+            // Filter pickup orders (ASSIGNED status)
+            _pickupOrders = orders.where((order) {
+              final status = order['current_status']?.toString().toUpperCase() ?? '';
+              return status == 'ASSIGNED';
+            }).map((order) {
+              final customer = order['customer'];
+              final product = order['product'];
+              final totalPrice = order['total_price'];
+              final price = totalPrice is String ? double.tryParse(totalPrice) ?? 0.0 : (totalPrice ?? 0).toDouble();
+              
+              return {
+                'id': order['order_id']?.toString() ?? 'N/A',
+                'customerName': customer?['name'] ?? 'Customer',
+                'pickupAddress': order['pickup_address'] ?? 'No address provided',
+                'deliveryAddress': order['delivery_address'] ?? 'No address provided',
+                'phone': customer?['mobile_number'] ?? 'N/A',
+                'productName': product?['name'] ?? 'Product',
+                'quantity': order['quantity'] ?? 1,
+                'totalAmount': price,
+                'status': 'ASSIGNED',
+              };
+            }).toList();
+
+            // Filter delivery orders (IN_TRANSIT or OUT_FOR_DELIVERY status)
+            _deliveryOrders = orders.where((order) {
+              final status = order['current_status']?.toString().toUpperCase() ?? '';
+              return status == 'IN_TRANSIT' || status == 'OUT_FOR_DELIVERY';
+            }).map((order) {
+              final customer = order['customer'];
+              final product = order['product'];
+              final totalPrice = order['total_price'];
+              final price = totalPrice is String ? double.tryParse(totalPrice) ?? 0.0 : (totalPrice ?? 0).toDouble();
+              
+              return {
+                'id': order['order_id']?.toString() ?? 'N/A',
+                'customerName': customer?['name'] ?? 'Customer',
+                'pickupAddress': order['pickup_address'] ?? 'No address provided',
+                'deliveryAddress': order['delivery_address'] ?? 'No address provided',
+                'phone': customer?['mobile_number'] ?? 'N/A',
+                'productName': product?['name'] ?? 'Product',
+                'quantity': order['quantity'] ?? 1,
+                'totalAmount': price,
+                'status': 'IN_TRANSIT',
+              };
+            }).toList();
+
+            // Filter completed deliveries
+            _completedDeliveries = orders.where((order) {
+              final status = order['current_status']?.toString().toUpperCase() ?? '';
+              return status == 'DELIVERED' || status == 'COMPLETED';
+            }).map((order) {
+              final customer = order['customer'];
+              final product = order['product'];
+              final transporterCharge = order['transporter_charge'];
+              final charge = transporterCharge is String ? double.tryParse(transporterCharge) ?? 0.0 : (transporterCharge ?? 0).toDouble();
+              final deliveryEarning = charge / 2;
+              
+              return {
+                'id': order['order_id']?.toString() ?? 'N/A',
+                'customerName': customer?['name'] ?? 'Customer',
+                'productName': product?['name'] ?? 'Product',
+                'address': order['delivery_address'] ?? 'No address provided',
+                'deliveredAt': order['updated_at'] ?? 'Unknown date',
+                'totalAmount': deliveryEarning,
+                'transporterCharge': charge,
+              };
+            }).toList();
 
             // Calculate stats
             _deliveryStats = {
               'todayDeliveries': _completedDeliveries.length,
               'totalEarnings': _completedDeliveries.fold(0.0, (sum, order) => sum + (order['totalAmount'] as double)),
-              'rating': 4.8, // This would come from a separate API endpoint
-              'activeOrders': _assignedOrders.length,
+              'rating': 4.8,
+              'activeOrders': _pickupOrders.length + _deliveryOrders.length,
             };
           });
-        } else {
-          throw Exception('Invalid response format: ${responseData['message'] ?? 'Unknown error'}');
+          
+          print('Pickup Orders: ${_pickupOrders.length}');
+          print('Delivery Orders: ${_deliveryOrders.length}');
+          print('Completed Deliveries: ${_completedDeliveries.length}');
+          print('===========================================\n');
         }
-      } else if (response!.statusCode == 401) {
-        // Handle unauthorized access
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Session expired. Please login again.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        await Future.delayed(Duration(seconds: 3));
+      } else if (response.statusCode == 401) {
+        _showSnackBar('Session expired. Please login again.', isError: true);
+        await Future.delayed(Duration(seconds: 2));
         _logout();
       } else {
-        throw Exception('Failed to fetch orders: ${response!.statusCode} - ${response.body}');
+        throw Exception('Failed to fetch orders: ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load delivery data. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 5),
-        ),
-      );
-
-      // Keep existing data on error, don't overwrite with empty data
+      print('Error loading delivery data: $e');
+      if (mounted) {
+        _showSnackBar('Failed to load orders', isError: true);
+      }
       setState(() {
-        _assignedOrders = _assignedOrders.isEmpty ? [] : _assignedOrders;
-        _completedDeliveries = _completedDeliveries.isEmpty ? [] : _completedDeliveries;
         _deliveryStats = _deliveryStats ?? {
           'todayDeliveries': 0,
           'totalEarnings': 0.0,
@@ -230,9 +290,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.white),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('No new notifications')),
-              );
+              _showSnackBar('No new notifications', isInfo: true);
             },
           ),
           IconButton(
@@ -252,30 +310,48 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             SizedBox(height: 20),
             _buildStatusFilterChips(),
             SizedBox(height: 20),
-            Text('Today\'s Deliveries', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
+            Text('Pickup Orders', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
             SizedBox(height: 12),
-            _buildOrdersList(),
+            _buildPickupOrdersList(),
+            SizedBox(height: 20),
+            Text('Delivery Orders', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF388E3C))),
+            SizedBox(height: 12),
+            _buildDeliveryOrdersList(),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => QRScannerPage()),
-          );
-          if (result != null && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('QR Code: $result'),
-                backgroundColor: Color(0xFF4CAF50),
-                duration: Duration(seconds: 3),
-              ),
+      floatingActionButton: Container(
+        height: 65,
+        width: 65,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFF4CAF50).withOpacity(0.4),
+              blurRadius: 12,
+              offset: Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => QRScannerPage()),
             );
-          }
-        },
-        backgroundColor: Color(0xFF4CAF50),
-        child: Icon(Icons.qr_code_scanner),
+            if (result != null && mounted) {
+              await _handleQRScan(result);
+            }
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Icon(Icons.qr_code_scanner, size: 32, color: Colors.white),
+        ),
       ),
     );
   }
@@ -403,8 +479,12 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     );
   }
 
-  Widget _buildOrdersList() {
-    if (_assignedOrders.isEmpty) {
+  Widget _buildPickupOrdersList() {
+    final filteredOrders = _statusFilter == 'all' || _statusFilter == 'pending'
+        ? _pickupOrders
+        : <Map<String, dynamic>>[];
+
+    if (filteredOrders.isEmpty) {
       return Container(
         padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -416,7 +496,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             children: [
               Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
               SizedBox(height: 8),
-              Text('No active deliveries', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+              Text('No pickup orders', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
             ],
           ),
         ),
@@ -424,11 +504,44 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
     }
 
     return Column(
-      children: _assignedOrders.map((order) => _buildOrderCard(order)).toList(),
+      children: filteredOrders.map((order) => _buildOrderCard(order, isPickup: true)).toList(),
     );
   }
 
-  Widget _buildOrderCard(Map<String, dynamic> order) {
+  Widget _buildDeliveryOrdersList() {
+    final filteredOrders = _statusFilter == 'all' || _statusFilter == 'in_transit'
+        ? _deliveryOrders
+        : <Map<String, dynamic>>[];
+
+    if (filteredOrders.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.inbox, size: 48, color: Colors.grey[400]),
+              SizedBox(height: 8),
+              Text('No delivery orders', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: filteredOrders.map((order) => _buildOrderCard(order, isPickup: false)).toList(),
+    );
+  }
+
+  Widget _buildOrderCard(Map<String, dynamic> order, {required bool isPickup}) {
+    final statusColor = isPickup ? Colors.orange : Colors.blue;
+    final statusText = isPickup ? 'PICKUP' : 'DELIVERY';
+    final address = isPickup ? order['pickupAddress'] : order['deliveryAddress'];
+    
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       padding: EdgeInsets.all(16),
@@ -450,14 +563,14 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Order #${order['id']}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF388E3C))),
+              Text('${order['productName']} (x${order['quantity']})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF388E3C))),
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.1),
+                  color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('OUT FOR DELIVERY', style: TextStyle(fontSize: 10, color: Colors.orange, fontWeight: FontWeight.bold)),
+                child: Text(statusText, style: TextStyle(fontSize: 10, color: statusColor, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -466,7 +579,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             children: [
               Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
               SizedBox(width: 8),
-              Expanded(child: Text(order['address'], style: TextStyle(fontSize: 14), maxLines: 2, overflow: TextOverflow.ellipsis)),
+              Expanded(child: Text(address, style: TextStyle(fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis)),
             ],
           ),
           SizedBox(height: 12),
@@ -474,7 +587,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => _makePhoneCall(order['phone']),
                   icon: Icon(Icons.phone, size: 16),
                   label: Text('Call'),
                   style: ElevatedButton.styleFrom(
@@ -487,7 +600,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => _openMaps(address),
                   icon: Icon(Icons.navigation, size: 16),
                   label: Text('Navigate'),
                   style: ElevatedButton.styleFrom(
@@ -502,6 +615,112 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
         ],
       ),
     );
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri launchUri = Uri(scheme: 'tel', path: phoneNumber);
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri);
+    } else {
+      _showSnackBar('Could not launch phone dialer', isError: true);
+    }
+  }
+
+  Future<void> _openMaps(String address) async {
+    final Uri launchUri = Uri(
+      scheme: 'https',
+      host: 'www.google.com',
+      path: '/maps/search/',
+      queryParameters: {'api': '1', 'query': address},
+    );
+    if (await canLaunchUrl(launchUri)) {
+      await launchUrl(launchUri, mode: LaunchMode.externalApplication);
+    } else {
+      _showSnackBar('Could not open maps', isError: true);
+    }
+  }
+
+  Future<void> _handleQRScan(String qrData) async {
+    print('\n=== QR SCAN HANDLER ===');
+    print('QR Data: $qrData');
+
+    final RegExp orderIdRegex = RegExp(r'order_id:\s*(\d+)');
+    final match = orderIdRegex.firstMatch(qrData);
+    
+    if (match == null) {
+      if (mounted) {
+        _showSnackBar('Invalid QR code format', isError: true);
+      }
+      return;
+    }
+
+    final orderId = match.group(1);
+    print('Extracted Order ID: $orderId');
+
+    // Find order in delivery orders list
+    final order = _deliveryOrders.firstWhere(
+      (o) => o['id'] == orderId,
+      orElse: () => {},
+    );
+
+    if (order.isEmpty) {
+      if (mounted) {
+        _showSnackBar('Order not found or not IN_TRANSIT', isWarning: true);
+      }
+      return;
+    }
+
+    print('Order found in delivery list');
+    print('Order Status: ${order['status']}');
+
+    if (mounted) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OrderUpdatePage(
+            orderId: orderId!,
+            token: widget.token,
+            orderDetails: order,
+          ),
+        ),
+      );
+      
+      if (result == true) {
+        await _loadDeliveryData();
+      }
+    }
+  }
+
+  Future<void> _updateOrderStatus(String orderId, String newStatus) async {
+    print('\n=== UPDATING ORDER STATUS ===');
+    print('Order ID: $orderId');
+    print('New Status: $newStatus');
+
+    try {
+      final response = await http.put(
+        Uri.parse('https://farmercrate.onrender.com/api/orders/$orderId/status'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'status': newStatus}),
+      );
+
+      print('Update Status Code: ${response.statusCode}');
+      print('Update Response: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        _showSnackBar('Order status updated to $newStatus');
+        
+        // Reload orders
+        await _loadDeliveryData();
+      } else {
+        _showSnackBar('Failed to update order status', isError: true);
+      }
+    } catch (e) {
+      print('Error updating status: $e');
+      _showSnackBar('Error: $e', isError: true);
+    }
   }
 
   Color _getStatusColor(String status) {
@@ -568,9 +787,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Export feature coming soon!')),
-                    );
+                    _showSnackBar('Export feature coming soon!', isInfo: true);
                   },
                   icon: Icon(Icons.download, size: 16),
                   label: Text('Download Report'),
@@ -711,9 +928,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: () {
               _loadDeliveryData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Refreshing earnings...'), duration: Duration(seconds: 1)),
-              );
+              _showSnackBar('Refreshing earnings...', isInfo: true);
             },
           ),
         ],
@@ -1006,9 +1221,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Withdrawal request submitted!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Withdrawal request submitted!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF4CAF50),
@@ -1151,9 +1364,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               IconButton(
                 icon: Icon(Icons.share, size: 18, color: Colors.blue),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Share feature coming soon!')),
-                  );
+                  _showSnackBar('Share feature coming soon!', isInfo: true);
                 },
                 tooltip: 'Share',
               ),
@@ -1205,9 +1416,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                         right: 0,
                         child: GestureDetector(
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Edit profile picture coming soon!')),
-                            );
+                            _showSnackBar('Edit profile picture coming soon!', isInfo: true);
                           },
                           child: Container(
                             padding: EdgeInsets.all(6),
@@ -1240,9 +1449,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Edit profile coming soon!')),
-                      );
+                      _showSnackBar('Edit profile coming soon!', isInfo: true);
                     },
                     icon: Icon(Icons.edit, color: Colors.white, size: 16),
                     label: Text('Edit Profile', style: TextStyle(color: Colors.white)),
@@ -1354,9 +1561,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('My Ratings / Reviews'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Ratings feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1377,9 +1582,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('Notifications'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Notifications feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Notifications feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1395,9 +1598,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('App Info / Privacy Policy'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('App Info coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('App Info coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1),
@@ -1413,9 +1614,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
             title: Text('Share App'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Share feature coming soon!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Share feature coming soon!', isInfo: true);
             },
           ),
           Divider(height: 1, thickness: 2),
@@ -1591,13 +1790,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   setState(() {
                     _notificationsEnabled = value;
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(_notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled'),
-                      backgroundColor: Color(0xFF4CAF50),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
+                  _showSnackBar(_notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled');
                 },
                 activeColor: Color(0xFF4CAF50),
               ),
@@ -1653,9 +1846,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
             RadioListTile<String>(
@@ -1668,9 +1859,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
             RadioListTile<String>(
@@ -1683,9 +1872,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedLanguage = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Language changed to $_selectedLanguage'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Language changed to $_selectedLanguage');
               },
             ),
           ],
@@ -1714,9 +1901,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedTheme = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Theme changed to $_selectedTheme'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Theme changed to $_selectedTheme');
               },
             ),
             RadioListTile<String>(
@@ -1730,9 +1915,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
                   _selectedTheme = value!;
                 });
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Theme changed to $_selectedTheme'), backgroundColor: Color(0xFF4CAF50)),
-                );
+                _showSnackBar('Theme changed to $_selectedTheme');
               },
             ),
           ],
@@ -1773,9 +1956,7 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Thank you for your feedback!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF4CAF50),
@@ -1961,17 +2142,13 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
               setState(() {
                 _selectedLanguage = value;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Language changed to $value'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Language changed to $value');
             },
             onThemeChanged: (value) {
               setState(() {
                 _selectedTheme = value;
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Theme changed to $value'), backgroundColor: Color(0xFF4CAF50)),
-              );
+              _showSnackBar('Theme changed to $value');
             },
             onLogout: _logout,
           ),

@@ -46,16 +46,21 @@ class Product {
     
     var imagesData = json['images'];
     if (imagesData is List && imagesData.isNotEmpty) {
-      var firstImage = imagesData[0];
-      if (firstImage is Map && firstImage['image_url'] != null) {
-        imageUrl = firstImage['image_url'];
+      List<String> urls = [];
+      for (var img in imagesData) {
+        if (img is Map && img['image_url'] != null) {
+          urls.add(img['image_url']);
+        } else if (img is String) {
+          urls.add(img);
+        }
       }
+      imageUrl = urls.isNotEmpty ? urls.join(',') : null;
     }
     
     if (imageUrl == null) {
       var imageData = json['image_urls'];
       if (imageData is List && imageData.isNotEmpty) {
-        imageUrl = imageData[0];
+        imageUrl = imageData.join(',');
       } else if (imageData is String && imageData.isNotEmpty) {
         imageUrl = imageData;
       } else {
@@ -327,19 +332,26 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     });
 
     try {
-      // Handle image upload if it's a local file
-      String? imageUrl = product.images;
-      if (product.images != null && !product.images!.startsWith('http') && File(product.images!).existsSync()) {
-        print('Uploading new image for product update');
-        imageUrl = await CloudinaryUploader.uploadImage(File(product.images!));
-        if (imageUrl == null) {
-          setState(() {
-            isLoading = false;
-            errorMessage = 'Failed to upload image. Please try again.';
-          });
-          return;
+      List<String> imageUrls = [];
+      if (product.images != null) {
+        final images = product.images!.split(',').map((e) => e.trim()).toList();
+        for (String img in images) {
+          if (img.startsWith('http')) {
+            imageUrls.add(img);
+          } else if (File(img).existsSync()) {
+            print('Uploading new image for product update');
+            final uploadedUrl = await CloudinaryUploader.uploadImage(File(img));
+            if (uploadedUrl == null) {
+              setState(() {
+                isLoading = false;
+                errorMessage = 'Failed to upload image. Please try again.';
+              });
+              return;
+            }
+            imageUrls.add(uploadedUrl);
+            print('Image uploaded successfully: $uploadedUrl');
+          }
         }
-        print('Image uploaded successfully: $imageUrl');
       }
 
       final uri = Uri.parse('https://farmercrate.onrender.com/api/products/${product.id}');
@@ -370,14 +382,13 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         return;
       }
 
-      // Create updated product with the correct API format
       final updatedProductData = {
         'name': product.name,
         'description': product.description,
         'current_price': product.price.toStringAsFixed(2),
         'quantity': product.quantity,
         'category': product.category,
-        'image_urls': imageUrl != null ? [imageUrl] : [],
+        'image_urls': imageUrls,
         'status': 'available',
         'harvest_date': DateTime.now().toIso8601String().split('T')[0],
         'expiry_date': DateTime.now().add(Duration(days: 30)).toIso8601String().split('T')[0],
@@ -815,7 +826,14 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     final descriptionController = TextEditingController(text: product?.description ?? '');
     final quantityController = TextEditingController(text: product?.quantity.toString() ?? '');
     final priceController = TextEditingController(text: product?.price.toStringAsFixed(2) ?? '');
-    String? imagePath = product?.images;
+    
+    List<String?> imagePaths = [null, null, null];
+    if (product?.images != null) {
+      final images = product!.images!.split(',').map((e) => e.trim()).toList();
+      for (int i = 0; i < images.length && i < 3; i++) {
+        imagePaths[i] = images[i];
+      }
+    }
 
     String selectedCategoryDialog = product?.category ?? 'Fruits';
 
@@ -969,93 +987,99 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                               ),
                             ),
                             SizedBox(height: 16),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      final pickedImage = await _pickImageFromGallery();
-                                      if (pickedImage != null) {
-                                        setDialogState(() {
-                                          imagePath = pickedImage;
-                                        });
-                                      }
-                                    },
-                                    icon: Icon(Icons.photo_library, size: 20),
-                                    label: Text('Gallery'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green.shade400,
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
+                            ...List.generate(3, (index) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Image ${index + 1}', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                  SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final pickedImage = await _pickImageFromGallery();
+                                            if (pickedImage != null) {
+                                              setDialogState(() {
+                                                imagePaths[index] = pickedImage;
+                                              });
+                                            }
+                                          },
+                                          icon: Icon(Icons.photo_library, size: 18),
+                                          label: Text('Gallery'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green.shade400,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(vertical: 10),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: ElevatedButton.icon(
+                                          onPressed: () async {
+                                            final pickedImage = await _pickImageFromCamera();
+                                            if (pickedImage != null) {
+                                              setDialogState(() {
+                                                imagePaths[index] = pickedImage;
+                                              });
+                                            }
+                                          },
+                                          icon: Icon(Icons.camera_alt, size: 18),
+                                          label: Text('Camera'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green.shade600,
+                                            foregroundColor: Colors.white,
+                                            padding: EdgeInsets.symmetric(vertical: 10),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () async {
-                                      final pickedImage = await _pickImageFromCamera();
-                                      if (pickedImage != null) {
-                                        setDialogState(() {
-                                          imagePath = pickedImage;
-                                        });
-                                      }
-                                    },
-                                    icon: Icon(Icons.camera_alt, size: 20),
-                                    label: Text('Camera'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green.shade600,
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (imagePath != null) ...[
-                              SizedBox(height: 16),
-                              Container(
-                                padding: EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.green.shade200, width: 2),
-                                ),
-                                child: Column(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: imagePath!.startsWith('http')
-                                          ? Image.network(imagePath!, height: 120, width: 120, fit: BoxFit.cover)
-                                          : File(imagePath!).existsSync()
-                                          ? Image.file(File(imagePath!), height: 120, width: 120, fit: BoxFit.cover)
-                                          : Container(
-                                        height: 120,
-                                        width: 120,
-                                        color: Colors.grey.shade200,
-                                        child: Icon(Icons.image, size: 40, color: Colors.grey.shade600),
-                                      ),
-                                    ),
+                                  if (imagePaths[index] != null) ...[
                                     SizedBox(height: 8),
-                                    TextButton.icon(
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          imagePath = null;
-                                        });
-                                      },
-                                      icon: Icon(Icons.delete, color: Colors.red, size: 18),
-                                      label: Text('Remove', style: TextStyle(color: Colors.red)),
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.green.shade200, width: 2),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: imagePaths[index]!.startsWith('http')
+                                                ? Image.network(imagePaths[index]!, height: 100, width: 100, fit: BoxFit.cover)
+                                                : File(imagePaths[index]!).existsSync()
+                                                ? Image.file(File(imagePaths[index]!), height: 100, width: 100, fit: BoxFit.cover)
+                                                : Container(
+                                              height: 100,
+                                              width: 100,
+                                              color: Colors.grey.shade200,
+                                              child: Icon(Icons.image, size: 30, color: Colors.grey.shade600),
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          TextButton.icon(
+                                            onPressed: () {
+                                              setDialogState(() {
+                                                imagePaths[index] = null;
+                                              });
+                                            },
+                                            icon: Icon(Icons.delete, color: Colors.red, size: 16),
+                                            label: Text('Remove', style: TextStyle(color: Colors.red, fontSize: 12)),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
-                                ),
-                              ),
-                            ],
+                                  SizedBox(height: 12),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       ),
@@ -1097,6 +1121,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                   Navigator.of(context).pop();
 
                                   if (isEdit && product != null) {
+                                    final validImages = imagePaths.where((img) => img != null).toList();
                                     final updatedProduct = Product(
                                       id: product.id,
                                       name: nameController.text,
@@ -1104,7 +1129,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       price: double.tryParse(priceController.text) ?? 0.0,
                                       quantity: int.tryParse(quantityController.text) ?? 0,
                                       category: selectedCategoryDialog,
-                                      images: imagePath,
+                                      images: validImages.isNotEmpty ? validImages.join(',') : null,
                                       createdAt: product.createdAt,
                                       updatedAt: DateTime.now(),
                                     );
@@ -1684,115 +1709,98 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (product.images != null)
-                              GestureDetector(
-                                onTap: () => _showImagePreview(product.images!),
-                                child: Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: product.images!.startsWith('http')
-                                          ? Image.network(
-                                        product.images!,
-                                        height: 150,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        height: 150,
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade200,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Center(
-                                          child: CircularProgressIndicator(
-                                            value: loadingProgress.expectedTotalBytes != null
-                                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                                : null,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                              Builder(
+                                builder: (context) {
+                                  final images = product.images!.split(',').map((e) => e.trim()).toList();
+                                  return SizedBox(
+                                    height: 150,
+                                    child: PageView.builder(
+                                      itemCount: images.length,
+                                      itemBuilder: (context, imgIndex) {
+                                        return GestureDetector(
+                                          onTap: () => _showImagePreview(images[imgIndex]),
+                                          child: Stack(
+                                            children: [
+                                              ClipRRect(
+                                                borderRadius: BorderRadius.circular(8),
+                                                child: images[imgIndex].startsWith('http')
+                                                    ? Image.network(
+                                                  images[imgIndex],
+                                                  height: 150,
+                                                  width: double.infinity,
+                                                  fit: BoxFit.cover,
+                                                  loadingBuilder: (context, child, loadingProgress) {
+                                                    if (loadingProgress == null) return child;
+                                                    return Container(
+                                                      height: 150,
+                                                      width: double.infinity,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey.shade200,
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Center(
+                                                        child: CircularProgressIndicator(
+                                                          value: loadingProgress.expectedTotalBytes != null
+                                                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                                              : null,
+                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  errorBuilder: (context, error, stackTrace) {
+                                                    return Container(
+                                                      height: 150,
+                                                      width: double.infinity,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey.shade200,
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        children: [
+                                                          Icon(Icons.error_outline, size: 40, color: Colors.grey.shade600),
+                                                          SizedBox(height: 8),
+                                                          Text('Image not available', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  },
+                                                )
+                                                    : File(images[imgIndex]).existsSync()
+                                                    ? Image.file(File(images[imgIndex]), height: 150, width: double.infinity, fit: BoxFit.cover)
+                                                    : Container(
+                                                  height: 150,
+                                                  width: double.infinity,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade200,
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Icon(Icons.image, size: 50, color: Colors.grey.shade600),
+                                                ),
+                                              ),
+                                              Positioned(
+                                                top: 8,
+                                                right: 8,
+                                                child: Container(
+                                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black.withOpacity(0.7),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Text(
+                                                    '${imgIndex + 1}/${images.length}',
+                                                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Container(
-                                        height: 150,
-                                        width: double.infinity,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade200,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.error_outline,
-                                              size: 40,
-                                              color: Colors.grey.shade600,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'Image not available',
-                                              style: TextStyle(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  )
-                                      : File(product.images!).existsSync()
-                                      ? Image.file(
-                                    File(product.images!),
-                                    height: 150,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                  )
-                                      : Container(
-                                    height: 150,
-                                    width: double.infinity,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: BorderRadius.circular(8),
+                                        );
+                                      },
                                     ),
-                                    child: Icon(
-                                      Icons.image,
-                                      size: 50,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ),
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.7),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.image, color: Colors.white, size: 14),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              '1',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  );
+                                },
                               )
                             else
                               Container(
