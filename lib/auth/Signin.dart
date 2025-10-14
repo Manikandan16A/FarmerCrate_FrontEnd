@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:typed_data';
 import '../Admin/requstaccept.dart';
 import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
@@ -10,6 +11,7 @@ import '../delivery/delivery_dashboard.dart';
 import 'Forget.dart';
 import 'Signup.dart';
 import 'customerFTL.dart';
+import 'Repass.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -64,11 +66,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
+      print('\n========== LOGIN ATTEMPT ==========');
+      print('Username: ${_usernameController.text.trim()}');
+      print('Timestamp: ${DateTime.now()}');
+      
       setState(() {
         _isLoading = true;
       });
 
       try {
+        print('Sending login request to API...');
         final response = await http.post(
           Uri.parse('https://farmercrate.onrender.com/api/auth/login'),
           headers: {'Content-Type': 'application/json'},
@@ -78,15 +85,70 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           }),
         );
 
+        print('Response Status Code: ${response.statusCode}');
+        print('Response Body: ${response.body}');
+
         setState(() {
           _isLoading = false;
         });
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
+          print('✓ Login API Success');
+          print('Response Data Keys: ${responseData.keys.toList()}');
 
+          // Check if temp token is received (first-time delivery person login)
+          if (responseData['requiresPasswordChange'] == true && responseData['tempToken'] != null) {
+            print('--- DELIVERY PERSON FIRST-TIME LOGIN DETECTED ---');
+            print('Temp Token: ${responseData['tempToken']}');
+            print('Message: ${responseData['message']}');
+            
+            // Decode temp token to get user ID
+            try {
+              final token = responseData['tempToken'] as String;
+              final parts = token.split('.');
+              if (parts.length == 3) {
+                // Decode JWT payload
+                String payload = parts[1];
+                // Add padding if needed
+                while (payload.length % 4 != 0) {
+                  payload += '=';
+                }
+                final decoded = utf8.decode(base64.decode(payload));
+                final payloadMap = jsonDecode(decoded);
+                final userId = payloadMap['delivery_person_id'];
+                print('Decoded User ID from token: $userId');
+                print('Token payload: $payloadMap');
+                print('Redirecting to password reset page...');
+                
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeliveryPasswordResetPage(
+                      tempToken: token,
+                      userId: userId,
+                    ),
+                  ),
+                );
+                print('✓ Navigation to DeliveryPasswordResetPage successful');
+              } else {
+                throw Exception('Invalid token format');
+              }
+            } catch (e, stackTrace) {
+              print('❌ Error decoding token: $e');
+              print('Stack trace: $stackTrace');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error processing login. Please try again.'), backgroundColor: Colors.red),
+              );
+            }
+          }
           // Check if OTP verification is required for first-time customer login
-          if (responseData['requiresOTP'] == true) {
+          else if (responseData['requiresOTP'] == true) {
+            print('--- CUSTOMER FIRST-TIME LOGIN DETECTED ---');
+            print('Email: ${responseData['email']}');
+            print('Temp Token: ${responseData['tempToken']}');
+            print('Redirecting to OTP verification page...');
+            
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -97,14 +159,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 ),
               ),
             );
+            print('✓ Navigation to OTPVerificationPage successful');
           } else {
             // Normal login success - existing logic
+            print('--- NORMAL LOGIN FLOW ---');
             final token = responseData['token'];
             final user = responseData['user'];
 
-            // Debug: Print user role for troubleshooting
-            print('User role: ${user['role']}');
-            print('User data: $user');
+            print('User Role: ${user['role']}');
+            print('User ID: ${user['id']}');
+            print('User Name: ${user['name']}');
+            print('Token: ${token?.substring(0, 20)}...');
+            print('Full User Data: $user');
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -114,42 +180,55 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             );
 
             if (user['role'] == 'farmer') {
+              print('Navigating to FarmersHomePage...');
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => FarmersHomePage(token: token),
                 ),
               );
+              print('✓ Navigation to FarmersHomePage successful');
             } else if (user['role'] == 'customer') {
+              print('Navigating to CustomerHomePage...');
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => CustomerHomePage(token: token),
                 ),
               );
+              print('✓ Navigation to CustomerHomePage successful');
             } else if (user['role'] == 'transporter') {
+              print('Navigating to TransporterDashboard...');
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => TransporterDashboard(token: token),
                 ),
               );
+              print('✓ Navigation to TransporterDashboard successful');
             } else if (user['role'] == 'admin') {
+              print('Navigating to AdminManagementPage...');
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => AdminManagementPage(user: user, token: token),
                 ),
               );
+              print('✓ Navigation to AdminManagementPage successful');
             } else if (user['role'] == 'delivery') {
+              print('Navigating to DeliveryDashboard...');
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => DeliveryDashboard(user: user, token: token),
                 ),
               );
+              print('✓ Navigation to DeliveryDashboard successful');
             } else {
-              // Unknown role - show error and stay on login page
+              print('❌ ERROR: Unknown user role');
+              print('Role received: ${user['role']}');
+              print('Available roles: farmer, customer, transporter, admin, delivery');
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Unknown user role: ${user['role']}. Please contact support.'),
@@ -157,15 +236,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   duration: Duration(seconds: 5),
                 ),
               );
-              print('Unknown user role: ${user['role']}');
             }
           }
+          print('===================================\n');
         } else {
+          print('❌ LOGIN FAILED');
+          print('Status Code: ${response.statusCode}');
+          print('Response Body: ${response.body}');
+          
           String errorMessage = 'Invalid credentials';
           try {
             final errorData = jsonDecode(response.body);
             errorMessage = errorData['message'] ?? errorData['error'] ?? 'Invalid credentials';
+            print('Error Message: $errorMessage');
+            print('Error Data: $errorData');
           } catch (e) {
+            print('❌ Failed to parse error response: $e');
             errorMessage = 'Login failed. Please try again.';
           }
 
@@ -176,18 +262,30 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               duration: Duration(seconds: 4),
             ),
           );
+          print('===================================\n');
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('❌ EXCEPTION DURING LOGIN');
+        print('Error: $e');
+        print('Stack Trace: $stackTrace');
+        print('Error Type: ${e.runtimeType}');
+        
         setState(() {
           _isLoading = false;
         });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
+        print('===================================\n');
       }
+    } else {
+      print('❌ Form validation failed');
+      print('Username: ${_usernameController.text}');
+      print('Password length: ${_passwordController.text.length}');
     }
   }
 
