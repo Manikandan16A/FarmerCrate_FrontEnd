@@ -6,6 +6,7 @@ import 'Addproduct.dart';
 import 'ProductEdit.dart';
 import 'farmerprofile.dart';
 import '../auth/Signin.dart';
+import '../utils/cloudinary_upload.dart';
 
 class OrdersPage extends StatefulWidget {
   final String? token;
@@ -44,30 +45,45 @@ class _OrdersPageState extends State<OrdersPage> {
           'Authorization': 'Bearer ${widget.token}',
       };
 
+      print('Fetching orders with status: $_statusFilter');
+      print('Request URL: $uri');
+      print('Headers: $headers');
+
       final response = await http.get(uri, headers: headers);
+
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
           List<dynamic> ordersData = responseData['data'] ?? [];
 
+          print('Found ${ordersData.length} orders');
+          if (ordersData.isNotEmpty) {
+            print('First order data: ${ordersData[0]}');
+          }
+
           setState(() {
             orders = ordersData.map<Order>((json) => Order.fromJson(json)).toList();
             isLoading = false;
           });
         } else {
+          print('API returned success: false');
           setState(() {
             orders = [];
             isLoading = false;
           });
         }
       } else {
+        print('HTTP Error: ${response.statusCode}');
         setState(() {
           orders = [];
           isLoading = false;
         });
       }
     } catch (e) {
+      print('Error fetching orders: $e');
       setState(() {
         orders = [];
         isLoading = false;
@@ -699,8 +715,18 @@ class _OrdersPageState extends State<OrdersPage> {
                   borderRadius: BorderRadius.circular(12),
                   child: order.productImage != null && order.productImage!.isNotEmpty
                       ? Image.network(
-                          order.productImage!,
+                          CloudinaryUploader.optimizeImageUrl(order.productImage!, width: 120, height: 120),
                           fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
                           errorBuilder: (context, error, stackTrace) => Icon(
                             Icons.image_not_supported,
                             color: Colors.grey[400],
@@ -1183,8 +1209,13 @@ class _OrdersPageState extends State<OrdersPage> {
                       Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey[400]),
                       const SizedBox(height: 16),
                       Text(
-                        'No orders yet',
+                        'No ${_statusFilter} orders found',
                         style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pull down to refresh or check your network connection',
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -1321,11 +1352,26 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     List<String> images = [];
-    var imageData = json['product']?['image_urls'];
-    if (imageData is List) {
-      images = imageData.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
-    } else if (imageData is String && imageData.isNotEmpty) {
-      images = [imageData];
+    
+    // Parse product images from the new API structure
+    var productData = json['product'];
+    if (productData != null && productData['images'] is List) {
+      var imagesList = productData['images'] as List;
+      images = imagesList
+          .where((img) => img is Map && img['image_url'] != null)
+          .map((img) => img['image_url'].toString())
+          .where((url) => url.isNotEmpty)
+          .toList();
+    }
+    
+    // Fallback to old structure if needed
+    if (images.isEmpty) {
+      var imageData = json['product']?['image_urls'];
+      if (imageData is List) {
+        images = imageData.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      } else if (imageData is String && imageData.isNotEmpty) {
+        images = [imageData];
+      }
     }
 
     return Order(
@@ -1338,7 +1384,7 @@ class Order {
       orderDate: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
       productImages: images,
       customerImage: json['customer']?['image_url'],
-      customerAddress: json['customer']?['address'],
+      customerAddress: json['delivery_address'] ?? json['customer']?['address'],
     );
   }
 }
