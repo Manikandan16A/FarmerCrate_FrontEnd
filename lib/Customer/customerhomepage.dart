@@ -225,6 +225,8 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           p.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
     }
 
+    filtered = filtered.where((p) => p.quantity > 0).toList();
+
     return filtered;
   }
 
