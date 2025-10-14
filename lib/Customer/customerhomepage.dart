@@ -6,7 +6,6 @@ import 'dart:math';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'navigation_utils.dart';
-import 'FAQpage.dart';
 import 'product_details_screen.dart';
 import 'TrendingPage.dart';
 import 'OrderHistory.dart';
@@ -1817,22 +1816,20 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-              Container(
-              height: imageHeight,
-              decoration: BoxDecoration(
+              ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                child: _buildProductImage(
-                  product.images,
-                  double.infinity,
-                  imageHeight,
-                  _getProductIcon(product.name),
-                  55,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: imageHeight,
+                  child: _buildProductImage(
+                    product.images,
+                    double.infinity,
+                    imageHeight,
+                    _getProductIcon(product.name),
+                    55,
+                  ),
                 ),
               ),
-            ),
             Expanded(
               child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: padding, vertical: padding * 0.75),
