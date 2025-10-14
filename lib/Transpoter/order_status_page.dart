@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'qrscan.dart';
 import 'bill_preview_page.dart';
+import 'transporter_dashboard.dart';
 
 class OrderStatusPage extends StatefulWidget {
   final String? token;
@@ -52,16 +53,26 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => TransporterDashboard(token: widget.token)),
+            );
+          },
+        ),
         title: Text('Order Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
         actions: [
           IconButton(
             icon: Icon(Icons.qr_code_scanner, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => QRScanPage(token: widget.token)),
-              ).then((_) => _fetchOrders());
+              );
+              _fetchOrders();
             },
           ),
           IconButton(
@@ -132,11 +143,12 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
               ),
             ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => QRScanPage(token: widget.token)),
-          ).then((_) => _fetchOrders());
+          );
+          _fetchOrders();
         },
         backgroundColor: Color(0xFF2E7D32),
         icon: Icon(Icons.qr_code_scanner, color: Colors.white),
@@ -241,11 +253,12 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
               ),
               if (status == 'ASSIGNED')
                 ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    await Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => BillPreviewPage(order: order, token: widget.token)),
                     );
+                    _fetchOrders();
                   },
                   icon: Icon(Icons.receipt_long, size: 16),
                   label: Text('Bill', style: TextStyle(fontSize: 12)),

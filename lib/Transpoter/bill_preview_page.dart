@@ -7,6 +7,9 @@ import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import '../utils/cloudinary_upload.dart';
 
 class BillPreviewPage extends StatefulWidget {
@@ -87,33 +90,85 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
   }
 
   Future<void> _printBill() async {
+    print('\n========== PRINT BILL STARTED ==========');
     setState(() => _isProcessing = true);
     try {
+      print('Step 1: Getting boundary...');
       final boundary = _billKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      print('Step 1: ✓ Boundary obtained');
+      
+      print('Step 2: Converting to image...');
       final image = await boundary.toImage(pixelRatio: 3.0);
+      print('Step 2: ✓ Image created (${image.width}x${image.height})');
+      
+      print('Step 3: Converting to PNG bytes...');
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData!.buffer.asUint8List();
+      print('Step 3: ✓ PNG bytes created (${pngBytes.length} bytes)');
 
+      print('Step 4: Getting storage directory...');
       final directory = await getExternalStorageDirectory();
       final filePath = '${directory!.path}/bill_${widget.order['order_id']}.png';
+      print('Step 4: ✓ Directory: $filePath');
+      
+      print('Step 5: Writing file...');
       final file = File(filePath);
       await file.writeAsBytes(pngBytes);
+      print('Step 5: ✓ File written successfully');
 
+      print('Step 6: Uploading to Cloudinary...');
       final billUrl = await CloudinaryUploader.uploadImage(file);
+      print('Step 6: ✓ Upload result: ${billUrl ?? "NULL"}');
       
       if (billUrl != null) {
+        print('Step 7: Saving to database...');
         await _saveBillUrlToDatabase(billUrl);
-        await file.delete();
-        _showSuccessSnackBar('Bill saved to database successfully!');
+        print('Step 7: ✓ Saved to database');
+        
+        setState(() {
+          _billAlreadyExists = true;
+          _isProcessing = false;
+        });
+        print('Step 8: State updated');
+        
+        print('Step 9: Converting PNG to PDF...');
+        final pdf = pw.Document();
+        final imageProvider = pw.MemoryImage(pngBytes);
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            build: (context) => pw.Center(
+              child: pw.Image(imageProvider, fit: pw.BoxFit.contain),
+            ),
+          ),
+        );
+        print('Step 9: ✓ PDF created');
+        
+        print('Step 10: Opening print dialog...');
+        await Printing.layoutPdf(
+          onLayout: (format) async => pdf.save(),
+          name: 'Bill_Order_${widget.order['order_id']}.pdf',
+        );
+        
+        print('✓ Print dialog opened');
+        print('========== PRINT BILL COMPLETED ==========\n');
       } else {
-        _showErrorSnackBar('Failed to save bill to database');
+        print('❌ ERROR: billUrl is null');
+        await file.delete();
+        setState(() => _isProcessing = false);
+        _showErrorSnackBar('Failed to upload bill');
+        print('========== PRINT BILL FAILED ==========\n');
       }
-    } catch (e) {
-      _showErrorSnackBar('Print failed: $e');
-    } finally {
+    } catch (e, stackTrace) {
+      print('❌ ERROR in _printBill: $e');
+      print('Stack trace: $stackTrace');
       setState(() => _isProcessing = false);
+      _showErrorSnackBar('Print failed: $e');
+      print('========== PRINT BILL FAILED ==========\n');
     }
   }
+
+
 
   Future<void> _uploadToCloudinary() async {
     setState(() => _isProcessing = true);
@@ -154,21 +209,30 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      _showSuccessSnackBar('Bill URL saved!');
+      print('Bill URL saved to database successfully');
     } else {
-      _showErrorSnackBar('Failed to save URL');
+      print('Failed to save bill URL: ${response.statusCode}');
+      throw Exception('Failed to save URL');
     }
   }
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Color(0xFF4CAF50)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Color(0xFF4CAF50),
+        duration: Duration(seconds: 5),
+      ),
     );
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Color(0xFFE53935)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Color(0xFFE53935),
+        duration: Duration(seconds: 5),
+      ),
     );
   }
 
@@ -190,6 +254,10 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
     return Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text('Bill Preview', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
@@ -311,7 +379,7 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
                             height: 120,
                             color: Colors.white,
                             child: QrImageView(
-                              data: '${widget.order['order_id']}',
+                              data: 'order_id: ${widget.order['order_id']}',
                               version: QrVersions.auto,
                               size: 120,
                               backgroundColor: Colors.white,
