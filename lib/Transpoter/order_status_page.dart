@@ -2,10 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'qrscan.dart';
-import 'transporter_dashboard.dart';
-import 'order_history_page.dart';
-import 'vehicle_page.dart';
-import 'profile_page.dart';
+import 'bill_preview_page.dart';
 
 class OrderStatusPage extends StatefulWidget {
   final String? token;
@@ -20,36 +17,10 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
   List<dynamic> sourceOrders = [];
   List<dynamic> destinationOrders = [];
   bool isLoading = true;
-  int _selectedIndex = 1;
-
   @override
   void initState() {
     super.initState();
     _fetchOrders();
-  }
-
-  void _onNavItemTapped(int index) {
-    if (index == _selectedIndex) return;
-    
-    Widget page;
-    switch (index) {
-      case 0:
-        page = TransporterDashboard(token: widget.token);
-        break;
-      case 2:
-        page = OrderHistoryPage(token: widget.token);
-        break;
-      case 3:
-        page = VehiclePage(token: widget.token);
-        break;
-      case 4:
-        page = ProfilePage(token: widget.token);
-        break;
-      default:
-        return;
-    }
-    
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
   }
 
   Future<void> _fetchOrders() async {
@@ -171,20 +142,6 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
         icon: Icon(Icons.qr_code_scanner, color: Colors.white),
         label: Text('Scan QR', style: TextStyle(color: Colors.white)),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        selectedItemColor: Color(0xFF2E7D32),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Tracking'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: 'Vehicles'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
-      ),
     );
   }
 
@@ -270,13 +227,35 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
           ),
           SizedBox(height: 4),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
-              Text('${order['total_price'] ?? 0}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
-              SizedBox(width: 12),
-              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
-              SizedBox(width: 4),
-              Text('Qty: ${order['quantity'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              Row(
+                children: [
+                  Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
+                  Text('${order['total_price'] ?? 0}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                  SizedBox(width: 12),
+                  Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+                  SizedBox(width: 4),
+                  Text('Qty: ${order['quantity'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
+              if (status == 'ASSIGNED')
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => BillPreviewPage(order: order, token: widget.token)),
+                    );
+                  },
+                  icon: Icon(Icons.receipt_long, size: 16),
+                  label: Text('Bill', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
             ],
           ),
         ],

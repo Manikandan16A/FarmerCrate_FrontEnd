@@ -887,6 +887,10 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               imageUrl: imageUrl,
               quantity: product.quantity,
               token: widget.token,
+              category: product.category,
+              harvestDate: product.harvestDate,
+              expiryDate: product.expiryDate,
+              grade: product.grade,
             ),
           ),
         );

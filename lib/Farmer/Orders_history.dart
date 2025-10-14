@@ -61,13 +61,20 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
   Color getStatusColor(String status) {
     switch (status.toUpperCase()) {
       case 'COMPLETED':
+      case 'DELIVERED':
+      case 'PLACED':
         return Colors.green.shade700;
       case 'PENDING':
+      case 'PROCESSING':
         return Colors.orange.shade700;
       case 'CANCELLED':
         return Colors.red.shade700;
-      case 'PROCESSING':
+      case 'IN_TRANSIT':
+      case 'SHIPPED':
+      case 'OUT_FOR_DELIVERY':
         return Colors.blue.shade700;
+      case 'CONFIRMED':
+        return Colors.teal.shade700;
       default:
         return Colors.grey.shade700;
     }
@@ -110,59 +117,113 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.green.shade600,
+            Colors.green.shade700,
+          ],
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.green.shade100,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: Colors.green.shade200,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.shopping_bag,
-              color: Colors.green.shade700,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'My Orders',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green.shade900,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
-                ),
-                Text(
-                  '${orders.length} total orders',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade600,
+                  const Spacer(),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white),
+                      onPressed: fetchOrders,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Order History',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${orders.length} Orders',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.green.shade700),
-            onPressed: fetchOrders,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -277,12 +338,19 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
   }
 
   Widget _buildOrderCard(dynamic order) {
-    final product = order['Product'];
+    // Debug print to see the order structure
+    print('Order data: $order');
+    
+    final product = order['Product'] ?? order['product'];
     final customer = order['customer'];
     final sourceTransporter = order['sourceTransporter'];
     final destinationTransporter = order['destinationTransporter'];
-    final imageUrl = product['images'] != null && product['images'].isNotEmpty
-        ? product['images'][0]['image_url']
+    
+    // Debug print to see product data
+    print('Product data: $product');
+    
+    final imageUrl = product != null && product['images'] != null && product['images'].isNotEmpty
+        ? product['images'][0]['image_url'] ?? ''
         : '';
 
     return Card(
@@ -328,18 +396,10 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          product['name'] ?? 'N/A',
+                          product?['name'] ?? product?['product_name'] ?? 'Product Name Not Available',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Order #${order['order_id']}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -374,17 +434,17 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
                   _buildInfoItem(
                     Icons.shopping_cart,
                     'Quantity',
-                    '${order['quantity']}',
+                    '${order['quantity'] ?? 'N/A'}',
                   ),
                   _buildInfoItem(
                     Icons.currency_rupee,
                     'Total',
-                    '₹${order['total_price']}',
+                    order['total_price'] != null ? '₹${order['total_price']}' : 'N/A',
                   ),
                   _buildInfoItem(
                     Icons.person,
                     'Customer',
-                    customer['name'] ?? 'N/A',
+                    customer?['name'] ?? 'N/A',
                   ),
                 ],
               ),
@@ -446,7 +506,7 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
   }
 
   void _showOrderDetails(dynamic order) {
-    final product = order['Product'];
+    final product = order['Product'] ?? order['product'];
     final customer = order['customer'];
     final sourceTransporter = order['sourceTransporter'];
     final destinationTransporter = order['destinationTransporter'];
@@ -491,31 +551,32 @@ class _OrdersHistoryPageState extends State<OrdersHistoryPage> {
               ),
               const SizedBox(height: 20),
               _buildDetailSection('Product Information', [
-                _buildDetailRow('Name', product['name']),
-                _buildDetailRow('Price', '₹${product['current_price']}'),
-                _buildDetailRow('Quantity', '${order['quantity']}'),
-                _buildDetailRow('Total', '₹${order['total_price']}'),
+                _buildDetailRow('Name', product?['name'] ?? product?['product_name']),
+                _buildDetailRow('Price', product?['current_price'] != null ? '₹${product['current_price']}' : (product?['price'] != null ? '₹${product['price']}' : 'N/A')),
+                _buildDetailRow('Quantity', '${order['quantity'] ?? 'N/A'}'),
+                _buildDetailRow('Total', order['total_price'] != null ? '₹${order['total_price']}' : 'N/A'),
               ]),
               const SizedBox(height: 16),
               _buildDetailSection('Customer Information', [
-                _buildDetailRow('Name', customer['name']),
-                _buildDetailRow('Mobile', customer['mobile_number']),
-                _buildDetailRow('Email', customer['email']),
-                _buildDetailRow('Address', customer['address']),
+                _buildDetailRow('Name', customer?['name']),
+                _buildDetailRow('Mobile', customer?['mobile_number']),
+                _buildDetailRow('Email', customer?['email']),
+                _buildDetailRow('Address', customer?['address']),
               ]),
               const SizedBox(height: 16),
-              _buildDetailSection('Source Transporter', [
-                _buildDetailRow('Name', sourceTransporter?['name']),
-                _buildDetailRow('Mobile', sourceTransporter?['mobile_number']),
-                _buildDetailRow('Zone', sourceTransporter?['zone']),
-              ]),
-              const SizedBox(height: 16),
-              _buildDetailSection('Destination Transporter', [
-                _buildDetailRow('Name', destinationTransporter?['name']),
-                _buildDetailRow(
-                    'Mobile', destinationTransporter?['mobile_number']),
-                _buildDetailRow('Zone', destinationTransporter?['zone']),
-              ]),
+              if (sourceTransporter != null)
+                _buildDetailSection('Source Transporter', [
+                  _buildDetailRow('Name', sourceTransporter['name']),
+                  _buildDetailRow('Mobile', sourceTransporter['mobile_number']),
+                  _buildDetailRow('Zone', sourceTransporter['zone']),
+                ]),
+              if (sourceTransporter != null) const SizedBox(height: 16),
+              if (destinationTransporter != null)
+                _buildDetailSection('Destination Transporter', [
+                  _buildDetailRow('Name', destinationTransporter['name']),
+                  _buildDetailRow('Mobile', destinationTransporter['mobile_number']),
+                  _buildDetailRow('Zone', destinationTransporter['zone']),
+                ]),
             ],
           ),
         ),

@@ -32,6 +32,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
   bool isFavorite = false;
   int quantity = 1;
   bool isAddingToCart = false;
+  int currentImageIndex = 0;
+  PageController imagePageController = PageController();
 
   @override
   void initState() {
@@ -54,6 +56,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
   @override
   void dispose() {
     _animationController.dispose();
+    imagePageController.dispose();
     super.dispose();
   }
 
@@ -210,70 +213,95 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     return Stack(
       children: [
         PageView.builder(
+          controller: imagePageController,
+          onPageChanged: (index) {
+            setState(() {
+              currentImageIndex = index;
+            });
+          },
           itemCount: images.length,
           itemBuilder: (context, index) {
-            return Image.network(
-              images[index],
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.green[100]!, Colors.green[50]!],
-                    ),
-                  ),
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
-                    ),
-                  ),
-                );
-              },
-              errorBuilder: (context, error, stackTrace) => Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.green[100]!, Colors.green[50]!],
-                  ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.eco, size: 100, color: Colors.green[400]),
-                      SizedBox(height: 8),
-                      Text(
-                        'Image not available',
-                        style: TextStyle(color: Colors.green[600], fontSize: 14),
+            return InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 3.0,
+              panEnabled: true,
+              scaleEnabled: true,
+              child: Center(
+                child: Image.network(
+                  images[index],
+                  fit: BoxFit.contain,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.green[100]!, Colors.green[50]!],
+                        ),
                       ),
-                    ],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                              : null,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.green[100]!, Colors.green[50]!],
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.eco, size: 100, color: Colors.green[400]),
+                          SizedBox(height: 8),
+                          Text(
+                            'Image not available',
+                            style: TextStyle(color: Colors.green[600], fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             );
           },
         ),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
-            ),
-          ),
-        ),
         if (images.length > 1)
           Positioned(
             bottom: 16,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                images.length,
+                (index) => AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  margin: EdgeInsets.symmetric(horizontal: 4),
+                  width: currentImageIndex == index ? 24 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: currentImageIndex == index ? Colors.white : Colors.white.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (images.length > 1)
+          Positioned(
+            top: 16,
             right: 16,
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -282,7 +310,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                '${images.length} photos',
+                '${currentImageIndex + 1}/${images.length}',
                 style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
@@ -727,13 +755,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
               itemCount: images.length,
               itemBuilder: (context, index) {
                 return GestureDetector(
-                  onTap: () => _showFullImage(images, index),
+                  onTap: () {
+                    imagePageController.animateToPage(
+                      index,
+                      duration: Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  },
                   child: Container(
                     width: 80,
                     margin: EdgeInsets.only(right: 12),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green[300]!, width: 2),
+                      border: Border.all(
+                        color: currentImageIndex == index ? Colors.green[600]! : Colors.green[300]!,
+                        width: currentImageIndex == index ? 3 : 2,
+                      ),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
@@ -752,42 +789,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showFullImage(List<String> images, int initialIndex) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.black,
-        child: Stack(
-          children: [
-            PageView.builder(
-              controller: PageController(initialPage: initialIndex),
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                return InteractiveViewer(
-                  child: Image.network(
-                    images[index],
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => Center(
-                      child: Icon(Icons.error, color: Colors.white, size: 50),
-                    ),
-                  ),
-                );
-              },
-            ),
-            Positioned(
-              top: 16,
-              right: 16,
-              child: IconButton(
-                icon: Icon(Icons.close, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
