@@ -115,7 +115,7 @@ class _QRScanPageState extends State<QRScanPage> {
 
         setState(() => isProcessing = false);
         if (mounted) {
-          final result = await Navigator.push(
+          await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => OrderDetailPage(
@@ -125,9 +125,6 @@ class _QRScanPageState extends State<QRScanPage> {
               ),
             ),
           );
-          if (result == true && mounted) {
-            Navigator.pop(context);
-          }
         }
       } else {
         final errorData = jsonDecode(allocatedResponse.body);
@@ -176,6 +173,10 @@ class _QRScanPageState extends State<QRScanPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text('Scan QR Code', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
