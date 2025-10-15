@@ -106,7 +106,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
                             _buildProductCard(),
                             _buildTrackingTimeline(),
                             _buildOrderDetails(),
-                            _buildQRCodeSection(),
                           ],
                         ),
                       ),
@@ -129,17 +128,18 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            'Your Order',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
-                'Order #${order.orderId}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -429,8 +429,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
           _buildDetailRow('Pickup Address', order.pickupAddress),
           _buildDetailRow('Delivery Address', order.deliveryAddress),
           _buildDetailRow('Payment Status', order.paymentStatus),
-          _buildDetailRow('Order Date', _formatDate(order.createdAt)),
-          _buildDetailRow('Last Updated', _formatDate(order.updatedAt)),
         ],
       ),
     );
@@ -466,69 +464,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> {
     );
   }
 
-  Widget _buildQRCodeSection() {
-    final order = trackingDetail!.order;
-    
-    if (order.qrCode.isEmpty) return const SizedBox.shrink();
-    
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Order QR Code',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Image.network(
-                order.qrCode,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Center(
-                    child: CircularProgressIndicator(
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                          : null,
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.qr_code,
-                  color: Colors.grey[400],
-                  size: 100,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   String _formatDate(String dateString) {
     try {
