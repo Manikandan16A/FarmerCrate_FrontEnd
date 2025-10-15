@@ -866,6 +866,73 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
     );
   }
 
+  Widget _buildProductImage(String? imageUrl) {
+    // Handle different image URL formats
+    String? processedUrl;
+    
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (imageUrl.startsWith('http')) {
+        processedUrl = imageUrl;
+      } else if (imageUrl.startsWith('/')) {
+        // Handle relative URLs
+        processedUrl = 'https://farmercrate.onrender.com$imageUrl';
+      } else {
+        // Handle other formats
+        processedUrl = imageUrl.contains('://') ? imageUrl : 'https://farmercrate.onrender.com/uploads/$imageUrl';
+      }
+    }
+
+    if (processedUrl != null) {
+      return Image.network(
+        CloudinaryUploader.optimizeImageUrl(processedUrl, width: 300, height: 150, quality: 'auto', format: 'auto'),
+        width: double.infinity,
+        height: double.infinity,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: Colors.green[50],
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Image load error for URL: $processedUrl - Error: $error');
+          return _buildPlaceholderImage();
+        },
+      );
+    }
+    
+    return _buildPlaceholderImage();
+  }
+
+  Widget _buildPlaceholderImage() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.green[50],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_outlined, size: 40, color: Colors.green[300]),
+          SizedBox(height: 8),
+          Text(
+            'No Image',
+            style: TextStyle(
+              color: Colors.green[400],
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductCard(
       BuildContext context,
       String name,
@@ -915,32 +982,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               flex: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                child: imageUrl != null && imageUrl.startsWith('http')
-                    ? Image.network(
-                  CloudinaryUploader.optimizeImageUrl(imageUrl, width: 300, height: 150, quality: 'auto', format: 'auto'),
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.green[50],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.green[50],
-                    child: Icon(Icons.broken_image, size: 32, color: Colors.green[300]),
-                  ),
-                )
-                    : Container(
-                  color: Colors.green[50],
-                  child: Icon(Icons.image, size: 32, color: Colors.green[300]),
-                ),
+                child: _buildProductImage(imageUrl),
               ),
             ),
             Container(
