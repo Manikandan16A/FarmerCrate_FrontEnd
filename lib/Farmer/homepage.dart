@@ -941,6 +941,18 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       String? imageUrl,
       ) {
     final product = products.firstWhere((p) => p.name == name);
+    
+    String? firstImageUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (imageUrl.contains('|||')) {
+        firstImageUrl = imageUrl.split('|||').first.trim();
+      } else if (imageUrl.contains(',https://') || imageUrl.contains(',http://')) {
+        firstImageUrl = imageUrl.split(RegExp(r',(?=https?://)')).first.trim();
+      } else {
+        firstImageUrl = imageUrl.trim();
+      }
+    }
+    
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -982,7 +994,36 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               flex: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+<<<<<<< HEAD
                 child: _buildProductImage(imageUrl),
+=======
+                child: firstImageUrl != null && firstImageUrl.startsWith('http')
+                    ? Image.network(
+                  CloudinaryUploader.optimizeImageUrl(firstImageUrl, width: 300, height: 150, quality: 'auto', format: 'auto'),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.green[50],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.green[50],
+                    child: Icon(Icons.broken_image, size: 32, color: Colors.green[300]),
+                  ),
+                )
+                    : Container(
+                  color: Colors.green[50],
+                  child: Icon(Icons.image, size: 32, color: Colors.green[300]),
+                ),
+>>>>>>> 2af7496fd09e78fb8072146a389162be83ecc9bd
               ),
             ),
             Container(
