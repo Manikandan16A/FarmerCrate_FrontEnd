@@ -1064,50 +1064,55 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                           ),
                                           SizedBox(height: 10),
                                           if (imagePaths[index] == null)
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: () async {
-                                                      final pickedImage = await _pickImageFromGallery();
-                                                      if (pickedImage != null) {
-                                                        setDialogState(() {
-                                                          imagePaths[index] = pickedImage;
-                                                        });
-                                                      }
-                                                    },
-                                                    icon: Icon(Icons.photo_library, size: 18),
-                                                    label: Text('Gallery', style: TextStyle(fontSize: 13)),
-                                                    style: OutlinedButton.styleFrom(
-                                                      foregroundColor: Colors.green.shade700,
-                                                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
-                                                      padding: EdgeInsets.symmetric(vertical: 12),
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            OutlinedButton.icon(
+                                              onPressed: () async {
+                                                final pickedImage = await showModalBottomSheet<String?>(
+                                                  context: context,
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                                                  builder: (context) => Container(
+                                                    padding: EdgeInsets.all(20),
+                                                    child: Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        ListTile(
+                                                          leading: Icon(Icons.camera_alt, color: Colors.green[600]),
+                                                          title: Text('Take Photo'),
+                                                          onTap: () async {
+                                                            final result = await _pickImageFromCamera();
+                                                            Navigator.pop(context, result);
+                                                          },
+                                                        ),
+                                                        ListTile(
+                                                          leading: Icon(Icons.photo_library, color: Colors.green[600]),
+                                                          title: Text('Upload from Device'),
+                                                          onTap: () async {
+                                                            final result = await _pickImageFromGallery();
+                                                            Navigator.pop(context, result);
+                                                          },
+                                                        ),
+                                                        ListTile(
+                                                          leading: Icon(Icons.cancel, color: Colors.red[600]),
+                                                          title: Text('Cancel'),
+                                                          onTap: () => Navigator.pop(context),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
-                                                ),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: OutlinedButton.icon(
-                                                    onPressed: () async {
-                                                      final pickedImage = await _pickImageFromCamera();
-                                                      if (pickedImage != null) {
-                                                        setDialogState(() {
-                                                          imagePaths[index] = pickedImage;
-                                                        });
-                                                      }
-                                                    },
-                                                    icon: Icon(Icons.camera_alt, size: 18),
-                                                    label: Text('Camera', style: TextStyle(fontSize: 13)),
-                                                    style: OutlinedButton.styleFrom(
-                                                      foregroundColor: Colors.green.shade700,
-                                                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
-                                                      padding: EdgeInsets.symmetric(vertical: 12),
-                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                                );
+                                                if (pickedImage != null) {
+                                                  setDialogState(() {
+                                                    imagePaths[index] = pickedImage;
+                                                  });
+                                                }
+                                              },
+                                              icon: Icon(Icons.add_photo_alternate, size: 18),
+                                              label: Text('Add Image', style: TextStyle(fontSize: 13)),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: Colors.green.shade700,
+                                                side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                                                padding: EdgeInsets.symmetric(vertical: 12),
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
                                             )
                                           else
                                             Stack(
@@ -1153,7 +1158,39 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                                         ),
                                                         child: IconButton(
                                                           onPressed: () async {
-                                                            final pickedImage = await _pickImageFromGallery();
+                                                            final pickedImage = await showModalBottomSheet<String?>(
+                                                              context: context,
+                                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                                                              builder: (context) => Container(
+                                                                padding: EdgeInsets.all(20),
+                                                                child: Column(
+                                                                  mainAxisSize: MainAxisSize.min,
+                                                                  children: [
+                                                                    ListTile(
+                                                                      leading: Icon(Icons.camera_alt, color: Colors.green[600]),
+                                                                      title: Text('Take Photo'),
+                                                                      onTap: () async {
+                                                                        final result = await _pickImageFromCamera();
+                                                                        Navigator.pop(context, result);
+                                                                      },
+                                                                    ),
+                                                                    ListTile(
+                                                                      leading: Icon(Icons.photo_library, color: Colors.green[600]),
+                                                                      title: Text('Upload from Device'),
+                                                                      onTap: () async {
+                                                                        final result = await _pickImageFromGallery();
+                                                                        Navigator.pop(context, result);
+                                                                      },
+                                                                    ),
+                                                                    ListTile(
+                                                                      leading: Icon(Icons.cancel, color: Colors.red[600]),
+                                                                      title: Text('Cancel'),
+                                                                      onTap: () => Navigator.pop(context),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            );
                                                             if (pickedImage != null) {
                                                               setDialogState(() {
                                                                 imagePaths[index] = pickedImage;
