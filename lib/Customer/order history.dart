@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'customerhomepage.dart';
+import 'customer_order_tracking.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   final String? token;
@@ -486,6 +487,29 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                             ),
                             child: const Text('Close'),
                           ),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => CustomerOrderTrackingPage(
+                                    token: widget.token,
+                                    orderId: o.orderId.toString(),
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.track_changes, size: 18),
+                            label: const Text('Track Order'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -577,6 +601,33 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                     child: _buildInfoItem('Date', _formatDate(o.createdAt)),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => CustomerOrderTrackingPage(
+                                          token: widget.token,
+                                          orderId: o.orderId.toString(),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.track_changes, size: 18),
+                                  label: const Text('Track Order'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue[600],
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
