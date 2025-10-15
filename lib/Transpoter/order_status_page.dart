@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'qrscan.dart';
 import 'bill_preview_page.dart';
 import 'transporter_dashboard.dart';
+import 'order_history_page.dart';
+import 'vehicle_page.dart';
+import 'profile_page.dart';
 
 class OrderStatusPage extends StatefulWidget {
   final String? token;
@@ -18,10 +21,73 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
   List<dynamic> sourceOrders = [];
   List<dynamic> destinationOrders = [];
   bool isLoading = true;
+  int _selectedIndex = 1;
+
   @override
   void initState() {
     super.initState();
     _fetchOrders();
+  }
+
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+        elevation: 6,
+      ),
+    );
   }
 
   Future<void> _fetchOrders() async {
@@ -48,22 +114,38 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
     }
   }
 
+  void _onNavItemTapped(int index) {
+    if (index == _selectedIndex) return;
+    
+    Widget page;
+    switch (index) {
+      case 0:
+        page = TransporterDashboard(token: widget.token);
+        break;
+      case 2:
+        page = OrderHistoryPage(token: widget.token);
+        break;
+      case 3:
+        page = VehiclePage(token: widget.token);
+        break;
+      case 4:
+        page = ProfilePage(token: widget.token);
+        break;
+      default:
+        return;
+    }
+    
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => TransporterDashboard(token: widget.token)),
-            );
-          },
-        ),
         title: Text('Order Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
+        iconTheme: IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: Icon(Icons.qr_code_scanner, color: Colors.white),
@@ -154,6 +236,86 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
         icon: Icon(Icons.qr_code_scanner, color: Colors.white),
         label: Text('Scan QR', style: TextStyle(color: Colors.white)),
       ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          selectedItemColor: Color(0xFF2E7D32),
+          unselectedItemColor: Colors.grey[600],
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          selectedFontSize: 13,
+          unselectedFontSize: 12,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+          items: [
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 0 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.dashboard, size: 24),
+              ),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 1 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.track_changes, size: 24),
+              ),
+              label: 'Tracking',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 2 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.history, size: 24),
+              ),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 3 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.local_shipping, size: 24),
+              ),
+              label: 'Vehicles',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 4 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.person, size: 24),
+              ),
+              label: 'Profile',
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -185,24 +347,26 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  if (imageUrl != null)
-                    Container(
-                      width: 40,
-                      height: 40,
-                      margin: EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.3)),
+              Expanded(
+                child: Row(
+                  children: [
+                    if (imageUrl != null)
+                      Container(
+                        width: 40,
+                        height: 40,
+                        margin: EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.3)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.image, color: Colors.grey)),
+                        ),
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(7),
-                        child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.image, color: Colors.grey)),
-                      ),
-                    ),
-                  Text('Order #${order['order_id']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
-                ],
+                    Expanded(child: Text(product?['name'] ?? 'N/A', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ],
+                ),
               ),
               Row(
                 children: [
@@ -228,8 +392,6 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
             ],
           ),
           SizedBox(height: 8),
-          Text(product?['name'] ?? 'N/A', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          SizedBox(height: 4),
           Row(
             children: [
               Icon(Icons.location_on, size: 14, color: Colors.grey[600]),

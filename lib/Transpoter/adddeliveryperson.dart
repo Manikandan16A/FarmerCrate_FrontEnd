@@ -66,12 +66,12 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
 
   void _submitForm() async {
     if (!_formKey.currentState!.validate()) {
-      _showWarningSnackBar('Please fill all required fields correctly');
+      _showSnackBar('Please fill all required fields correctly', isWarning: true);
       return;
     }
 
     if (_licenseImage == null || _profileImage == null) {
-      _showWarningSnackBar('Please select both license and profile images');
+      _showSnackBar('Please select both license and profile images', isWarning: true);
       return;
     }
 
@@ -85,7 +85,7 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
       final profileUrl = await CloudinaryUploader.uploadImage(_profileImage!);
 
       if (licenseUrl == null || profileUrl == null) {
-        _showErrorSnackBar('Failed to upload images');
+        _showSnackBar('Failed to upload images', isError: true);
         setState(() => _isLoading = false);
         return;
       }
@@ -109,14 +109,14 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        _showSuccessSnackBar(data['message'] ?? 'Delivery person added successfully!');
+        _showSnackBar(data['message'] ?? 'Delivery person added successfully!');
         _clearForm();
       } else {
         final errorData = jsonDecode(response.body);
-        _showErrorSnackBar(errorData['message'] ?? 'Failed to add delivery person');
+        _showSnackBar(errorData['message'] ?? 'Failed to add delivery person', isError: true);
       }
     } catch (e) {
-      _showErrorSnackBar('Error: $e');
+      _showSnackBar('Error: $e', isError: true);
     } finally {
       setState(() {
         _isLoading = false;
@@ -139,36 +139,24 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
     });
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.check_circle, color: Colors.white, size: 24),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ),
-          ],
-        ),
-        backgroundColor: Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
 
-  void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -177,50 +165,24 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                shape: BoxShape.circle,
               ),
-              child: Icon(Icons.error, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ),
-          ],
-        ),
-        backgroundColor: Color(0xFFE53935),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        duration: Duration(seconds: 4),
-      ),
-    );
-  }
-
-  void _showWarningSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
               ),
-              child: Icon(Icons.warning, color: Colors.white, size: 24),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
             ),
           ],
         ),
-        backgroundColor: Color(0xFFFFA726),
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: EdgeInsets.all(16),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        elevation: 6,
         duration: Duration(seconds: 3),
       ),
     );

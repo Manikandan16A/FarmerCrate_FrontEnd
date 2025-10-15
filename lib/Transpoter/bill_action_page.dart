@@ -35,10 +35,10 @@ class _BillActionPageState extends State<BillActionPage> {
       final filePath = '${directory!.path}/Bill_FC-${widget.order['order_id']}.png';
       final file = File(filePath);
       await file.writeAsBytes(pngBytes);
-      _showSuccessSnackBar('Bill saved to: $filePath');
+      _showSnackBar('Bill saved to: $filePath');
     } catch (e) {
       print('Save Error: $e');
-      _showErrorSnackBar('Save failed: $e');
+      _showSnackBar('Save failed: $e', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -64,11 +64,11 @@ class _BillActionPageState extends State<BillActionPage> {
         await _saveBillUrlToDatabase(billUrl);
         await file.delete();
       } else {
-        _showErrorSnackBar('Failed to upload to Cloudinary');
+        _showSnackBar('Failed to upload to Cloudinary', isError: true);
       }
     } catch (e) {
       print('Upload Error: $e');
-      _showErrorSnackBar('Upload failed: $e');
+      _showSnackBar('Upload failed: $e', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -89,25 +89,80 @@ class _BillActionPageState extends State<BillActionPage> {
       print('Response Body: ${response.body}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessSnackBar('Bill URL saved successfully!');
+        _showSnackBar('Bill URL saved successfully!');
       } else {
-        _showErrorSnackBar('Failed to save bill URL');
+        _showSnackBar('Failed to save bill URL', isError: true);
       }
     } catch (e) {
       print('Save URL Error: $e');
-      _showErrorSnackBar('Error saving bill URL: $e');
+      _showSnackBar('Error saving bill URL: $e', isError: true);
     }
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Color(0xFF4CAF50)),
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      ),
     );
-  }
 
-  void _showErrorSnackBar(String message) {
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Color(0xFFE53935)),
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        elevation: 6,
+        duration: Duration(seconds: 3),
+      ),
     );
   }
 

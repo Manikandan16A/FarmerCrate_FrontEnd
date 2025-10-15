@@ -14,6 +14,7 @@ import '../Customer/NotificationsPage.dart';
 import '../Customer/AppSettingsPage.dart';
 import '../Customer/AppInfo.dart';
 import '../common/help_support_page.dart';
+import '../common/feedback_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -1076,8 +1077,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
               subtitle: 'Share your feedback with us',
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Feedback feature coming soon!'), backgroundColor: Color(0xFF2E7D32)),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const FeedbackPage()),
                 );
               },
             ),
