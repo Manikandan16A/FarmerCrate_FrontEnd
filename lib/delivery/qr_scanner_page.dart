@@ -20,6 +20,49 @@ class _QRScannerPageState extends State<QRScannerPage> {
     _requestCameraPermission();
   }
 
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
+    Color backgroundColor;
+    IconData icon;
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF4CAF50);
+      icon = Icons.check_circle;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+        elevation: 6,
+      ),
+    );
+  }
+
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     if (mounted) {

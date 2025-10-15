@@ -27,6 +27,67 @@ class _VehiclePageState extends State<VehiclePage> {
     _fetchVehicles();
   }
 
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+        elevation: 6,
+      ),
+    );
+  }
+
   Future<void> _fetchVehicles() async {
     setState(() => isLoading = true);
     try {
@@ -162,19 +223,13 @@ class _VehiclePageState extends State<VehiclePage> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Vehicle added successfully'), backgroundColor: Color(0xFF4CAF50)),
-        );
+        _showSnackBar('Vehicle added successfully');
         _fetchVehicles();
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add vehicle'), backgroundColor: Colors.red),
-        );
+        _showSnackBar('Failed to add vehicle', isError: true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 

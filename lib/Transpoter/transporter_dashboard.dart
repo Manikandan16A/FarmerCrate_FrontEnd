@@ -50,11 +50,11 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         });
       } else {
         setState(() => isLoadingPersons = false);
-        _showErrorSnackBar('Failed to load delivery persons');
+        _showSnackBar('Failed to load delivery persons', isError: true);
       }
     } catch (e) {
       setState(() => isLoadingPersons = false);
-      _showErrorSnackBar('Error: $e');
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
@@ -94,12 +94,12 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         });
       } else {
         setState(() => isLoadingOrders = false);
-        _showErrorSnackBar('Failed to load allocated orders');
+        _showSnackBar('Failed to load allocated orders', isError: true);
       }
     } catch (e) {
       print('Error fetching orders: $e');
       setState(() => isLoadingOrders = false);
-      _showErrorSnackBar('Error: $e');
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
@@ -382,22 +382,22 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         if (statusResponse.statusCode == 200) {
           print('✅ Order status updated to IN_TRANSIT');
           print('==========================================\n');
-          _showSuccessSnackBar('Delivery person assigned and order status updated to IN_TRANSIT!');
+          _showSnackBar('Delivery person assigned and order status updated to IN_TRANSIT!');
         } else {
           print('⚠️ Failed to update order status');
           print('==========================================\n');
-          _showSuccessSnackBar('Delivery person assigned successfully!');
+          _showSnackBar('Delivery person assigned successfully!');
         }
         
         _fetchAllocatedOrders();
         _fetchDeliveryPersons();
       } else {
         final errorData = jsonDecode(personResponse.body);
-        _showErrorSnackBar(errorData['message'] ?? 'Failed to assign delivery person');
+        _showSnackBar(errorData['message'] ?? 'Failed to assign delivery person', isError: true);
       }
     } catch (e) {
       print('Assignment Error: $e');
-      _showErrorSnackBar('Error: $e');
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
@@ -425,7 +425,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
       if (vehicleResponse.statusCode != 200 && vehicleResponse.statusCode != 201) {
         final errorData = jsonDecode(vehicleResponse.body);
-        _showErrorSnackBar(errorData['message'] ?? 'Failed to assign vehicle');
+        _showSnackBar(errorData['message'] ?? 'Failed to assign vehicle', isError: true);
         return;
       }
 
@@ -480,49 +480,55 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         print('New Status: ${personData['data']?['status'] ?? 'N/A'}');
         print('==========================================\n');
         
-        _showSuccessSnackBar('Vehicle and delivery person assigned successfully!');
+        _showSnackBar('Vehicle and delivery person assigned successfully!');
         _fetchAllocatedOrders();
         _fetchDeliveryPersons();
       } else {
         final errorData = jsonDecode(personResponse.body);
-        _showErrorSnackBar(errorData['message'] ?? 'Failed to assign delivery person');
+        _showSnackBar(errorData['message'] ?? 'Failed to assign delivery person', isError: true);
       }
     } catch (e) {
       print('Assignment Error: $e');
-      _showErrorSnackBar('Error: $e');
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(Icons.check_circle, color: Colors.white, size: 24),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ),
-          ],
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
         ),
-        backgroundColor: Color(0xFF4CAF50),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: EdgeInsets.all(16),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        duration: Duration(seconds: 3),
       ),
     );
-  }
 
-  void _showErrorSnackBar(String message) {
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -531,22 +537,25 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                shape: BoxShape.circle,
               ),
-              child: Icon(Icons.error, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 20),
             ),
             SizedBox(width: 12),
             Expanded(
-              child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
             ),
           ],
         ),
-        backgroundColor: Color(0xFFE53935),
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: EdgeInsets.all(16),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        duration: Duration(seconds: 4),
+        elevation: 6,
+        duration: Duration(seconds: 3),
       ),
     );
   }
@@ -579,17 +588,45 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Logout'),
-        content: Text('Are you sure you want to logout?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.logout, color: Colors.red, size: 24),
+            ),
+            SizedBox(width: 12),
+            Text('Logout', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text('Are you sure you want to logout?', style: TextStyle(fontSize: 16)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-          ElevatedButton(
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+          ),
+          ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(context);
               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Logout', style: TextStyle(color: Colors.white)),
+            icon: Icon(Icons.logout, size: 18),
+            label: Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              elevation: 2,
+            ),
           ),
         ],
       ),
@@ -625,65 +662,88 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         ],
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+        child: Container(
+          color: Colors.white,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0xFF2E7D32).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.local_shipping, size: 40, color: Colors.white),
+                    ),
+                    SizedBox(height: 12),
+                    Text('Transporter', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    SizedBox(height: 4),
+                    Text('Dashboard', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15)),
+                  ],
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.local_shipping, size: 48, color: Colors.white),
-                  SizedBox(height: 8),
-                  Text('Transporter', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  Text('Dashboard', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.dashboard, color: Color(0xFF2E7D32)),
-              title: Text('Dashboard'),
-              selected: _selectedIndex == 0,
-              onTap: () {
+              SizedBox(height: 8),
+              _buildDrawerItem(Icons.dashboard, 'Dashboard', 0, _selectedIndex == 0, () {
                 Navigator.pop(context);
                 setState(() => _selectedIndex = 0);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.track_changes, color: Color(0xFF2E7D32)),
-              title: Text('Order Tracking'),
-              selected: _selectedIndex == 1,
-              onTap: () {
+              }),
+              _buildDrawerItem(Icons.track_changes, 'Order Tracking', 1, _selectedIndex == 1, () {
                 Navigator.pop(context);
                 Navigator.push(context, MaterialPageRoute(builder: (context) => OrderStatusPage(token: widget.token)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.history, color: Color(0xFF2E7D32)),
-              title: Text('Order History'),
-              selected: _selectedIndex == 2,
-              onTap: () {
+              }),
+              _buildDrawerItem(Icons.history, 'Order History', 2, _selectedIndex == 2, () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Order History - Coming Soon')));
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red),
-              title: Text('Logout', style: TextStyle(color: Colors.red)),
-              onTap: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderHistoryPage(token: widget.token)));
+              }),
+              _buildDrawerItem(Icons.local_shipping, 'Vehicles', 3, _selectedIndex == 3, () {
                 Navigator.pop(context);
-                _logout();
-              },
-            ),
-          ],
+                Navigator.push(context, MaterialPageRoute(builder: (context) => VehiclePage(token: widget.token)));
+              }),
+              _buildDrawerItem(Icons.person, 'Profile', 4, _selectedIndex == 4, () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token)));
+              }),
+              Divider(height: 32, thickness: 1, indent: 16, endIndent: 16),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _logout();
+                  },
+                  icon: Icon(Icons.logout, size: 20),
+                  label: Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
       body: RefreshIndicator(
@@ -853,19 +913,85 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           ),
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        selectedItemColor: Color(0xFF2E7D32),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Tracking'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: 'Vehicles'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          selectedItemColor: Color(0xFF2E7D32),
+          unselectedItemColor: Colors.grey[600],
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          selectedFontSize: 13,
+          unselectedFontSize: 12,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+          items: [
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 0 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.dashboard, size: 24),
+              ),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 1 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.track_changes, size: 24),
+              ),
+              label: 'Tracking',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 2 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.history, size: 24),
+              ),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 3 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.local_shipping, size: 24),
+              ),
+              label: 'Vehicles',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 4 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.person, size: 24),
+              ),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1143,6 +1269,41 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(IconData icon, String title, int index, bool isSelected, VoidCallback onTap) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? Color(0xFF2E7D32).withOpacity(0.3) : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isSelected ? Color(0xFF2E7D32) : Color(0xFF2E7D32).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: isSelected ? Colors.white : Color(0xFF2E7D32), size: 22),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            color: isSelected ? Color(0xFF2E7D32) : Colors.grey[800],
+          ),
+        ),
+        trailing: isSelected ? Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)) : null,
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
