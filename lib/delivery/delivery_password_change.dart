@@ -27,6 +27,55 @@ class _DeliveryPasswordChangeScreenState extends State<DeliveryPasswordChangeScr
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
+    Color backgroundColor;
+    IconData icon;
+    
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF4CAF50);
+      icon = Icons.check_circle;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        elevation: 6,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -96,23 +145,12 @@ class _DeliveryPasswordChangeScreenState extends State<DeliveryPasswordChangeScr
 
           // Add null checks for response data
           if (token == null || user == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: Missing data in password change response'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 4),
-              ),
-            );
+            _showSnackBar('Error: Missing data in password change response', isError: true);
             print('ERROR: Missing token or user data - token: $token, user: $user');
             return;
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Password changed successfully! Welcome to Farmer Crate'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          _showSnackBar('Password changed successfully! Welcome to Farmer Crate');
 
           // Navigate to delivery dashboard
           Navigator.pushReplacement(
@@ -130,13 +168,7 @@ class _DeliveryPasswordChangeScreenState extends State<DeliveryPasswordChangeScr
             errorMessage = 'Password change failed. Please try again.';
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
-            ),
-          );
+          _showSnackBar(errorMessage, isError: true);
         }
       } catch (e) {
         setState(() {
@@ -151,13 +183,7 @@ class _DeliveryPasswordChangeScreenState extends State<DeliveryPasswordChangeScr
           errorMessage = 'Please check your network connection';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        _showSnackBar(errorMessage, isError: true);
       }
     }
   }

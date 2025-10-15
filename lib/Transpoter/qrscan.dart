@@ -42,7 +42,7 @@ class _QRScanPageState extends State<QRScanPage> {
     try {
       final orderIdMatch = RegExp(r'order_id:\s*(\d+)').firstMatch(qrData);
       if (orderIdMatch == null) {
-        _showErrorSnackBar('Invalid QR code format');
+        _showSnackBar('Invalid QR code format', isError: true);
         setState(() => isProcessing = false);
         return;
       }
@@ -69,7 +69,7 @@ class _QRScanPageState extends State<QRScanPage> {
         );
 
         if (order == null) {
-          _showErrorSnackBar('Order #$orderId not found in your allocated orders');
+          _showSnackBar('Order #$orderId not found in your allocated orders', isError: true);
           setState(() => isProcessing = false);
           return;
         }
@@ -90,7 +90,7 @@ class _QRScanPageState extends State<QRScanPage> {
           if (currentStatus != 'ASSIGNED') {
             print('❌ Status Check Failed: Current status "$currentStatus" is not ASSIGNED');
             print('==========================================\n');
-            _showErrorSnackBar('Cannot scan QR! Order status must be ASSIGNED. Current status: $currentStatus');
+            _showSnackBar('Cannot scan QR! Order status must be ASSIGNED. Current status: $currentStatus', isError: true);
             setState(() => isProcessing = false);
             return;
           }
@@ -104,7 +104,7 @@ class _QRScanPageState extends State<QRScanPage> {
           if (currentStatus != 'SHIPPED') {
             print('❌ Status Check Failed: Current status "$currentStatus" is not SHIPPED');
             print('==========================================\n');
-            _showErrorSnackBar('Cannot scan QR! Order status must be SHIPPED. Current status: $currentStatus');
+            _showSnackBar('Cannot scan QR! Order status must be SHIPPED. Current status: $currentStatus', isError: true);
             setState(() => isProcessing = false);
             return;
           }
@@ -128,20 +128,53 @@ class _QRScanPageState extends State<QRScanPage> {
         }
       } else {
         final errorData = jsonDecode(allocatedResponse.body);
-        _showErrorSnackBar(errorData['message'] ?? 'Failed to fetch orders');
+        _showSnackBar(errorData['message'] ?? 'Failed to fetch orders', isError: true);
         setState(() => isProcessing = false);
       }
     } catch (e, stackTrace) {
       print('Error: $e');
       print('Stack Trace: $stackTrace');
-      _showErrorSnackBar('Invalid QR code: $e');
+      _showSnackBar('Invalid QR code: $e', isError: true);
       setState(() => isProcessing = false);
     }
   }
 
 
 
-  void _showErrorSnackBar(String message) {
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -152,18 +185,19 @@ class _QRScanPageState extends State<QRScanPage> {
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(Icons.error, color: Colors.white, size: 24),
+              child: Icon(icon, color: Colors.white, size: 24),
             ),
             SizedBox(width: 12),
             Expanded(child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
           ],
         ),
-        backgroundColor: Color(0xFFE53935),
+        backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: EdgeInsets.all(16),
         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        duration: Duration(seconds: 4),
+        duration: Duration(seconds: 3),
+        elevation: 6,
       ),
     );
   }

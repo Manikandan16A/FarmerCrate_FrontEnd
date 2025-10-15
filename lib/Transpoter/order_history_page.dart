@@ -26,6 +26,67 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     _fetchCompletedOrders();
   }
 
+  void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+        ),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+    Navigator.of(context, rootNavigator: true).pop();
+
+    Color backgroundColor;
+    IconData icon;
+    if (isError) {
+      backgroundColor = Color(0xFFD32F2F);
+      icon = Icons.error_outline;
+    } else if (isWarning) {
+      backgroundColor = Color(0xFFFF9800);
+      icon = Icons.warning_amber;
+    } else if (isInfo) {
+      backgroundColor = Color(0xFF2196F3);
+      icon = Icons.info_outline;
+    } else {
+      backgroundColor = Color(0xFF2E7D32);
+      icon = Icons.check_circle;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text(message, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        duration: Duration(seconds: 3),
+        elevation: 6,
+      ),
+    );
+  }
+
   Future<void> _fetchCompletedOrders() async {
     setState(() => isLoading = true);
     try {
@@ -132,6 +193,16 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   Widget _buildOrderCard(dynamic order) {
     final product = order['product'];
+    final images = product?['images'] as List?;
+    dynamic primaryImage;
+    if (images != null && images.isNotEmpty) {
+      try {
+        primaryImage = images.firstWhere((img) => img['is_primary'] == true);
+      } catch (e) {
+        primaryImage = images.first;
+      }
+    }
+    final imageUrl = primaryImage?['image_url'];
     final status = order['current_status'];
     return Container(
       margin: EdgeInsets.only(bottom: 12),
@@ -142,35 +213,54 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.2)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Order #${order['order_id']}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: status == 'COMPLETED' ? Color(0xFF4CAF50) : status == 'CANCELLED' ? Colors.red : Color(0xFF66BB6A),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(status ?? 'N/A', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+          if (imageUrl != null)
+            Container(
+              width: 70,
+              height: 70,
+              margin: EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.3)),
               ),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(product?['name'] ?? 'N/A', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-          SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
-              Text('${order['total_price'] ?? 0}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
-              SizedBox(width: 12),
-              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
-              SizedBox(width: 4),
-              Text('Qty: ${order['quantity'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-            ],
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(7),
+                child: Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Icon(Icons.image, color: Colors.grey, size: 32)),
+              ),
+            ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(child: Text(product?['name'] ?? 'N/A', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    SizedBox(width: 8),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: status == 'COMPLETED' ? Color(0xFF4CAF50) : status == 'CANCELLED' ? Colors.red : Color(0xFF66BB6A),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(status ?? 'N/A', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
+                    Text('${order['total_price'] ?? 0}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                    SizedBox(width: 12),
+                    Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+                    SizedBox(width: 4),
+                    Text('Qty: ${order['quantity'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
