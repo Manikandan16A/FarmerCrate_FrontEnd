@@ -994,7 +994,6 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               flex: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                child: _buildProductImage(imageUrl),
                 child: firstImageUrl != null && firstImageUrl.startsWith('http')
                     ? Image.network(
                   CloudinaryUploader.optimizeImageUrl(firstImageUrl, width: 300, height: 150, quality: 'auto', format: 'auto'),
