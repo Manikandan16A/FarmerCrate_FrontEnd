@@ -1189,7 +1189,7 @@ class _OrdersPageState extends State<OrdersPage> {
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: fetchOrders,
           ),
-          if (orders.isNotEmpty && !_selectAllMode)
+          if (orders.isNotEmpty && !_selectAllMode && _statusFilter != 'accepted')
             IconButton(
               icon: Icon(Icons.more_vert, color: Colors.white),
               onPressed: () {
