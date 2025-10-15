@@ -54,13 +54,13 @@ class Product {
           urls.add(img);
         }
       }
-      imageUrl = urls.isNotEmpty ? urls.join(',') : null;
+      imageUrl = urls.isNotEmpty ? urls.join('|||') : null;
     }
     
     if (imageUrl == null) {
       var imageData = json['image_urls'];
       if (imageData is List && imageData.isNotEmpty) {
-        imageUrl = imageData.join(',');
+        imageUrl = imageData.join('|||');
       } else if (imageData is String && imageData.isNotEmpty) {
         imageUrl = imageData;
       } else {
@@ -334,7 +334,9 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     try {
       List<String> imageUrls = [];
       if (product.images != null) {
-        final images = product.images!.split(',').map((e) => e.trim()).toList();
+        final images = product.images!.contains('|||')
+            ? product.images!.split('|||').map((e) => e.trim()).toList()
+            : [product.images!];
         for (String img in images) {
           if (img.startsWith('http')) {
             imageUrls.add(img);
@@ -829,7 +831,9 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     
     List<String?> imagePaths = [null, null, null];
     if (product?.images != null) {
-      final images = product!.images!.split(',').map((e) => e.trim()).toList();
+      final images = product!.images!.contains('|||')
+          ? product!.images!.split('|||').map((e) => e.trim()).toList()
+          : [product!.images!];
       for (int i = 0; i < images.length && i < 3; i++) {
         imagePaths[i] = images[i];
       }
@@ -987,99 +991,215 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                               ),
                             ),
                             SizedBox(height: 16),
-                            ...List.generate(3, (index) {
-                              return Column(
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.green.shade50, Colors.white],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.green.shade200, width: 2),
+                              ),
+                              child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Image ${index + 1}', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                  SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () async {
-                                            final pickedImage = await _pickImageFromGallery();
-                                            if (pickedImage != null) {
-                                              setDialogState(() {
-                                                imagePaths[index] = pickedImage;
-                                              });
-                                            }
-                                          },
-                                          icon: Icon(Icons.photo_library, size: 18),
-                                          label: Text('Gallery'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.green.shade400,
-                                            foregroundColor: Colors.white,
-                                            padding: EdgeInsets.symmetric(vertical: 10),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                          ),
-                                        ),
-                                      ),
+                                      Icon(Icons.photo_library, color: Colors.green.shade700, size: 20),
                                       SizedBox(width: 8),
-                                      Expanded(
-                                        child: ElevatedButton.icon(
-                                          onPressed: () async {
-                                            final pickedImage = await _pickImageFromCamera();
-                                            if (pickedImage != null) {
-                                              setDialogState(() {
-                                                imagePaths[index] = pickedImage;
-                                              });
-                                            }
-                                          },
-                                          icon: Icon(Icons.camera_alt, size: 18),
-                                          label: Text('Camera'),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.green.shade600,
-                                            foregroundColor: Colors.white,
-                                            padding: EdgeInsets.symmetric(vertical: 10),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                          ),
+                                      Text(
+                                        'Product Images',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade700,
                                         ),
                                       ),
                                     ],
                                   ),
-                                  if (imagePaths[index] != null) ...[
-                                    SizedBox(height: 8),
-                                    Container(
-                                      padding: EdgeInsets.all(8),
+                                  SizedBox(height: 12),
+                                  ...List.generate(3, (index) {
+                                    return Container(
+                                      margin: EdgeInsets.only(bottom: 12),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
+                                        color: Colors.white,
                                         borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.green.shade200, width: 2),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: imagePaths[index]!.startsWith('http')
-                                                ? Image.network(imagePaths[index]!, height: 100, width: 100, fit: BoxFit.cover)
-                                                : File(imagePaths[index]!).existsSync()
-                                                ? Image.file(File(imagePaths[index]!), height: 100, width: 100, fit: BoxFit.cover)
-                                                : Container(
-                                              height: 100,
-                                              width: 100,
-                                              color: Colors.grey.shade200,
-                                              child: Icon(Icons.image, size: 30, color: Colors.grey.shade600),
-                                            ),
-                                          ),
-                                          SizedBox(height: 4),
-                                          TextButton.icon(
-                                            onPressed: () {
-                                              setDialogState(() {
-                                                imagePaths[index] = null;
-                                              });
-                                            },
-                                            icon: Icon(Icons.delete, color: Colors.red, size: 16),
-                                            label: Text('Remove', style: TextStyle(color: Colors.red, fontSize: 12)),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.grey.withOpacity(0.1),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                  SizedBox(height: 12),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.shade100,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  'Image ${index + 1}',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12,
+                                                    color: Colors.green.shade700,
+                                                  ),
+                                                ),
+                                              ),
+                                              if (imagePaths[index] != null)
+                                                Padding(
+                                                  padding: EdgeInsets.only(left: 8),
+                                                  child: Icon(Icons.check_circle, color: Colors.green, size: 16),
+                                                ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 10),
+                                          if (imagePaths[index] == null)
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: () async {
+                                                      final pickedImage = await _pickImageFromGallery();
+                                                      if (pickedImage != null) {
+                                                        setDialogState(() {
+                                                          imagePaths[index] = pickedImage;
+                                                        });
+                                                      }
+                                                    },
+                                                    icon: Icon(Icons.photo_library, size: 18),
+                                                    label: Text('Gallery', style: TextStyle(fontSize: 13)),
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: Colors.green.shade700,
+                                                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                    ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    onPressed: () async {
+                                                      final pickedImage = await _pickImageFromCamera();
+                                                      if (pickedImage != null) {
+                                                        setDialogState(() {
+                                                          imagePaths[index] = pickedImage;
+                                                        });
+                                                      }
+                                                    },
+                                                    icon: Icon(Icons.camera_alt, size: 18),
+                                                    label: Text('Camera', style: TextStyle(fontSize: 13)),
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: Colors.green.shade700,
+                                                      side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          else
+                                            Stack(
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: imagePaths[index]!.startsWith('http')
+                                                      ? Image.network(
+                                                          imagePaths[index]!,
+                                                          height: 120,
+                                                          width: double.infinity,
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      : File(imagePaths[index]!).existsSync()
+                                                          ? Image.file(
+                                                              File(imagePaths[index]!),
+                                                              height: 120,
+                                                              width: double.infinity,
+                                                              fit: BoxFit.cover,
+                                                            )
+                                                          : Container(
+                                                              height: 120,
+                                                              width: double.infinity,
+                                                              color: Colors.grey.shade200,
+                                                              child: Icon(Icons.image, size: 40, color: Colors.grey.shade600),
+                                                            ),
+                                                ),
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 8,
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors.black.withOpacity(0.2),
+                                                              blurRadius: 4,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: IconButton(
+                                                          onPressed: () async {
+                                                            final pickedImage = await _pickImageFromGallery();
+                                                            if (pickedImage != null) {
+                                                              setDialogState(() {
+                                                                imagePaths[index] = pickedImage;
+                                                              });
+                                                            }
+                                                          },
+                                                          icon: Icon(Icons.edit, color: Colors.blue, size: 18),
+                                                          padding: EdgeInsets.all(8),
+                                                          constraints: BoxConstraints(),
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Container(
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+                                                          borderRadius: BorderRadius.circular(8),
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors.black.withOpacity(0.2),
+                                                              blurRadius: 4,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: IconButton(
+                                                          onPressed: () {
+                                                            setDialogState(() {
+                                                              imagePaths[index] = null;
+                                                            });
+                                                          },
+                                                          icon: Icon(Icons.delete, color: Colors.red, size: 18),
+                                                          padding: EdgeInsets.all(8),
+                                                          constraints: BoxConstraints(),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
                                 ],
-                              );
-                            }),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1129,7 +1249,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       price: double.tryParse(priceController.text) ?? 0.0,
                                       quantity: int.tryParse(quantityController.text) ?? 0,
                                       category: selectedCategoryDialog,
-                                      images: validImages.isNotEmpty ? validImages.join(',') : null,
+                                      images: validImages.isNotEmpty ? validImages.join('|||') : null,
                                       createdAt: product.createdAt,
                                       updatedAt: DateTime.now(),
                                     );
@@ -1455,112 +1575,147 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.all(19),
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: LinearGradient(
+                colors: [Colors.green.shade50, Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: Offset(0, 6),
+                  color: Colors.grey.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
-            child: Column(
+            child: Row(
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade300, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                        child: DropdownButtonFormField<String> (
-                          value: selectedCategory,
-                          decoration: InputDecoration(
-                            labelText: 'Category',
-                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w500),
-                            prefixIcon: Icon(Icons.category, color: Colors.green.shade600, size: 15),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(25),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          ),
-                          items: categories.map((String category) {
-                            return DropdownMenuItem<String>(
-                              value: category,
-                              child: Text(category, style: TextStyle(fontSize: 14)),
-                            );
-                          }).toList(),
-                          onChanged: (String? newValue) {
-                            selectedCategory = newValue!;
-                            _applyFiltersAndSort();
-                          },
+                      ],
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: selectedCategory,
+                      decoration: InputDecoration(
+                        labelText: 'Filter by Category',
+                        labelStyle: TextStyle(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
+                        prefixIcon: Icon(Icons.filter_list, color: Colors.green.shade600, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                       ),
-                      SizedBox(width: 9),
-                      Container(
-                        width: 150,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(color: Colors.grey.shade300),
+                      items: categories.map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        selectedCategory = newValue!;
+                        _applyFiltersAndSort();
+                      },
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade300, width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
                         ),
-                        child: DropdownButtonFormField<String>(
-                          value: sortBy,
-                          decoration: InputDecoration(
-                            labelText: 'Sort By',
-                            labelStyle: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
-                            prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 13),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(90),
-                              borderSide: BorderSide.none,
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                          ),
-                          items: [
-                            DropdownMenuItem(value: 'createdAt', child: Text('Date Added', style: TextStyle(fontSize: 12))),
-                            DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 12))),
-                            DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 12))),
-                            DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 12))),
-                            DropdownMenuItem(value: 'quantity', child: Text('Quantity', style: TextStyle(fontSize: 12))),
-                          ],
-                          onChanged: (String? newValue) {
-                            sortBy = newValue!;
-                            _applyFiltersAndSort();
-                          },
+                      ],
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      value: sortBy,
+                      decoration: InputDecoration(
+                        labelText: 'Sort',
+                        labelStyle: TextStyle(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
+                        prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 20),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                       ),
-                      SizedBox(width:1.3),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade600,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: IconButton(
-                          onPressed: () {
-                            isAscending = !isAscending;
-                            _applyFiltersAndSort();
-                          },
-                          icon: Icon(
-                            isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                            color: Colors.white,
-                          ),
-                          tooltip: isAscending ? 'Ascending' : 'Descending',
-                        ),
+                      items: [
+                        DropdownMenuItem(value: 'createdAt', child: Text('Date', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 13))),
+                        DropdownMenuItem(value: 'quantity', child: Text('Stock', style: TextStyle(fontSize: 13))),
+                      ],
+                      onChanged: (String? newValue) {
+                        sortBy = newValue!;
+                        _applyFiltersAndSort();
+                      },
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade600, Colors.green.shade500],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
-                )
+                  child: IconButton(
+                    onPressed: () {
+                      isAscending = !isAscending;
+                      _applyFiltersAndSort();
+                    },
+                    icon: Icon(
+                      isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    tooltip: isAscending ? 'Ascending' : 'Descending',
+                  ),
+                ),
               ],
             ),
           ),
@@ -1708,24 +1863,46 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (product.images != null)
+                            if (product.images != null && product.images!.isNotEmpty)
                               Builder(
                                 builder: (context) {
-                                  final images = product.images!.split(',').map((e) => e.trim()).toList();
+                                  List<String> images;
+                                  if (product.images!.contains('|||')) {
+                                    images = product.images!.split('|||').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                                  } else if (product.images!.contains(',https://') || product.images!.contains(',http://')) {
+                                    images = product.images!.split(RegExp(r',(?=https?://)')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                                  } else {
+                                    images = [product.images!.trim()];
+                                  }
+                                  
+                                  print('Product ${product.name} images: $images');
+                                  
+                                  if (images.isEmpty) {
+                                    return Container(
+                                      height: 150,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.image, size: 50, color: Colors.grey.shade600),
+                                    );
+                                  }
+                                  
                                   return SizedBox(
                                     height: 150,
                                     child: PageView.builder(
                                       itemCount: images.length,
                                       itemBuilder: (context, imgIndex) {
-                                        return GestureDetector(
-                                          onTap: () => _showImagePreview(images[imgIndex]),
-                                          child: Stack(
+                                        final imageUrl = images[imgIndex];
+                                        print('Loading image: $imageUrl');
+                                        
+                                        return Stack(
                                             children: [
                                               ClipRRect(
                                                 borderRadius: BorderRadius.circular(8),
-                                                child: images[imgIndex].startsWith('http')
+                                                child: imageUrl.startsWith('http')
                                                     ? Image.network(
-                                                  images[imgIndex],
+                                                  imageUrl,
                                                   height: 150,
                                                   width: double.infinity,
                                                   fit: BoxFit.cover,
@@ -1734,10 +1911,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                                     return Container(
                                                       height: 150,
                                                       width: double.infinity,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey.shade200,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
+                                                      color: Colors.grey.shade200,
                                                       child: Center(
                                                         child: CircularProgressIndicator(
                                                           value: loadingProgress.expectedTotalBytes != null
@@ -1749,13 +1923,11 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                                     );
                                                   },
                                                   errorBuilder: (context, error, stackTrace) {
+                                                    print('Image load error: $error');
                                                     return Container(
                                                       height: 150,
                                                       width: double.infinity,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey.shade200,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
+                                                      color: Colors.grey.shade200,
                                                       child: Column(
                                                         mainAxisAlignment: MainAxisAlignment.center,
                                                         children: [
@@ -1767,36 +1939,33 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                                     );
                                                   },
                                                 )
-                                                    : File(images[imgIndex]).existsSync()
-                                                    ? Image.file(File(images[imgIndex]), height: 150, width: double.infinity, fit: BoxFit.cover)
+                                                    : File(imageUrl).existsSync()
+                                                    ? Image.file(File(imageUrl), height: 150, width: double.infinity, fit: BoxFit.cover)
                                                     : Container(
                                                   height: 150,
                                                   width: double.infinity,
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade200,
-                                                    borderRadius: BorderRadius.circular(8),
-                                                  ),
+                                                  color: Colors.grey.shade200,
                                                   child: Icon(Icons.image, size: 50, color: Colors.grey.shade600),
                                                 ),
                                               ),
-                                              Positioned(
-                                                top: 8,
-                                                right: 8,
-                                                child: Container(
-                                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.black.withOpacity(0.7),
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Text(
-                                                    '${imgIndex + 1}/${images.length}',
-                                                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                              if (images.length > 1)
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 8,
+                                                  child: Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black.withOpacity(0.7),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      '${imgIndex + 1}/${images.length}',
+                                                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
                                             ],
-                                          ),
-                                        );
+                                          );
                                       },
                                     ),
                                   );
@@ -1983,12 +2152,6 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                 ),
                                 Spacer(),
-                                if (product.images != null)
-                                  IconButton(
-                                    onPressed: () => _showImagePreview(product.images!),
-                                    icon: Icon(Icons.image, color: Colors.purple),
-                                    tooltip: 'View Image',
-                                  ),
                                 IconButton(
                                   onPressed: () => _showAddEditDialog(product: product),
                                   icon: Icon(Icons.edit, color: Colors.blue),
