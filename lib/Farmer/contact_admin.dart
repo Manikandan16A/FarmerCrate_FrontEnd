@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/notification_helper.dart';
 
 // User model class for dynamic user data
 class UserModel {
@@ -24,6 +25,8 @@ class UserModel {
     );
   }
 }
+
+
 
 // User service class - replace with your actual API service
 class UserService {
@@ -90,12 +93,7 @@ class _ContactAdminPageState extends State<ContactAdminPage> {
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load user data: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        NotificationHelper.showError(context, 'Failed to load user data: $e');
       }
     }
   }
@@ -133,23 +131,13 @@ class _ContactAdminPageState extends State<ContactAdminPage> {
     });
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('File selected: ${_selectedFileName ?? "None"}'),
-          backgroundColor: Colors.green[600],
-        ),
-      );
+      NotificationHelper.showInfo(context, 'File selected: ${_selectedFileName ?? "None"}');
     }
   }
 
   void _submitMessage() async {
     if (_messageController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a message'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Please enter a message');
       return;
     }
 
@@ -190,12 +178,7 @@ class _ContactAdminPageState extends State<ContactAdminPage> {
       Navigator.of(context).pop();
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Message sent successfully!'),
-          backgroundColor: Colors.green[600],
-        ),
-      );
+      NotificationHelper.showSuccess(context, 'Message sent successfully!');
 
       // Clear form
       _messageController.clear();
@@ -208,12 +191,7 @@ class _ContactAdminPageState extends State<ContactAdminPage> {
       Navigator.of(context).pop();
 
       // Show error message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send message: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Failed to send message: $e');
     }
   }
 

@@ -11,6 +11,7 @@ import 'farmer_product_detail.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -53,9 +54,13 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final name = data['data']['name'] ?? 'Farmer';
         setState(() {
-          farmerName = data['data']['name'] ?? 'Farmer';
+          farmerName = name;
         });
+        if (mounted) {
+          NotificationHelper.showInfo(context, 'Welcome $name, to FarmerCrate');
+        }
       }
     } catch (e) {}
   }
@@ -151,23 +156,27 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           errorMessage = 'Authentication failed. Please login again.';
           isLoading = false;
         });
+        if (mounted) NotificationHelper.showError(context, 'Authentication failed. Please login again.');
       } else if (response.statusCode == 404) {
         setState(() {
           products = [];
           isLoading = false;
           errorMessage = 'No products found. Add your first product!';
         });
+        if (mounted) NotificationHelper.showInfo(context, 'No products found. Add your first product!');
       } else {
         setState(() {
           errorMessage = 'Failed to fetch products. Status: ${response.statusCode}';
           isLoading = false;
         });
+        if (mounted) NotificationHelper.showError(context, 'Failed to fetch products. Status: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         errorMessage = 'Network error: $e';
         isLoading = false;
       });
+      if (mounted) NotificationHelper.showError(context, 'Network error: $e');
     }
   }
 

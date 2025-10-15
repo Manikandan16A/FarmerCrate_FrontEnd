@@ -7,6 +7,7 @@ import 'ProductEdit.dart';
 import 'farmerprofile.dart';
 import '../auth/Signin.dart';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 import 'order_tracking_page.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -147,58 +148,25 @@ class _OrdersPageState extends State<OrdersPage> {
               orders.removeWhere((order) => order.id == orderId);
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Icon(
-                      status == 'accepted' ? Icons.check_circle : Icons.cancel,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 8),
-                    Text(responseData['message'] ?? 'Order ${status == 'accepted' ? 'accepted' : 'rejected'} successfully'),
-                  ],
-                ),
-                backgroundColor: status == 'accepted' ? Colors.green : Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            if (status == 'accepted') {
+              NotificationHelper.showInfo(context, responseData['message'] ?? 'Order accepted successfully');
+            } else {
+              NotificationHelper.showError(context, responseData['message'] ?? 'Order rejected successfully');
+            }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(responseData['message'] ?? 'Failed to update order'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 4),
-              ),
-            );
+            NotificationHelper.showError(context, responseData['message'] ?? 'Failed to update order');
           }
         } catch (e) {
           print('Error parsing response: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Invalid response from server'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          NotificationHelper.showError(context, 'Invalid response from server');
         }
       } else {
         print('Error: Status code ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.statusCode}. Response: ${response.body}'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        NotificationHelper.showError(context, 'Error: ${response.statusCode}. Response: ${response.body}');
       }
     } catch (e) {
       print('Network error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Network error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Network error: $e');
     }
   }
 

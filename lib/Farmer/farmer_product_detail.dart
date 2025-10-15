@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'ProductEdit.dart';
+import '../utils/notification_helper.dart';
 
 class FarmerProductDetailPage extends StatefulWidget {
   final String productId;
@@ -515,34 +516,13 @@ class _FarmerProductDetailPageState extends State<FarmerProductDetailPage> {
       );
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Product deleted successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green[600],
-          ),
-        );
+        NotificationHelper.showSuccess(context, 'Product deleted successfully');
         Navigator.pop(context);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete product'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        NotificationHelper.showError(context, 'Failed to delete product');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Network error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Network error: $e');
     }
   }
 }
