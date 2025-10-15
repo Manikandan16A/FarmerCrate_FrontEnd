@@ -443,38 +443,97 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   }
 
   Future<void> _pickImage(int index) async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1600,
-        maxHeight: 1600,
-      );
-      
-      if (image != null) {
-        setState(() {
-          _selectedImages[index] = File(image.path);
-          _errorMessage = null;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.image, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(child: Text('Image ${index + 1} selected')),
-              ],
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: Colors.green[600]),
+              title: Text('Take Photo'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.camera,
+                    imageQuality: 85,
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                  );
+                  if (image != null) {
+                    setState(() {
+                      _selectedImages[index] = File(image.path);
+                      _errorMessage = null;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.image, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(child: Text('Image ${index + 1} selected')),
+                          ],
+                        ),
+                        backgroundColor: Colors.green[600],
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Failed to take photo');
+                }
+              },
             ),
-            backgroundColor: Colors.green[600],
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      _showErrorSnackBar('Failed to pick image');
-    }
+            ListTile(
+              leading: Icon(Icons.photo_library, color: Colors.green[600]),
+              title: Text('Upload from Device'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.gallery,
+                    imageQuality: 85,
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                  );
+                  if (image != null) {
+                    setState(() {
+                      _selectedImages[index] = File(image.path);
+                      _errorMessage = null;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(Icons.image, color: Colors.white),
+                            SizedBox(width: 12),
+                            Expanded(child: Text('Image ${index + 1} selected')),
+                          ],
+                        ),
+                        backgroundColor: Colors.green[600],
+                        behavior: SnackBarBehavior.floating,
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Failed to pick image');
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.cancel, color: Colors.red[600]),
+              title: Text('Cancel'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _resetForm() {
