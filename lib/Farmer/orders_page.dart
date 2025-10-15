@@ -1130,7 +1130,7 @@ class _OrdersPageState extends State<OrdersPage> {
               title: Text('Profile', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => FarmerProfilePage(token: widget.token),

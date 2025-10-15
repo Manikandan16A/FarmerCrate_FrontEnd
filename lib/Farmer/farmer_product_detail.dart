@@ -37,8 +37,15 @@ class FarmerProductDetailPage extends StatefulWidget {
 }
 
 class _FarmerProductDetailPageState extends State<FarmerProductDetailPage> {
-
+  final PageController _pageController = PageController();
+  int _currentImageIndex = 0;
   bool _isImageZoomed = false;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   String _getStockStatus() {
     if (widget.expiryDate != null) {
@@ -71,7 +78,29 @@ class _FarmerProductDetailPageState extends State<FarmerProductDetailPage> {
     return priceValue * widget.quantity;
   }
 
-  void _showImageZoom() {
+  List<String> _getAllImageUrls() {
+    if (widget.imageUrl == null || widget.imageUrl!.isEmpty) return [];
+    
+    print('Raw imageUrl: ${widget.imageUrl}');
+    
+    List<String> urls = [];
+    if (widget.imageUrl!.contains('|||')) {
+      urls = widget.imageUrl!.split('|||').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else if (widget.imageUrl!.contains(',https://') || widget.imageUrl!.contains(',http://')) {
+      urls = widget.imageUrl!.split(RegExp(r',(?=https?://)')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } else {
+      urls = [widget.imageUrl!.trim()];
+    }
+    
+    print('Parsed ${urls.length} image URLs:');
+    for (int i = 0; i < urls.length; i++) {
+      print('Image $i: ${urls[i]}');
+    }
+    
+    return urls;
+  }
+
+  void _showImageZoom(String imageUrl) {
     setState(() => _isImageZoomed = true);
     showDialog(
       context: context,
@@ -81,9 +110,9 @@ class _FarmerProductDetailPageState extends State<FarmerProductDetailPage> {
           children: [
             Center(
               child: InteractiveViewer(
-                child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
-                    ? Image.network(widget.imageUrl!)
-                    : Icon(Icons.image, size: 100, color: Colors.white),
+                minScale: 0.5,
+                maxScale: 3.0,
+                child: Image.network(imageUrl),
               ),
             ),
             Positioned(
@@ -117,38 +146,112 @@ class _FarmerProductDetailPageState extends State<FarmerProductDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(
-              onTap: _showImageZoom,
-              child: Container(
-                height: 300,
-                width: double.infinity,
-                color: Colors.grey[100],
-                child: Stack(
-                  children: [
-                    widget.imageUrl != null && widget.imageUrl!.isNotEmpty
-                        ? Image.network(widget.imageUrl!, fit: BoxFit.cover, width: double.infinity)
-                        : Center(child: Icon(Icons.image, size: 80, color: Colors.grey[400])),
-                    Positioned(
-                      bottom: 10,
-                      right: 10,
-                      child: Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(8),
+            Container(
+              height: 300,
+              width: double.infinity,
+              color: Colors.grey[100],
+              child: _getAllImageUrls().isEmpty
+                  ? Center(child: Icon(Icons.image, size: 80, color: Colors.grey[400]))
+                  : Stack(
+                      children: [
+                        PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentImageIndex = index;
+                            });
+                          },
+                          itemCount: _getAllImageUrls().length,
+                          itemBuilder: (context, index) {
+                            final imageUrl = _getAllImageUrls()[index];
+                            return GestureDetector(
+                              onTap: () => _showImageZoom(imageUrl),
+                              child: Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.broken_image, size: 80, color: Colors.grey[400]),
+                                        SizedBox(height: 8),
+                                        Text('Image not available', style: TextStyle(color: Colors.grey[600])),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            );
+                          },
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.zoom_in, color: Colors.white, size: 16),
-                            SizedBox(width: 4),
-                            Text('Tap to zoom', style: TextStyle(color: Colors.white, fontSize: 12)),
-                          ],
+                        if (_getAllImageUrls().length > 1)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                '${_currentImageIndex + 1}/${_getAllImageUrls().length}',
+                                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        if (_getAllImageUrls().length > 1)
+                          Positioned(
+                            bottom: 16,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(
+                                _getAllImageUrls().length,
+                                (index) => AnimatedContainer(
+                                  duration: Duration(milliseconds: 300),
+                                  margin: EdgeInsets.symmetric(horizontal: 4),
+                                  width: _currentImageIndex == index ? 24 : 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: _currentImageIndex == index ? Colors.green[600] : Colors.white.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          bottom: 10,
+                          right: 10,
+                          child: Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.zoom_in, color: Colors.white, size: 16),
+                                SizedBox(width: 4),
+                                Text('Tap to zoom', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
             ),
             Container(
               color: Colors.white,

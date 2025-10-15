@@ -5,7 +5,7 @@ import 'dart:io';
 import '../auth/Signin.dart';
 import 'homepage.dart';
 import 'Addproduct.dart';
-import 'Orders_history.dart' as OrderHistory;
+import 'orders_page.dart' as orders_page;
 import 'contact_admin.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -127,6 +127,8 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   }
 
   void _onNavItemTapped(int index) {
+    if (index == 3) return;
+    
     setState(() {
       _currentIndex = index;
     });
@@ -137,12 +139,14 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
         targetPage = FarmersHomePage(token: widget.token);
         break;
       case 1:
-        targetPage = OrderHistory.OrdersHistoryPage(token: widget.token);
-        break;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => orders_page.OrdersPage(token: widget.token)),
+        );
+        return;
       case 2:
         targetPage = FarmerProductsPage(token: widget.token);
         break;
-      case 3:
       default:
         return;
     }
@@ -853,17 +857,6 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Ratings feature coming soon!'), backgroundColor: Color(0xFF2E7D32)),
-              );
-            },
-          ),
-          _buildDivider(),
-          _buildMenuItem(
-            icon: Icons.history,
-            title: 'Order History',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => OrderHistory.OrdersHistoryPage(token: widget.token)),
               );
             },
           ),
