@@ -994,32 +994,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
               flex: 5,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                child: firstImageUrl != null && firstImageUrl.startsWith('http')
-                    ? Image.network(
-                  CloudinaryUploader.optimizeImageUrl(firstImageUrl, width: 300, height: 150, quality: 'auto', format: 'auto'),
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.green[50],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[400]!),
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.green[50],
-                    child: Icon(Icons.broken_image, size: 32, color: Colors.green[300]),
-                  ),
-                )
-                    : Container(
-                  color: Colors.green[50],
-                  child: Icon(Icons.image, size: 32, color: Colors.green[300]),
-                ),
+                child: _buildProductImage(firstImageUrl),
               ),
             ),
             Container(
