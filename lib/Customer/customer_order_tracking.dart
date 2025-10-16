@@ -19,32 +19,32 @@ class CustomerOrderTrackingPage extends StatefulWidget {
   State<CustomerOrderTrackingPage> createState() => _CustomerOrderTrackingPageState();
 }
 
-class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
+class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   String? _error;
   List<dynamic> _activeShipments = [];
   Map<String, dynamic>? _selectedOrder;
   List<dynamic> _trackingSteps = [];
-  // Timer? _refreshTimer; // Disabled auto-refresh
+  Timer? _refreshTimer;
+  AnimationController? _vehicleAnimationController;
+  Animation<double>? _vehicleAnimation;
   
   @override
   void initState() {
     super.initState();
     _fetchActiveShipments();
-    // Auto-refresh disabled - uncomment below line to enable
-    // _startAutoRefresh();
+    _startAutoRefresh();
   }
 
   @override
   void dispose() {
-    // _refreshTimer?.cancel(); // Disabled since auto-refresh is not active
+    _refreshTimer?.cancel();
+    _vehicleAnimationController?.dispose();
     super.dispose();
   }
 
-  // Auto-refresh method disabled
-  /*
   void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 40), (timer) {
       if (mounted) {
         _fetchActiveShipments();
         if (_selectedOrder != null) {
@@ -53,7 +53,37 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
       }
     });
   }
-  */
+
+  void _startVehicleAnimation(int currentStepIndex, int totalSteps) {
+    _vehicleAnimationController?.dispose();
+    _vehicleAnimationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _vehicleAnimation = Tween<double>(begin: 0.0, end: currentStepIndex / (totalSteps - 1))
+        .animate(CurvedAnimation(parent: _vehicleAnimationController!, curve: Curves.easeInOut));
+    _vehicleAnimationController!.forward();
+  }
+
+  IconData _getVehicleIcon(String status) {
+    switch (status.toUpperCase()) {
+      case 'PLACED':
+      case 'ACCEPTED':
+      case 'PICKED_UP':
+        return Icons.two_wheeler;
+      case 'SHIPPED':
+      case 'IN_TRANSIT':
+      case 'REACHED_HUB':
+      case 'RECEIVED':
+        return Icons.local_shipping;
+      case 'OUT_FOR_DELIVERY':
+      case 'COMPLETED':
+      case 'DELIVERED':
+        return Icons.two_wheeler;
+      default:
+        return Icons.two_wheeler;
+    }
+  }
 
   Future<String?> _resolveToken() async {
     if (widget.token != null && widget.token!.trim().isNotEmpty) {
@@ -126,6 +156,11 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
       setState(() {
         final data = result['data'] as Map<String, dynamic>;
         _trackingSteps = data['tracking_steps'] as List<dynamic> ?? [];
+        final filteredSteps = _trackingSteps.where((step) => step['status']?.toUpperCase() != 'ASSIGNED').toList();
+        final currentIndex = filteredSteps.indexWhere((step) => step['current'] == true);
+        if (currentIndex >= 0 && filteredSteps.isNotEmpty) {
+          _startVehicleAnimation(currentIndex, filteredSteps.length);
+        }
       });
     }
   }
@@ -162,9 +197,15 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
     }
   }
 
+  String _displayStatus(String? status) {
+    if (status?.toUpperCase() == 'SHIPPED') return 'IN_TRANSIT';
+    return status ?? 'Unknown';
+  }
+
   Widget _buildShipmentCard(Map<String, dynamic> shipment) {
     final isSelected = _selectedOrder?['order_id'] == shipment['order_id'];
-    final statusColor = _getStatusColor(shipment['current_status'] ?? 'unknown');
+    final displayStatus = _displayStatus(shipment['current_status']);
+    final statusColor = _getStatusColor(displayStatus);
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -209,7 +250,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
           children: [
             const SizedBox(height: 4),
             Text(
-              shipment['current_status'] ?? 'Unknown',
+              displayStatus,
               style: TextStyle(
                 color: statusColor,
                 fontWeight: FontWeight.w600,
@@ -281,9 +322,9 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
       );
     }
 
-    // Filter out "Transporter Assigned" step
-    final filteredSteps = _trackingSteps.where((step) => 
-      (step['status']?.toUpperCase() != 'ASSIGNED')).toList();
+    final filteredSteps = _trackingSteps.where((step) => step['status']?.toUpperCase() != 'ASSIGNED').toList();
+    final currentIndex = filteredSteps.indexWhere((step) => step['current'] == true);
+    final currentStatus = currentIndex >= 0 ? filteredSteps[currentIndex]['status'] : '';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -310,105 +351,160 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
             ),
           ),
           const SizedBox(height: 20),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredSteps.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              final step = filteredSteps[index];
-              return _buildTrackingStep(step, index == filteredSteps.length - 1);
-            },
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredSteps.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final step = filteredSteps[index];
+                    final isActive = index <= currentIndex;
+                    final isCurrent = step['current'] ?? false;
+                    return Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: isActive ? _getStatusColor(step['status'] ?? '') : Colors.grey[300],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _getStepIcon(step['status'] ?? ''),
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                step['label'] ?? 'Unknown Step',
+                                style: TextStyle(
+                                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                                  color: isActive ? Colors.black : Colors.grey,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              if (step['timestamp'] != null)
+                                Text(
+                                  _formatDate(step['timestamp']),
+                                  style: TextStyle(
+                                    color: isActive ? Colors.grey[600] : Colors.grey[400],
+                                    fontSize: 11,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 60,
+                height: filteredSteps.length * 56.0,
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: 20,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(
+                        width: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    if (_vehicleAnimation != null && currentIndex >= 0)
+                      AnimatedBuilder(
+                        animation: _vehicleAnimation!,
+                        builder: (context, child) {
+                          final progress = _vehicleAnimation!.value;
+                          final stepHeight = 56.0;
+                          final topPosition = progress * (filteredSteps.length - 1) * stepHeight;
+                          final greenHeight = topPosition + 20;
+                          return Positioned(
+                            right: 20,
+                            top: 0,
+                            child: Container(
+                              width: 8,
+                              height: greenHeight,
+                              decoration: BoxDecoration(
+                                color: Colors.green,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    if (_vehicleAnimation != null && currentIndex >= 0)
+                      AnimatedBuilder(
+                        animation: _vehicleAnimation!,
+                        builder: (context, child) {
+                          final progress = _vehicleAnimation!.value;
+                          final stepHeight = 56.0;
+                          final topPosition = progress * (filteredSteps.length - 1) * stepHeight;
+                          final animatedIndex = (progress * (filteredSteps.length - 1)).round().clamp(0, filteredSteps.length - 1);
+                          final animatedStatus = filteredSteps[animatedIndex]['status'] ?? '';
+                          final vehicleIcon = _getVehicleIcon(animatedStatus);
+                          return Positioned(
+                            right: 0,
+                            top: topPosition,
+                            child: Icon(
+                              vehicleIcon,
+                              color: Colors.orange,
+                              size: 40,
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTrackingStep(Map<String, dynamic> step, bool isLast) {
-    final isCompleted = step['completed'] ?? false;
+  Widget _buildTrackingStep(Map<String, dynamic> step, bool isActive) {
     final isCurrent = step['current'] ?? false;
     
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isCompleted || isCurrent
-                    ? (isCurrent ? Colors.orange : Colors.green)
-                    : Colors.grey[300],
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Icon(
-                  _getStepIcon(step['status']),
-                  color: Colors.white,
-                  size: 20,
-                ),
+    return Container(
+      height: 40,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            step['label'] ?? 'Unknown Step',
+            style: TextStyle(
+              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? Colors.black : Colors.grey,
+              fontSize: 14,
+            ),
+          ),
+          if (step['timestamp'] != null)
+            Text(
+              _formatDate(step['timestamp']),
+              style: TextStyle(
+                color: isActive ? Colors.grey[600] : Colors.grey[400],
+                fontSize: 11,
               ),
             ),
-            if (!isLast)
-              Container(
-                width: 2,
-                height: 40,
-                color: isCompleted ? Colors.green : Colors.grey[300],
-              ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                step['label'] ?? 'Unknown Step',
-                style: TextStyle(
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                  color: isCompleted || isCurrent ? Colors.black : Colors.grey,
-                ),
-              ),
-              if (isCurrent)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Current Status',
-                    style: TextStyle(
-                      color: Colors.orange[700],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              if (step['location'] != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  step['location'],
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-              if (step['timestamp'] != null) ...[
-                const SizedBox(height: 4),
-                Text(
-                  _formatDate(step['timestamp']),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (isCompleted)
-          const Icon(Icons.check_circle, color: Colors.green, size: 20),
-      ],
+        ],
+      ),
     );
   }
 
@@ -419,14 +515,19 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
       case 'ACCEPTED':
         return Icons.check_circle;
       case 'ASSIGNED':
-        return Icons.person_add; // Keep for internal use, but won't be shown in timeline
+        return Icons.person_add;
+      case 'PICKED_UP':
       case 'SHIPPED':
         return Icons.local_shipping;
       case 'IN_TRANSIT':
         return Icons.directions_transit;
+      case 'REACHED_HUB':
+      case 'RECEIVED':
+        return Icons.warehouse;
       case 'OUT_FOR_DELIVERY':
         return Icons.delivery_dining;
       case 'DELIVERED':
+      case 'COMPLETED':
         return Icons.done_all;
       default:
         return Icons.circle;
@@ -437,7 +538,8 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
-    final statusColor = _getStatusColor(order['current_status'] ?? 'unknown');
+    final displayStatus = _displayStatus(order['current_status']);
+    final statusColor = _getStatusColor(displayStatus);
     
     return Container(
       width: double.infinity,
@@ -452,33 +554,41 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Your Order',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              const Text(
+                'Your Order',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  (order['current_status'] ?? 'Unknown').replaceAll('_', ' '),
+                  displayStatus.replaceAll('_', ' ').toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
+                    fontSize: 12,
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Order #${order['order_id']}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -941,6 +1051,10 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Order Tracking'),
         backgroundColor: Colors.green[600],
         elevation: 0,
@@ -950,10 +1064,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
             onPressed: _refreshData,
           ),
         ],
-      ),
-      drawer: CustomerNavigationUtils.buildCustomerDrawer(
-        parentContext: context,
-        token: widget.token,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -995,10 +1105,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
                         ),
                       ),
                     ),
-      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
-        currentIndex: 1, // Orders tab
-        onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
-      ),
     );
   }
 }

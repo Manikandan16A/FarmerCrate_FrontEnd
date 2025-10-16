@@ -1089,7 +1089,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             children: [
               // Main wExpected to find ']'.elcome headline simplified and customer-specific
               Text(
-                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}, to FarmerCrate',
+                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -1484,33 +1484,42 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 16,
                         color: Colors.grey[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey[500],
+                    SizedBox(height: 3),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Text(
+                        product.category,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Spacer(),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '₹${product.price.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          fontSize: 15,
                           color: Colors.white,
                         ),
                       ),
@@ -1767,7 +1776,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(10),
+                padding: EdgeInsets.all(6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1775,23 +1784,21 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 10,
                         color: Colors.grey[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 2),
                     Text(
                       product.category,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 8,
                         color: Colors.grey[500],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 4),
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber[600], size: 12),
@@ -1807,16 +1814,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 9,
                                 color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
@@ -1824,19 +1831,19 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                             ),
                           ),
                         ),
-                        SizedBox(width: 6),
+                        SizedBox(width: 3),
                         GestureDetector(
                           onTap: () => _addToCart(product),
                           child: Container(
-                            padding: EdgeInsets.all(8),
+                            padding: EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.orange[600],
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Icon(
                               Icons.add_shopping_cart,
                               color: Colors.white,
-                              size: 16,
+                              size: 9,
                             ),
                           ),
                         ),

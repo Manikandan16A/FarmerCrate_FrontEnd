@@ -64,6 +64,210 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Future<void> _updateAvailability(bool isAvailable, String token) async {
+    try {
+      final response = await http.put(
+        Uri.parse('https://farmercrate.onrender.com/api/delivery-persons/availability'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'is_available': isAvailable}),
+      );
+      print('Availability update response: ${response.statusCode}');
+    } catch (e) {
+      print('Error updating availability: $e');
+    }
+  }
+
+  void _showDeliveryAvailabilityDialog(Map<String, dynamic> user, String token) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.green[50]!, Colors.white],
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delivery_dining, size: 48, color: Colors.green[700]),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Are you available?',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Set your availability status to start receiving delivery orders',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _updateAvailability(false, token);
+                            Navigator.of(context).pop();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DeliveryDashboard(user: user, token: token),
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'You are offline. No orders will be assigned.',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFFFF9800),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.all(16),
+                                elevation: 6,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.grey[800],
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.cancel_outlined, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Not Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _updateAvailability(true, token);
+                            Navigator.of(context).pop();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DeliveryDashboard(user: user, token: token),
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.info_outline, color: Colors.white, size: 20),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'You are now available for deliveries',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFF2196F3),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.all(16),
+                                elevation: 6,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                            print('✓ Navigation to DeliveryDashboard successful');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.check_circle, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       print('\n========== LOGIN ATTEMPT ==========');
@@ -218,14 +422,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               );
               print('✓ Navigation to AdminManagementPage successful');
             } else if (user['role'] == 'delivery') {
-              print('Navigating to DeliveryDashboard...');
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DeliveryDashboard(user: user, token: token),
-                ),
-              );
-              print('✓ Navigation to DeliveryDashboard successful');
+              print('Showing availability dialog for delivery person...');
+              _showDeliveryAvailabilityDialog(user, token);
             } else {
               print('❌ ERROR: Unknown user role');
               print('Role received: ${user['role']}');
