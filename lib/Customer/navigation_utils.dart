@@ -4,6 +4,7 @@ import 'Categories.dart';
 import 'Cart.dart';
 import 'profile.dart';
 import 'order history.dart';
+import 'customer_order_tracking.dart';
 import '../auth/Signin.dart';
 
 
@@ -265,6 +266,19 @@ class CustomerDrawer extends StatelessWidget {
                 );
               },
             ),
+            // ListTile(
+            //   leading: Icon(Icons.track_changes, color: Colors.green[600]),
+            //   title: Text('Track Orders'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => CustomerOrderTrackingPage(token: token),
+            //       ),
+            //     );
+            //   },
+            // ),
             ListTile(
               leading: Icon(Icons.category, color: Colors.green[600]),
               title: Text('Categories'),
