@@ -34,6 +34,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   String farmerName = 'Farmer';
   String _statusFilter = 'All';
   int _pendingOrdersCount = 0;
+  static bool _hasShownWelcome = false;
 
   @override
   void initState() {
@@ -58,8 +59,13 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
         setState(() {
           farmerName = name;
         });
-        if (mounted) {
-          NotificationHelper.showInfo(context, 'Welcome $name, to FarmerCrate');
+        if (mounted && !_hasShownWelcome) {
+          _hasShownWelcome = true;
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              NotificationHelper.showInfo(context, 'Welcome $name, to FarmerCrate');
+            }
+          });
         }
       }
     } catch (e) {}
@@ -432,7 +438,28 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           ],
         ),
       ),
-      body: RefreshIndicator(
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading Products...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.green[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
         onRefresh: fetchProducts,
         child: CustomScrollView(
           controller: _scrollController,
@@ -473,7 +500,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Welcome $farmerName,to FarmerCrate',
+                          'Welcome $farmerName',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
