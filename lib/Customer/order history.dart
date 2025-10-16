@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import 'customerhomepage.dart';
 import 'customer_order_tracking.dart';
 
@@ -23,6 +24,13 @@ class OrderItem {
   final DateTime createdAt;
   final String productName;
   final double productPrice;
+  final String productImage;
+  final String sourceTransporterName;
+  final String sourceTransporterAddress;
+  final String destTransporterName;
+  final String destTransporterAddress;
+  final String deliveryPersonName;
+  final String deliveryPersonPhone;
 
   OrderItem({
     required this.orderId,
@@ -33,19 +41,58 @@ class OrderItem {
     required this.createdAt,
     required this.productName,
     required this.productPrice,
+    required this.productImage,
+    required this.sourceTransporterName,
+    required this.sourceTransporterAddress,
+    required this.destTransporterName,
+    required this.destTransporterAddress,
+    required this.deliveryPersonName,
+    required this.deliveryPersonPhone,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     final product = json['product'] ?? {};
+    final images = product['images'] as List<dynamic>? ?? [];
+    String imageUrl = '';
+    
+    if (images.isNotEmpty) {
+      try {
+        final primaryImage = images.firstWhere(
+          (img) => img is Map && img['is_primary'] == true,
+          orElse: () => null,
+        );
+        if (primaryImage != null && primaryImage is Map) {
+          imageUrl = (primaryImage['image_url'] ?? '').toString();
+        } else if (images.first is Map) {
+          imageUrl = ((images.first as Map)['image_url'] ?? '').toString();
+        }
+      } catch (e) {
+        if (images.first is Map) {
+          imageUrl = ((images.first as Map)['image_url'] ?? '').toString();
+        }
+      }
+    }
+    
+    final sourceTransporter = json['source_transporter'] ?? {};
+    final destTransporter = json['destination_transporter'] ?? {};
+    final deliveryPerson = json['delivery_person'] ?? {};
+    
     return OrderItem(
       orderId: (json['order_id'] ?? json['id'] ?? 0) as int,
       quantity: (json['quantity'] ?? 0) as int,
       totalPrice: (json['total_price'] is num) ? (json['total_price'] as num).toDouble() : double.tryParse('${json['total_price']}') ?? 0.0,
-      status: (json['status'] ?? '').toString(),
+      status: (json['current_status'] ?? json['status'] ?? '').toString(),
       deliveryAddress: (json['delivery_address'] ?? '').toString(),
       createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()) ?? DateTime.now(),
       productName: (product['name'] ?? product['title'] ?? '').toString(),
       productPrice: (product['current_price'] is num) ? (product['current_price'] as num).toDouble() : double.tryParse('${product['current_price']}') ?? 0.0,
+      productImage: imageUrl,
+      sourceTransporterName: (sourceTransporter['name'] ?? '').toString(),
+      sourceTransporterAddress: (sourceTransporter['address'] ?? '').toString(),
+      destTransporterName: (destTransporter['name'] ?? '').toString(),
+      destTransporterAddress: (destTransporter['address'] ?? '').toString(),
+      deliveryPersonName: (deliveryPerson['name'] ?? '').toString(),
+      deliveryPersonPhone: (deliveryPerson['mobile_number'] ?? '').toString(),
     );
   }
 }
@@ -521,21 +568,69 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       children: [
                         Row(
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    _statusColor(o.status).withOpacity(0.1),
-                                    _statusColor(o.status).withOpacity(0.05),
-                                  ],
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(15),
+                              child: o.productImage.isNotEmpty
+                                  ? Image.network(
+                                o.productImage,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        _statusColor(o.status).withOpacity(0.1),
+                                        _statusColor(o.status).withOpacity(0.05),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  child: Icon(
+                                    Icons.shopping_bag,
+                                    color: _statusColor(o.status),
+                                    size: 32,
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(15),
-                              ),
-                              child: Icon(
-                                Icons.shopping_bag,
-                                color: _statusColor(o.status),
-                                size: 28,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                                  : Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _statusColor(o.status).withOpacity(0.1),
+                                      _statusColor(o.status).withOpacity(0.05),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: Icon(
+                                  Icons.shopping_bag,
+                                  color: _statusColor(o.status),
+                                  size: 32,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -601,6 +696,206 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                     child: _buildInfoItem('Date', _formatDate(o.createdAt)),
                                   ),
                                 ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.green[50]!, Colors.green[100]!],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.green[200]!, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[600],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.store,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Source',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            o.sourceTransporterName.isNotEmpty ? o.sourceTransporterName : 'Wait for assigning',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: o.sourceTransporterName.isNotEmpty ? Colors.green[900] : Colors.grey[600],
+                                            ),
+                                          ),
+                                          if (o.sourceTransporterAddress.isNotEmpty)
+                                            Text(
+                                              o.sourceTransporterAddress,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.green[700],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.blue[50]!, Colors.blue[100]!],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue[200]!, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue[600],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.location_on,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Destination',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.blue[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            o.destTransporterName.isNotEmpty ? o.destTransporterName : 'Wait for assigning',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: o.destTransporterName.isNotEmpty ? Colors.blue[900] : Colors.grey[600],
+                                            ),
+                                          ),
+                                          if (o.destTransporterAddress.isNotEmpty)
+                                            Text(
+                                              o.destTransporterAddress,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.blue[700],
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.orange[50]!, Colors.orange[100]!],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.orange[200]!, width: 1),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange[600],
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.delivery_dining,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Delivery Person',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.orange[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          Text(
+                                            o.deliveryPersonName.isNotEmpty ? o.deliveryPersonName : 'Wait for assigning',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: o.deliveryPersonName.isNotEmpty ? Colors.orange[900] : Colors.grey[600],
+                                            ),
+                                          ),
+                                          if (o.deliveryPersonPhone.isNotEmpty)
+                                            Text(
+                                              o.deliveryPersonPhone,
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.orange[700],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (o.deliveryPersonPhone.isNotEmpty)
+                                      IconButton(
+                                        onPressed: () async {
+                                          final uri = Uri.parse('tel:${o.deliveryPersonPhone}');
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri);
+                                          }
+                                        },
+                                        icon: Icon(
+                                          Icons.phone,
+                                          color: Colors.orange[700],
+                                        ),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 12),
                               SizedBox(

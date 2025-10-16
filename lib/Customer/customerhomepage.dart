@@ -9,7 +9,7 @@ import 'navigation_utils.dart';
 
 import 'product_details_screen.dart';
 import 'TrendingPage.dart';
-import 'OrderHistory.dart';
+import 'order history.dart';
 import 'navigation_utils.dart' as nav_utils;
 
 class CustomerHomePage extends StatefulWidget {

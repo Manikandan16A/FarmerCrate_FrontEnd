@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../auth/Signin.dart';
 import 'Cart.dart';
 import 'customerhomepage.dart';
-import 'OrderHistory.dart';
+import 'order history.dart';
 import 'product_details_screen.dart';
 
 // Enhanced Data Models (API Ready)
@@ -1506,6 +1506,68 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   }
 
   Widget _buildProductsSection() {
+    if (_isLoadingImages) {
+      return Expanded(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.green[50]!,
+                Colors.white,
+                Colors.green[50]!,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green[400]!, Colors.green[600]!],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.3),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 3,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.green[700]!, Colors.green[500]!],
+                  ).createShader(bounds),
+                  child: Text(
+                    'Loading products...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
