@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../auth/Signin.dart';
 import 'admin_homepage.dart';
 import 'adminreport.dart';
@@ -29,13 +31,69 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
     {'id': 'FARM004', 'name': 'Lisa White', 'email': 'lisa@example.com', 'phone': '+91 9876543213', 'products': 10, 'orders': 7, 'customers': 20, 'revenue': 38000},
   ];
   
-  // Mock customer data
-  List<Map<String, dynamic>> customers = [
-    {'id': 'CUST001', 'name': 'Alice Johnson', 'email': 'alice@example.com', 'phone': '+91 9876543220', 'orders': 15, 'spent': 12500, 'lastOrder': '2024-01-15'},
-    {'id': 'CUST002', 'name': 'Bob Smith', 'email': 'bob@example.com', 'phone': '+91 9876543221', 'orders': 10, 'spent': 8500, 'lastOrder': '2024-01-14'},
-    {'id': 'CUST003', 'name': 'Carol Davis', 'email': 'carol@example.com', 'phone': '+91 9876543222', 'orders': 20, 'spent': 15000, 'lastOrder': '2024-01-16'},
-    {'id': 'CUST004', 'name': 'David Wilson', 'email': 'david@example.com', 'phone': '+91 9876543223', 'orders': 8, 'spent': 6500, 'lastOrder': '2024-01-13'},
-  ];
+  List<Map<String, dynamic>> customers = [];
+  bool _isLoadingCustomers = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCustomers();
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString == 'N/A') return 'N/A';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  Future<void> _fetchCustomers() async {
+    setState(() {
+      _isLoadingCustomers = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/customers'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          customers = (data['data'] as List).map((customer) {
+            return {
+              'id': customer['customer_id']?.toString() ?? 'N/A',
+              'name': customer['name'] ?? 'N/A',
+              'email': customer['email'] ?? 'N/A',
+              'phone': customer['mobile_number'] ?? 'N/A',
+              'address': customer['address'] ?? 'N/A',
+              'zone': customer['zone'] ?? 'N/A',
+              'state': customer['state'] ?? 'N/A',
+              'district': customer['district'] ?? 'N/A',
+              'age': customer['age'] ?? 0,
+              'orders': 0,
+              'spent': 0,
+              'lastOrder': _formatDate(customer['created_at']),
+            };
+          }).toList();
+          _isLoadingCustomers = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching customers: $e');
+      setState(() {
+        _isLoadingCustomers = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +430,23 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildCustomersList() {
+    if (_isLoadingCustomers) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
+    if (customers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No customers found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
     return Container(
       color: Color(0xFFF5F7FA),
       child: ListView.builder(
