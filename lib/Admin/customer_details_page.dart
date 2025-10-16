@@ -46,6 +46,8 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage> {
           orders = data['data'] ?? [];
           _isLoading = false;
         });
+      } else {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       print('Error fetching orders: $e');
