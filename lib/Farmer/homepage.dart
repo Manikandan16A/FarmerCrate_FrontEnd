@@ -22,7 +22,7 @@ class FarmersHomePage extends StatefulWidget {
   State<FarmersHomePage> createState() => _FarmersHomePageState();
 }
 
-class _FarmersHomePageState extends State<FarmersHomePage> {
+class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   int _currentIndex = 0;
   List<Product> products = [];
@@ -32,32 +32,90 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   bool _showSearchBar = true;
   bool _isSearching = false;
   String farmerName = 'Farmer';
+  String? farmerImageUrl;
+  bool _isLoadingProfile = true;
   String _statusFilter = 'All';
   int _pendingOrdersCount = 0;
   static bool _hasShownWelcome = false;
 
+  // Animation controllers
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _pulseController;
+
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _pulseAnimation;
+
   @override
   void initState() {
     super.initState();
+    _initAnimations();
     fetchProducts();
     fetchFarmerProfile();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
   }
 
+  void _initAnimations() {
+    _fadeController = AnimationController(
+      duration: Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _slideController = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _pulseController = AnimationController(
+      duration: Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut)
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0.0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.elasticOut));
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
+    );
+
+    _fadeController.forward();
+    _slideController.forward();
+    _pulseController.repeat(reverse: true);
+  }
+
   Future<void> fetchFarmerProfile() async {
+    setState(() {
+      _isLoadingProfile = true;
+    });
     try {
+      print('Fetching farmer profile...');
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/farmers/me'),
         headers: {
           'Authorization': 'Bearer ${widget.token}',
         },
       );
+      print('Profile response status: ${response.statusCode}');
+      print('Profile response body: ${response.body}');
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print('Profile data: $data');
         final name = data['data']['name'] ?? 'Farmer';
+        final imageUrl = data['data']['image_url'] ?? data['data']['imageUrl'] ?? data['data']['profile_image'] ?? data['data']['image'];
+        print('Farmer name: $name');
+        print('Farmer image URL: $imageUrl');
         setState(() {
           farmerName = name;
+          farmerImageUrl = imageUrl;
+          _isLoadingProfile = false;
         });
         if (mounted && !_hasShownWelcome) {
           _hasShownWelcome = true;
@@ -67,14 +125,27 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
             }
           });
         }
+      } else {
+        print('Failed to fetch profile: ${response.statusCode}');
+        setState(() {
+          _isLoadingProfile = false;
+        });
       }
-    } catch (e) {}
+    } catch (e) {
+      print('Error fetching profile: $e');
+      setState(() {
+        _isLoadingProfile = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -466,149 +537,174 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           physics: AlwaysScrollableScrollPhysics(),
           slivers: [
           SliverToBoxAdapter(
-            child: Container(
-              margin: EdgeInsets.fromLTRB(16, 16, 16, 12),
-              padding: EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Colors.white, Colors.green[50]!],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: Offset(0, 8),
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Container(
+                  margin: EdgeInsets.fromLTRB(20, 8, 20, 8),
+                  padding: EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.green[50]!, Colors.white],
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: Offset(0,4)),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green[100],
-                          borderRadius: BorderRadius.circular(12),
+                      Text(
+                        'Welcome $farmerName',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.green[800],
                         ),
-                        child: Icon(Icons.waving_hand, color: Colors.green[700], size: 24),
                       ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Welcome $farmerName',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.green[800],
-                            height: 1.3,
-                          ),
-                        ),
+                      SizedBox(height: 14),
+                      AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _pulseAnimation.value,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => FarmerProfilePage(token: widget.token)),
+                                );
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.green[400]!,
+                                      Colors.green[600]!,
+                                      Colors.green[700]!,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.4),
+                                      blurRadius: 20,
+                                      offset: Offset(0, 10),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                            ),
+                                            child: Text(
+                                              '✨ Update Profile',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Keep your profile fresh & up to date',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.9),
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Tap here to update your profile',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.95),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(width: 20),
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                                      ),
+                                      child: _isLoadingProfile
+                                          ? Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          ),
+                                        ),
+                                      )
+                                          : farmerImageUrl != null && farmerImageUrl!.isNotEmpty
+                                          ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(18),
+                                        child: Image.network(
+                                          farmerImageUrl!,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (context, child, loadingProgress) {
+                                            if (loadingProgress == null) return child;
+                                            return Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          errorBuilder: (context, error, stackTrace) => Icon(
+                                            Icons.person,
+                                            size: 40,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                          : Icon(
+                                        Icons.person,
+                                        size: 40,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
-                  SizedBox(height: 20),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => FarmerProfilePage(token: widget.token)),
-                      );
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF66BB6A), Color(0xFF43A047), Color(0xFF2E7D32)],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.5),
-                            blurRadius: 24,
-                            offset: Offset(0, 12),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.25),
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.edit_outlined, color: Colors.white, size: 14),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Update Profile',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 14),
-                                Text(
-                                  'Keep your profile fresh & up to date',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.4,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  'Tap here to update',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontSize: 13,
-                                    height: 1.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          SizedBox(width: 16),
-                          Container(
-                            width: 75,
-                            height: 75,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: Icon(Icons.person_outline, size: 42, color: Colors.green[700]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -1084,28 +1180,33 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: Colors.green[800],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: Colors.grey[800],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          description,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[600],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
