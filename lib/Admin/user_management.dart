@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../auth/Signin.dart';
 import 'admin_homepage.dart';
 import 'adminreport.dart';
@@ -17,25 +19,73 @@ class AdminUserManagementPage extends StatefulWidget {
 
 class _AdminUserManagementPageState extends State<AdminUserManagementPage> with SingleTickerProviderStateMixin {
   int _currentIndex = 1;
-  String? selectedFilter;
-  String? expandedFarmerId;
+  String selectedFilter = 'Farmers';
+  int? expandedFarmerId;
   String? expandedCustomerId;
+  bool isLoading = false;
+  List<Map<String, dynamic>> farmers = [];
   
-  // Mock farmer data
-  List<Map<String, dynamic>> farmers = [
-    {'id': 'FARM001', 'name': 'John Farmer', 'email': 'john@example.com', 'phone': '+91 9876543210', 'products': 12, 'orders': 8, 'customers': 25, 'revenue': 45000},
-    {'id': 'FARM002', 'name': 'Sarah Green', 'email': 'sarah@example.com', 'phone': '+91 9876543211', 'products': 8, 'orders': 5, 'customers': 15, 'revenue': 32000},
-    {'id': 'FARM003', 'name': 'Mike Brown', 'email': 'mike@example.com', 'phone': '+91 9876543212', 'products': 15, 'orders': 12, 'customers': 30, 'revenue': 58000},
-    {'id': 'FARM004', 'name': 'Lisa White', 'email': 'lisa@example.com', 'phone': '+91 9876543213', 'products': 10, 'orders': 7, 'customers': 20, 'revenue': 38000},
-  ];
-  
-  // Mock customer data
   List<Map<String, dynamic>> customers = [
     {'id': 'CUST001', 'name': 'Alice Johnson', 'email': 'alice@example.com', 'phone': '+91 9876543220', 'orders': 15, 'spent': 12500, 'lastOrder': '2024-01-15'},
     {'id': 'CUST002', 'name': 'Bob Smith', 'email': 'bob@example.com', 'phone': '+91 9876543221', 'orders': 10, 'spent': 8500, 'lastOrder': '2024-01-14'},
     {'id': 'CUST003', 'name': 'Carol Davis', 'email': 'carol@example.com', 'phone': '+91 9876543222', 'orders': 20, 'spent': 15000, 'lastOrder': '2024-01-16'},
     {'id': 'CUST004', 'name': 'David Wilson', 'email': 'david@example.com', 'phone': '+91 9876543223', 'orders': 8, 'spent': 6500, 'lastOrder': '2024-01-13'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFarmers();
+  }
+
+  Future<void> _fetchFarmers() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.29.148:3000/api/admin/farmers-with-orders'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          farmers = (data['data'] as List).map((farmer) {
+            List products = farmer['products'] ?? [];
+            int totalProducts = products.length;
+            
+            List allOrders = [];
+            Set<String> uniqueCustomerNumbers = {};
+            double totalRevenue = 0.0;
+            
+            for (var product in products) {
+              List orders = product['orders'] ?? [];
+              allOrders.addAll(orders);
+              for (var order in orders) {
+                String? mobile = order['customer']?['mobile_number'];
+                if (mobile != null) uniqueCustomerNumbers.add(mobile);
+                double farmerAmount = double.tryParse(order['farmer_amount']?.toString() ?? '0') ?? 0.0;
+                totalRevenue += farmerAmount;
+              }
+            }
+            
+            return {
+              'id': farmer['farmer_id'],
+              'name': farmer['name'],
+              'email': farmer['email'],
+              'phone': farmer['mobile_number'],
+              'products': totalProducts,
+              'orders': allOrders.length,
+              'customers': uniqueCustomerNumbers.length,
+              'revenue': totalRevenue,
+            };
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error fetching farmers: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,19 +198,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildFilterChip('Farmers', Icons.agriculture_rounded, Color(0xFF4CAF50), selectedFilter == 'Farmers', () {
+                  _buildFilterChip('Farmers', Icons.agriculture_rounded, Color(0xFF4CAF50), (selectedFilter ?? 'Farmers') == 'Farmers', () {
                     setState(() => selectedFilter = 'Farmers');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Customers', Icons.people_rounded, Color(0xFF2196F3), selectedFilter == 'Customers', () {
+                  _buildFilterChip('Customers', Icons.people_rounded, Color(0xFF2196F3), (selectedFilter ?? 'Farmers') == 'Customers', () {
                     setState(() => selectedFilter = 'Customers');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Transporters', Icons.local_shipping_rounded, Color(0xFFFF9800), selectedFilter == 'Transporters', () {
+                  _buildFilterChip('Transporters', Icons.local_shipping_rounded, Color(0xFFFF9800), (selectedFilter ?? 'Farmers') == 'Transporters', () {
                     setState(() => selectedFilter = 'Transporters');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Delivery', Icons.delivery_dining_rounded, Color(0xFF9C27B0), selectedFilter == 'Delivery', () {
+                  _buildFilterChip('Delivery', Icons.delivery_dining_rounded, Color(0xFF9C27B0), (selectedFilter ?? 'Farmers') == 'Delivery', () {
                     setState(() => selectedFilter = 'Delivery');
                   }),
                 ],
@@ -168,34 +218,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
             ),
           ),
           Expanded(
-            child: selectedFilter == null
-                ? Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFFE8F5E9), Color(0xFFF5F7FA)],
-                      ),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.manage_accounts_rounded, size: 80, color: Colors.grey[300]),
-                          SizedBox(height: 16),
-                          Text('Select a category to manage', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
-                        ],
-                      ),
-                    ),
-                  )
-                : selectedFilter == 'Farmers'
+            child: isLoading
+                ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
+                : (selectedFilter ?? 'Farmers') == 'Farmers'
                     ? _buildFarmersList()
-                    : selectedFilter == 'Customers'
+                    : (selectedFilter ?? 'Farmers') == 'Customers'
                         ? _buildCustomersList()
                         : Container(
                             color: Color(0xFFF5F7FA),
                             child: Center(
-                              child: Text('$selectedFilter management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                              child: Text('${selectedFilter ?? 'Farmers'} management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                             ),
                           ),
           ),
@@ -241,6 +273,11 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildFarmersList() {
+    print('Building farmers list. Count: ${farmers.length}');
+    print('Farmers data: $farmers');
+    if (farmers.isEmpty) {
+      return Center(child: Text('No farmers found', style: TextStyle(fontSize: 16, color: Colors.grey[600])));
+    }
     return Container(
       color: Color(0xFFF5F7FA),
       child: ListView.builder(
@@ -252,7 +289,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildFarmerAccordion(Map<String, dynamic> farmer) {
-    bool isExpanded = expandedFarmerId == farmer['id'];
+    bool isExpanded = expandedFarmerId == farmer['id'] as int;
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -263,7 +300,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => expandedFarmerId = isExpanded ? null : farmer['id']),
+            onTap: () => setState(() => expandedFarmerId = isExpanded ? null : farmer['id'] as int),
             child: Container(
               padding: EdgeInsets.all(16),
               child: Row(
@@ -329,7 +366,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
                     Text('Total Revenue', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
                   ],
                 ),
-                Text('₹${farmer['revenue']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green[700])),
+                Text('₹${farmer['revenue'].toStringAsFixed(2)}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green[700])),
               ],
             ),
           ),
