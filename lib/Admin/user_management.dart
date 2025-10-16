@@ -51,20 +51,32 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         final responseData = json.decode(response.body);
         final List<dynamic> data = responseData['data'] ?? [];
         setState(() {
-          customers = (data['data'] as List).map((customer) {
+          farmers = data.map((farmer) {
+            final products = farmer['products'] as List<dynamic>? ?? [];
+            final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
+            Set<String> uniqueCustomers = {};
+            for (var product in products) {
+              final orders = product['Orders'] as List<dynamic>? ?? [];
+              for (var order in orders) {
+                final customer = order['customer'] as Map<String, dynamic>?;
+                if (customer?['mobile_number'] != null) {
+                  uniqueCustomers.add(customer!['mobile_number'].toString());
+                }
+              }
+            }
             return {
-              'id': customer['customer_id']?.toString() ?? 'N/A',
-              'name': customer['name'] ?? 'N/A',
-              'email': customer['email'] ?? 'N/A',
-              'phone': customer['mobile_number'] ?? 'N/A',
-              'address': customer['address'] ?? 'N/A',
-              'zone': customer['zone'] ?? 'N/A',
-              'state': customer['state'] ?? 'N/A',
-              'district': customer['district'] ?? 'N/A',
-              'age': customer['age'] ?? 0,
-              'orders': 0,
-              'spent': 0,
-              'lastOrder': _formatDate(customer['created_at']),
+              'id': farmer['farmer_id'] as int,
+              'name': farmer['name'] ?? 'Unknown',
+              'email': farmer['email'] ?? 'N/A',
+              'phone': farmer['mobile_number'] ?? 'N/A',
+              'address': farmer['address'] ?? 'N/A',
+              'zone': farmer['zone'] ?? 'N/A',
+              'state': farmer['state'] ?? 'N/A',
+              'district': farmer['district'] ?? 'N/A',
+              'products': products.length,
+              'orders': orderStats?['total_orders'] ?? 0,
+              'customers': uniqueCustomers.length,
+              'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
             };
           }).toList();
         });
@@ -106,6 +118,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           ),
         ),
         title: Text('User Management', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        actions: [
+          Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 24),
+              onPressed: _fetchFarmers,
+            ),
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
