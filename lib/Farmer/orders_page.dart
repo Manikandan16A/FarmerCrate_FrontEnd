@@ -7,6 +7,7 @@ import 'ProductEdit.dart';
 import 'farmerprofile.dart';
 import '../auth/Signin.dart';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 import 'order_tracking_page.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -147,58 +148,25 @@ class _OrdersPageState extends State<OrdersPage> {
               orders.removeWhere((order) => order.id == orderId);
             });
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    Icon(
-                      status == 'accepted' ? Icons.check_circle : Icons.cancel,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 8),
-                    Text(responseData['message'] ?? 'Order ${status == 'accepted' ? 'accepted' : 'rejected'} successfully'),
-                  ],
-                ),
-                backgroundColor: status == 'accepted' ? Colors.green : Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            if (status == 'accepted') {
+              NotificationHelper.showInfo(context, responseData['message'] ?? 'Order accepted successfully');
+            } else {
+              NotificationHelper.showError(context, responseData['message'] ?? 'Order rejected successfully');
+            }
           } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(responseData['message'] ?? 'Failed to update order'),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 4),
-              ),
-            );
+            NotificationHelper.showError(context, responseData['message'] ?? 'Failed to update order');
           }
         } catch (e) {
           print('Error parsing response: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Invalid response from server'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          NotificationHelper.showError(context, 'Invalid response from server');
         }
       } else {
         print('Error: Status code ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${response.statusCode}. Response: ${response.body}'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        NotificationHelper.showError(context, 'Error: ${response.statusCode}. Response: ${response.body}');
       }
     } catch (e) {
       print('Network error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Network error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Network error: $e');
     }
   }
 
@@ -925,6 +893,35 @@ class _OrdersPageState extends State<OrdersPage> {
     }
   }
 
+  Widget _buildStatusChip(String status, String label, IconData icon, Color color) {
+    bool isSelected = _statusFilter == status;
+    return FilterChip(
+      selected: isSelected,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: isSelected ? Colors.white : color),
+          SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      onSelected: (selected) {
+        setState(() {
+          _statusFilter = status;
+        });
+        fetchOrders();
+      },
+      backgroundColor: Colors.white,
+      selectedColor: color,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      side: BorderSide(color: color, width: 1.5),
+      elevation: isSelected ? 4 : 0,
+    );
+  }
+
   void _confirmReject(String orderId) {
     showDialog(
       context: context,
@@ -1160,31 +1157,6 @@ class _OrdersPageState extends State<OrdersPage> {
           ),
         ),
         actions: [
-          Container(
-            margin: EdgeInsets.only(right: 8),
-            padding: EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.green[300]!),
-            ),
-            child: DropdownButton<String>(
-              value: _statusFilter,
-              underline: SizedBox(),
-              icon: Icon(Icons.filter_list, color: Colors.green[700]),
-              items: [
-                DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                DropdownMenuItem(value: 'accepted', child: Text('Accepted')),
-                DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _statusFilter = value!;
-                });
-                fetchOrders();
-              },
-            ),
-          ),
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
             onPressed: fetchOrders,
@@ -1227,9 +1199,49 @@ class _OrdersPageState extends State<OrdersPage> {
             ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : orders.isEmpty
+      body: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: Colors.white,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildStatusChip('pending', 'Pending', Icons.pending, Colors.orange),
+                  SizedBox(width: 8),
+                  _buildStatusChip('accepted', 'Accepted', Icons.check_circle, Colors.green),
+                  SizedBox(width: 8),
+                  _buildStatusChip('rejected', 'Rejected', Icons.cancel, Colors.red),
+                  SizedBox(width: 8),
+                  _buildStatusChip('completed', 'Completed', Icons.done_all, Colors.blue),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: isLoading
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                          strokeWidth: 3,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading Orders...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.green[600],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : orders.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1248,17 +1260,20 @@ class _OrdersPageState extends State<OrdersPage> {
                     ],
                   ),
                 )
-              : RefreshIndicator(
-                  onRefresh: fetchOrders,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final order = orders[index];
-                      return _buildOrderCard(order);
-                    },
-                  ),
-                ),
+                    : RefreshIndicator(
+                        onRefresh: fetchOrders,
+                        child: ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: orders.length,
+                          itemBuilder: (context, index) {
+                            final order = orders[index];
+                            return _buildOrderCard(order);
+                          },
+                        ),
+                      ),
+          ),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

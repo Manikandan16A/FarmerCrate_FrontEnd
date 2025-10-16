@@ -172,13 +172,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             print('Token: ${token?.substring(0, 20)}...');
             print('Full User Data: $user');
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Login Successful! Welcome, ${user['role']?.toUpperCase()}'),
-                backgroundColor: Colors.green,
-              ),
-            );
-
             if (user['role'] == 'farmer') {
               print('Navigating to FarmersHomePage...');
               Navigator.pushReplacement(

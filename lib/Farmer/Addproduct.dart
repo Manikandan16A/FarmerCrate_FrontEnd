@@ -11,6 +11,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 
 
 class AddProductPage extends StatefulWidget {
@@ -346,21 +347,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   }
 
   void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.red[600],
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
+    NotificationHelper.showError(context, message);
   }
 
   void _saveProduct() {

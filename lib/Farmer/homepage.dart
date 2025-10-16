@@ -11,6 +11,7 @@ import 'farmer_product_detail.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -33,6 +34,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
   String farmerName = 'Farmer';
   String _statusFilter = 'All';
   int _pendingOrdersCount = 0;
+  static bool _hasShownWelcome = false;
 
   @override
   void initState() {
@@ -53,9 +55,18 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final name = data['data']['name'] ?? 'Farmer';
         setState(() {
-          farmerName = data['data']['name'] ?? 'Farmer';
+          farmerName = name;
         });
+        if (mounted && !_hasShownWelcome) {
+          _hasShownWelcome = true;
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              NotificationHelper.showInfo(context, 'Welcome $name, to FarmerCrate');
+            }
+          });
+        }
       }
     } catch (e) {}
   }
@@ -151,23 +162,27 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           errorMessage = 'Authentication failed. Please login again.';
           isLoading = false;
         });
+        if (mounted) NotificationHelper.showError(context, 'Authentication failed. Please login again.');
       } else if (response.statusCode == 404) {
         setState(() {
           products = [];
           isLoading = false;
           errorMessage = 'No products found. Add your first product!';
         });
+        if (mounted) NotificationHelper.showInfo(context, 'No products found. Add your first product!');
       } else {
         setState(() {
           errorMessage = 'Failed to fetch products. Status: ${response.statusCode}';
           isLoading = false;
         });
+        if (mounted) NotificationHelper.showError(context, 'Failed to fetch products. Status: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         errorMessage = 'Network error: $e';
         isLoading = false;
       });
+      if (mounted) NotificationHelper.showError(context, 'Network error: $e');
     }
   }
 
@@ -423,7 +438,28 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           ],
         ),
       ),
-      body: RefreshIndicator(
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green[600]!),
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading Products...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.green[600],
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : RefreshIndicator(
         onRefresh: fetchProducts,
         child: CustomScrollView(
           controller: _scrollController,
@@ -464,7 +500,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Welcome $farmerName,to FarmerCrate',
+                          'Welcome $farmerName',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w800,

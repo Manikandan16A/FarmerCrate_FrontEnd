@@ -10,6 +10,7 @@ import 'contact_admin.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 import '../Customer/NotificationsPage.dart';
 import '../Customer/AppSettingsPage.dart';
 import '../Customer/AppInfo.dart';
@@ -213,7 +214,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
             _farmerImageUrl = farmerData['image_url']?.toString();
           });
-          _showSnackBar('Profile loaded successfully!', Colors.green[600]!);
+          NotificationHelper.showInfo(context, 'Profile loaded successfully!');
         } else {
           throw Exception('Invalid data format received from server');
         }
@@ -245,36 +246,13 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
   }
 
   void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              color == Colors.red ? Icons.error_outline : Icons.check_circle_outline,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    if (color == Colors.red) {
+      NotificationHelper.showError(context, message);
+    } else if (color == Colors.orange) {
+      NotificationHelper.showWarning(context, message);
+    } else {
+      NotificationHelper.showInfo(context, message);
+    }
   }
 
   void _showEditConfirmation() {
@@ -389,8 +367,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     setState(() {
       _isEditMode = true;
     });
-    _showSnackBar('Edit mode enabled. You can now modify your profile.',
-        Colors.green[600]!);
+    NotificationHelper.showInfo(context, 'Edit mode enabled. You can now modify your profile.');
   }
 
   void _cancelEdit() {
@@ -475,7 +452,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 },
               ),
               ListTile(
-                leading: Icon(Icons.cancel, color: Colors.green[600]!),
+                leading: Icon(Icons.cancel, color: Colors.red[600]!),
                 title: const Text('Cancel'),
                 onTap: () {
                   Navigator.pop(context); // Close the bottom sheet

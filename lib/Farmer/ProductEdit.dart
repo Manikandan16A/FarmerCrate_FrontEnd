@@ -11,6 +11,7 @@ import 'farmerprofile.dart';
 import 'homepage.dart';
 import 'orders_page.dart';
 import '../utils/cloudinary_upload.dart';
+import '../utils/notification_helper.dart';
 
 class Product {
   final int id;
@@ -424,37 +425,19 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       if (response.statusCode == 200 || response.statusCode == 204) {
         // Refresh the product list
         await fetchProducts();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Product updated successfully in database!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        NotificationHelper.showInfo(context, 'Product updated successfully in database!');
       } else if (response.statusCode == 401) {
         setState(() {
           errorMessage = 'Authentication failed. Please login again.';
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Authentication failed. Please login again.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        NotificationHelper.showError(context, 'Authentication failed. Please login again.');
       } else if (response.statusCode == 403) {
         setState(() {
           errorMessage = 'Access denied. You don\'t have permission to update this product.';
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Access denied. You don\'t have permission to update this product.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        NotificationHelper.showError(context, 'Access denied. You don\'t have permission to update this product.');
       } else if (response.statusCode == 400) {
         // Handle 400 Bad Request specifically
         String errorDetail = 'Invalid request data. Please check your input.';
@@ -472,25 +455,13 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           errorMessage = errorDetail;
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorDetail),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 5),
-          ),
-        );
+        NotificationHelper.showWarning(context, errorDetail);
       } else if (response.statusCode == 404) {
         setState(() {
           errorMessage = 'Product not found. It may have been deleted.';
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Product not found. It may have been deleted.'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        NotificationHelper.showWarning(context, 'Product not found. It may have been deleted.');
       } else {
         String errorMessage = 'Failed to update product in database.';
         try {
@@ -506,13 +477,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           this.errorMessage = errorMessage;
           isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
+        NotificationHelper.showError(context, errorMessage);
       }
     } on TimeoutException catch (e) {
       print('Update timeout error: $e');
@@ -520,39 +485,21 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
         errorMessage = 'Request timed out. Please try again.';
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Request timed out. Please try again.'),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      NotificationHelper.showWarning(context, 'Request timed out. Please try again.');
     } on SocketException catch (e) {
       print('Update socket error: $e');
       setState(() {
         errorMessage = 'No internet connection. Please check your network.';
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No internet connection. Please check your network.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      NotificationHelper.showError(context, 'No internet connection. Please check your network.');
     } catch (e) {
       print('Update general error: $e');
       setState(() {
         errorMessage = 'Network error: $e';
         isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Network error. Please try again.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
+      NotificationHelper.showError(context, 'Network error. Please try again.');
     }
   }
 
@@ -578,28 +525,12 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
 
       if (response.statusCode == 200 || response.statusCode == 204) {
         await fetchProducts();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Product deleted successfully'),
-              ],
-            ),
-            backgroundColor: Colors.green[600],
-          ),
-        );
+        NotificationHelper.showInfo(context, 'Product deleted successfully');
       } else {
         throw Exception('Failed to delete');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete product'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      NotificationHelper.showError(context, 'Failed to delete product');
     } finally {
       setState(() {
         isLoading = false;
