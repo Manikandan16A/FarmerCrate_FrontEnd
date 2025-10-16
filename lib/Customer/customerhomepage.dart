@@ -1089,7 +1089,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             children: [
               // Main wExpected to find ']'.elcome headline simplified and customer-specific
               Text(
-                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}, to FarmerCrate',
+                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -1484,33 +1484,42 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 16,
                         color: Colors.grey[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey[500],
+                    SizedBox(height: 3),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Text(
+                        product.category,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Spacer(),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '₹${product.price.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          fontSize: 15,
                           color: Colors.white,
                         ),
                       ),
@@ -1767,29 +1776,93 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(6),
+                padding: EdgeInsets.all(4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                        color: Colors.grey[800],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            product.name,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              color: Colors.grey[800],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (product.name.length <= 10) ...[
+                          SizedBox(width: 4),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              product.category,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.green[800],
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                    Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey[500],
+                    if (product.name.length > 10) ...[
+                      SizedBox(height: 2),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          product.category,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.green[800],
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
+                    if (product.harvestDate != null) ...[
+                      SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 13, color: Colors.green[600]),
+                          SizedBox(width: 4),
+                          Text(
+                            '${product.harvestDate!.day}/${product.harvestDate!.month}/${product.harvestDate!.year}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (product.expiryDate != null) ...[
+                      SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.event_busy, size: 13, color: Colors.orange[600]),
+                          SizedBox(width: 4),
+                          Text(
+                            '${product.expiryDate!.day}/${product.expiryDate!.month}/${product.expiryDate!.year}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ],
                     Row(
                       children: [
                         Icon(Icons.star, color: Colors.amber[600], size: 8),
@@ -1805,16 +1878,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 9, vertical: 7),
                             decoration: BoxDecoration(
                               color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                             child: Text(
                               '₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 9,
+                                fontSize: 17,
                                 color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
@@ -1822,19 +1895,19 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                             ),
                           ),
                         ),
-                        SizedBox(width: 3),
+                        SizedBox(width: 4),
                         GestureDetector(
                           onTap: () => _addToCart(product),
                           child: Container(
-                            padding: EdgeInsets.all(4),
+                            padding: EdgeInsets.all(7),
                             decoration: BoxDecoration(
                               color: Colors.orange[600],
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(7),
                             ),
                             child: Icon(
                               Icons.add_shopping_cart,
                               color: Colors.white,
-                              size: 9,
+                              size: 15,
                             ),
                           ),
                         ),

@@ -64,6 +64,140 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  void _showDeliveryAvailabilityDialog(Map<String, dynamic> user, String token) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.green[50]!, Colors.white],
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delivery_dining, size: 48, color: Colors.green[700]),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Are you available?',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Set your availability status to start receiving delivery orders',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DeliveryDashboard(user: user, token: token),
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('You are offline. No orders will be assigned.'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.grey[800],
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.cancel_outlined, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Not Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DeliveryDashboard(user: user, token: token),
+                              ),
+                            );
+                            print('✓ Navigation to DeliveryDashboard successful');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.check_circle, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       print('\n========== LOGIN ATTEMPT ==========');
@@ -209,14 +343,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               );
               print('✓ Navigation to AdminManagementPage successful');
             } else if (user['role'] == 'delivery') {
-              print('Navigating to DeliveryDashboard...');
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DeliveryDashboard(user: user, token: token),
-                ),
-              );
-              print('✓ Navigation to DeliveryDashboard successful');
+              print('Showing availability dialog for delivery person...');
+              _showDeliveryAvailabilityDialog(user, token);
             } else {
               print('❌ ERROR: Unknown user role');
               print('Role received: ${user['role']}');
