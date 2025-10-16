@@ -5,6 +5,7 @@ import 'transporter_dashboard.dart';
 import 'order_status_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
+import 'navigation_utils.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   final String? token;
@@ -146,6 +147,12 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         title: Text('Order History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
@@ -153,6 +160,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           ),
         ],
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, _selectedIndex, _onNavItemTapped),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
           : RefreshIndicator(
@@ -174,19 +182,85 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       itemBuilder: (context, index) => _buildOrderCard(completedOrders[index]),
                     ),
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavItemTapped,
-        selectedItemColor: Color(0xFF2E7D32),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.track_changes), label: 'Tracking'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.local_shipping), label: 'Vehicles'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onNavItemTapped,
+          selectedItemColor: Color(0xFF2E7D32),
+          unselectedItemColor: Colors.grey[600],
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          selectedFontSize: 13,
+          unselectedFontSize: 12,
+          selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold),
+          items: [
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 0 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.dashboard, size: 24),
+              ),
+              label: 'Dashboard',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 1 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.track_changes, size: 24),
+              ),
+              label: 'Tracking',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 2 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.history, size: 24),
+              ),
+              label: 'History',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 3 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.local_shipping, size: 24),
+              ),
+              label: 'Vehicles',
+            ),
+            BottomNavigationBarItem(
+              icon: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _selectedIndex == 4 ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.person, size: 24),
+              ),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

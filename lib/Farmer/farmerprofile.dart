@@ -215,7 +215,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
 
             _farmerImageUrl = farmerData['image_url']?.toString();
           });
-          NotificationHelper.showInfo(context, 'Profile loaded successfully!');
+          NotificationHelper.showSuccess(context, 'Profile loaded successfully!');
         } else {
           throw Exception('Invalid data format received from server');
         }
