@@ -25,67 +25,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   bool isLoading = false;
   List<Map<String, dynamic>> farmers = [];
   
+  // Mock customer data
   List<Map<String, dynamic>> customers = [
     {'id': 'CUST001', 'name': 'Alice Johnson', 'email': 'alice@example.com', 'phone': '+91 9876543220', 'orders': 15, 'spent': 12500, 'lastOrder': '2024-01-15'},
     {'id': 'CUST002', 'name': 'Bob Smith', 'email': 'bob@example.com', 'phone': '+91 9876543221', 'orders': 10, 'spent': 8500, 'lastOrder': '2024-01-14'},
     {'id': 'CUST003', 'name': 'Carol Davis', 'email': 'carol@example.com', 'phone': '+91 9876543222', 'orders': 20, 'spent': 15000, 'lastOrder': '2024-01-16'},
     {'id': 'CUST004', 'name': 'David Wilson', 'email': 'david@example.com', 'phone': '+91 9876543223', 'orders': 8, 'spent': 6500, 'lastOrder': '2024-01-13'},
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchFarmers();
-  }
-
-  Future<void> _fetchFarmers() async {
-    setState(() => isLoading = true);
-    try {
-      final response = await http.get(
-        Uri.parse('http://192.168.29.148:3000/api/admin/farmers-with-orders'),
-        headers: {'Authorization': 'Bearer ${widget.token}'},
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          farmers = (data['data'] as List).map((farmer) {
-            List products = farmer['products'] ?? [];
-            int totalProducts = products.length;
-            
-            List allOrders = [];
-            Set<String> uniqueCustomerNumbers = {};
-            double totalRevenue = 0.0;
-            
-            for (var product in products) {
-              List orders = product['orders'] ?? [];
-              allOrders.addAll(orders);
-              for (var order in orders) {
-                String? mobile = order['customer']?['mobile_number'];
-                if (mobile != null) uniqueCustomerNumbers.add(mobile);
-                double farmerAmount = double.tryParse(order['farmer_amount']?.toString() ?? '0') ?? 0.0;
-                totalRevenue += farmerAmount;
-              }
-            }
-            
-            return {
-              'id': farmer['farmer_id'],
-              'name': farmer['name'],
-              'email': farmer['email'],
-              'phone': farmer['mobile_number'],
-              'products': totalProducts,
-              'orders': allOrders.length,
-              'customers': uniqueCustomerNumbers.length,
-              'revenue': totalRevenue,
-            };
-          }).toList();
-        });
-      }
-    } catch (e) {
-      print('Error fetching farmers: $e');
-    } finally {
-      setState(() => isLoading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +355,23 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildCustomersList() {
+    if (_isLoadingCustomers) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
+    if (customers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No customers found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
     return Container(
       color: Color(0xFFF5F7FA),
       child: ListView.builder(
