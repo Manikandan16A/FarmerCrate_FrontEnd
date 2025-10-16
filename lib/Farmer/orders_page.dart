@@ -628,6 +628,7 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildOrderCard(Order order) {
+    print('Building order card - ID: ${order.id}, Status: "${order.status}"');
     Color statusColor = order.status == 'pending'
         ? Colors.orange
         : (order.status == 'accepted' || order.status == 'completed')
@@ -840,6 +841,36 @@ class _OrdersPageState extends State<OrdersPage> {
                             ),
                           ),
                         ],
+                      ),
+                    ],
+                    if (_statusFilter == 'accepted') ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => OrderTrackingPage(
+                                  orderId: order.id,
+                                  token: widget.token,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[600],
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                          icon: const Icon(Icons.local_shipping, size: 16),
+                          label: const Text('Track Order', style: TextStyle(fontSize: 12)),
+                        ),
                       ),
                     ],
                   ],

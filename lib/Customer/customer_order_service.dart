@@ -10,7 +10,7 @@ class CustomerOrderService {
       // Debug: Log token info (without exposing the full token)
       print('DEBUG: Token length: ${token.length}, starts with: ${token.substring(0, 10)}...');
       
-      final uri = Uri.parse('$baseUrl/orders');
+      final uri = Uri.parse('$baseUrl/orders?include_completed=true');
       print('DEBUG: Making request to: $uri');
       
       final response = await http.get(
