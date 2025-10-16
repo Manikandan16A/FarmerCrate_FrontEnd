@@ -64,6 +64,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Future<void> _updateAvailability(bool isAvailable, String token) async {
+    try {
+      final response = await http.put(
+        Uri.parse('https://farmercrate.onrender.com/api/delivery-persons/availability'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'is_available': isAvailable}),
+      );
+      print('Availability update response: ${response.statusCode}');
+    } catch (e) {
+      print('Error updating availability: $e');
+    }
+  }
+
   void _showDeliveryAvailabilityDialog(Map<String, dynamic> user, String token) {
     showDialog(
       context: context,
@@ -117,7 +133,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            await _updateAvailability(false, token);
                             Navigator.of(context).pop();
                             Navigator.pushReplacement(
                               context,
@@ -127,8 +144,31 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('You are offline. No orders will be assigned.'),
-                                backgroundColor: Colors.orange,
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.warning_amber, color: Colors.white, size: 20),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'You are offline. No orders will be assigned.',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFFFF9800),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.all(16),
+                                elevation: 6,
+                                duration: Duration(seconds: 3),
                               ),
                             );
                           },
@@ -156,12 +196,42 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            await _updateAvailability(true, token);
                             Navigator.of(context).pop();
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => DeliveryDashboard(user: user, token: token),
+                              ),
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Container(
+                                      padding: EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(Icons.info_outline, color: Colors.white, size: 20),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'You are now available for deliveries',
+                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: Color(0xFF2196F3),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                margin: EdgeInsets.all(16),
+                                elevation: 6,
+                                duration: Duration(seconds: 3),
                               ),
                             );
                             print('✓ Navigation to DeliveryDashboard successful');
