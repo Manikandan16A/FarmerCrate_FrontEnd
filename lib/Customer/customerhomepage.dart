@@ -1761,13 +1761,13 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   double.infinity,
                   double.infinity,
                   _getProductIcon(product.name),
-                  30,
+                  40,
                 ),
               ),
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(6),
+                padding: EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1775,28 +1775,30 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 14,
                         color: Colors.grey[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    SizedBox(height: 2),
                     Text(
                       product.category,
                       style: TextStyle(
-                        fontSize: 8,
+                        fontSize: 11,
                         color: Colors.grey[500],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.amber[600], size: 8),
-                        SizedBox(width: 1),
+                        Icon(Icons.star, color: Colors.amber[600], size: 12),
+                        SizedBox(width: 2),
                         Text(
                           '${product.rating.toStringAsFixed(1)}',
-                          style: TextStyle(fontSize: 7, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -1805,16 +1807,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 9,
+                                fontSize: 13,
                                 color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
@@ -1822,19 +1824,19 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                             ),
                           ),
                         ),
-                        SizedBox(width: 3),
+                        SizedBox(width: 6),
                         GestureDetector(
                           onTap: () => _addToCart(product),
                           child: Container(
-                            padding: EdgeInsets.all(4),
+                            padding: EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Colors.orange[600],
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Icon(
                               Icons.add_shopping_cart,
                               color: Colors.white,
-                              size: 9,
+                              size: 16,
                             ),
                           ),
                         ),

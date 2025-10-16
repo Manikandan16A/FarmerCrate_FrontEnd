@@ -1848,13 +1848,23 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
                     final product = filteredProducts[index];
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 12),
-                      elevation: 2,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white, Colors.green.shade50],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.green.shade200, width: 2),
                       ),
                       child: Padding(
                         padding: EdgeInsets.all(16),
@@ -1983,63 +1993,111 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                   color: Colors.grey.shade600,
                                 ),
                               ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product.name,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        product.description,
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
                                   ),
-                                ),
-                                _getStatusIcon(_getProductStatus(product)),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.category, size: 16, color: Colors.grey.shade600),
-                                SizedBox(width: 4),
-                                Text(product.category),
-                                Spacer(),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _getProductStatus(product) == 'Active' ? Colors.green.shade100 :
-                                           _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade100 : Colors.red.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    _getProductStatus(product),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade700 :
-                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade700 : Colors.red.shade700,
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product.name,
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          product.description,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 12),
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade100 :
+                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade100 : Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: _getStatusIcon(_getProductStatus(product)),
+                                  ),
+                                ],
+                              ),
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 12),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.green.shade100, Colors.green.shade50],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.category, size: 18, color: Colors.green.shade700),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    product.category,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green.shade800,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade600 :
+                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade600 : Colors.red.shade600,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (_getProductStatus(product) == 'Active' ? Colors.green :
+                                                 _getProductStatus(product) == 'Low Stock' ? Colors.orange : Colors.red).withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _getProductStatus(product),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
@@ -2072,18 +2130,35 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       );
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(8),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.shade50,
-                                        borderRadius: BorderRadius.circular(8),
+                                        gradient: LinearGradient(
+                                          colors: [Colors.blue.shade100, Colors.blue.shade50],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blue.shade300, width: 1.5),
                                       ),
                                       child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.inventory, size: 16, color: Colors.blue.shade700),
-                                          SizedBox(width: 4),
-                                          Text('${product.quantity} units', style: TextStyle(fontWeight: FontWeight.w600)),
-                                          Spacer(),
-                                          Icon(Icons.edit, size: 14, color: Colors.blue.shade700),
+                                          Icon(Icons.inventory, size: 18, color: Colors.blue.shade700),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            '${product.quantity}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.blue.shade800,
+                                            ),
+                                          ),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            'units',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -2120,17 +2195,26 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       );
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(8),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(8),
+                                        gradient: LinearGradient(
+                                          colors: [Colors.green.shade100, Colors.green.shade50],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.green.shade300, width: 1.5),
                                       ),
                                       child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.currency_rupee, size: 16, color: Colors.green.shade700),
-                                          Text('₹${product.price.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.w600)),
-                                          Spacer(),
-                                          Icon(Icons.edit, size: 14, color: Colors.green.shade700),
+                                          Icon(Icons.currency_rupee, size: 18, color: Colors.green.shade700),
+                                          Text(
+                                            '${product.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -2138,29 +2222,76 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                                SizedBox(width: 4),
-                                Text(
-                                  product.createdAt != null
-                                      ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
-                                      : 'Date not available',
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                ),
-                                Spacer(),
-                                IconButton(
-                                  onPressed: () => _showAddEditDialog(product: product),
-                                  icon: Icon(Icons.edit, color: Colors.blue),
-                                  tooltip: 'Edit Product',
-                                ),
-                                IconButton(
-                                  onPressed: () => _confirmDelete(product),
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  tooltip: 'Delete Product',
-                                ),
-                              ],
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    product.createdAt != null
+                                        ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
+                                        : 'Date not available',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.blue.shade600, Colors.blue.shade400],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blue.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      onPressed: () => _showAddEditDialog(product: product),
+                                      icon: Icon(Icons.edit, color: Colors.white, size: 20),
+                                      tooltip: 'Edit Product',
+                                      padding: EdgeInsets.all(8),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.red.shade600, Colors.red.shade400],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.red.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      onPressed: () => _confirmDelete(product),
+                                      icon: Icon(Icons.delete, color: Colors.white, size: 20),
+                                      tooltip: 'Delete Product',
+                                      padding: EdgeInsets.all(8),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
