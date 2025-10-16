@@ -7,6 +7,7 @@ import 'Cart.dart';
 import 'customerhomepage.dart';
 import 'order history.dart';
 import 'product_details_screen.dart';
+import 'navigation_utils.dart';
 
 // Enhanced Data Models (API Ready)
 class Farmer {
@@ -188,299 +189,7 @@ class ApiService {
 
 
 
-class CustomerDrawer extends StatelessWidget {
-  final BuildContext parentContext;
-  final String? token;
-  final String? customerImageUrl;
-  final String? customerName;
-  final bool isLoadingProfile;
-  const CustomerDrawer({
-    required this.parentContext,
-    this.token,
-    this.customerImageUrl,
-    this.customerName,
-    this.isLoadingProfile = false,
-    Key? key,
-  }) : super(key: key);
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.green[700]),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          DrawerHeader(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.white,
-                  radius: 30,
-                  backgroundImage: (customerImageUrl != null && customerImageUrl!.isNotEmpty)
-                      ? NetworkImage(customerImageUrl!)
-                      : null,
-                  child: isLoadingProfile
-                      ? SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
-                    ),
-                  )
-                      : (customerImageUrl == null || customerImageUrl!.isEmpty)
-                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
-                      : null,
-                ),
-                SizedBox(height: 10),
-                Text(
-                  customerName != null && customerName!.isNotEmpty
-                      ? customerName!
-                      : 'Welcome!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Explore Farm Fresh Products',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          _buildDrawerItem(
-            icon: Icons.home,
-            title: 'Home',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                parentContext,
-                MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.category,
-            title: 'Categories',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => CategoryPage(token: token)),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.shopping_cart,
-            title: 'Cart',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => CartPage(token: token)),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.payment,
-            title: 'Orders',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => OrderHistoryPage(token: token)),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.person,
-            title: 'Profile',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                parentContext,
-                MaterialPageRoute(builder: (context) => CustomerProfilePage(token: token ?? '')),
-              );
-            },
-          ),
-          Divider(),
-          _buildDrawerItem(
-            icon: Icons.logout,
-            title: 'Logout',
-            onTap: () {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (BuildContext dialogContext) {
-                  return Dialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.logout_outlined, color: Colors.white, size: 32),
-                          ),
-                          const SizedBox(height: 20),
-                          const Text(
-                            'Confirm Logout',
-                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Are you sure you want to logout?',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 24),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext),
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      side: BorderSide(color: Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.pop(dialogContext);
-                                    Navigator.pushAndRemoveUntil(
-                                      parentContext,
-                                      MaterialPageRoute(builder: (context) => LoginPage()),
-                                          (Route<dynamic> route) => false,
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFFF5722),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  ),
-                                  child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class CustomerBottomNavBar extends StatelessWidget {
-  final int currentIndex;
-  final Function(int) onTap;
-  const CustomerBottomNavBar({required this.currentIndex, required this.onTap, Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.blueGrey,
-        selectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.normal,
-        ),
-        currentIndex: currentIndex,
-        elevation: 0,
-        onTap: onTap,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home, size: 24),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.category, size: 24),
-            label: 'Categories',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart, size: 24),
-            label: 'Cart',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline, size: 24),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// --- End Drawer and BottomNavBar Widgets ---
 
 class CategoryPage extends StatefulWidget {
   final String? token;
@@ -1066,15 +775,37 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildGlassmorphicAppBar(),
-      drawer: CustomerDrawer(
+      appBar: CustomerNavigationUtils.buildGlassmorphicAppBar(
+        title: 'Categories',
+        showSearch: _isSearchVisible,
+        searchController: _searchController,
+        onSearchToggle: () {
+          setState(() {
+            _isSearchVisible = !_isSearchVisible;
+            if (!_isSearchVisible) {
+              _searchController.clear();
+            }
+          });
+        },
+        onRefresh: () {
+          _fetchImages();
+          _fetchFarmerNames();
+        },
+        onCartTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+          );
+        },
+      ),
+      drawer: CustomerNavigationUtils.buildCustomerDrawer(
         parentContext: context,
         token: widget.token,
         customerImageUrl: customerImageUrl,
         customerName: customerName,
         isLoadingProfile: false,
       ),
-      bottomNavigationBar: CustomerBottomNavBar(
+      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
         currentIndex: _currentIndex,
         onTap: _onNavItemTapped,
       ),
@@ -1105,164 +836,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
     );
   }
 
-  PreferredSizeWidget _buildGlassmorphicAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white.withOpacity(0.9),
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.9),
-              Colors.green[50]!.withOpacity(0.9),
-            ],
-          ),
-        ),
-      ),
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(Icons.menu, color: Colors.green[800], size: 18),
-          ),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ),
-      title: _isSearchVisible
-          ? Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: TextField(
-          controller: _searchController,
-          autofocus: true,
-          onChanged: (value) => setState(() {}),
-          decoration: InputDecoration(
-            hintText: 'Search products...',
-            prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
-              icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
-              onPressed: () {
-                _searchController.clear();
-                setState(() {});
-              },
-            )
-                : null,
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
-          ),
-          style: TextStyle(fontSize: 14),
-        ),
-      )
-          : ShaderMask(
-        shaderCallback: (bounds) => LinearGradient(
-          colors: [Colors.green[800]!, Colors.green[600]!],
-        ).createShader(bounds),
-        child: Text(
-          'Categories',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(Icons.search, color: Colors.green[800], size: 18),
-          ),
-          onPressed: () {
-            setState(() {
-              _isSearchVisible = !_isSearchVisible;
-              if (!_isSearchVisible) {
-                _searchController.clear();
-              }
-            });
-          },
-        ),
-        IconButton(
-          icon: Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(Icons.refresh, color: Colors.green[800], size: 18),
-          ),
-          onPressed: () {
-            _fetchImages();
-            _fetchFarmerNames();
-          },
-        ),
-        IconButton(
-          icon: Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.green.withOpacity(0.2),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 18),
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
-            );
-          },
-        ),
-      ],
-    );
-  }
+
 
 
   Widget _buildSearchAndSort() {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'navigation_utils.dart';
 
 class OrderDetailPage extends StatefulWidget {
   final Map<String, dynamic> order;
@@ -177,6 +178,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, 0, (index) {}),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

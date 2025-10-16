@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import '../utils/cloudinary_upload.dart';
+import 'navigation_utils.dart';
 
 class AddDeliveryAgentScreen extends StatefulWidget {
   final String? token;
@@ -197,6 +198,7 @@ class _AddDeliveryAgentScreenState extends State<AddDeliveryAgentScreen> {
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, 0, (index) {}),
       body: SingleChildScrollView(
         child: Column(
           children: [

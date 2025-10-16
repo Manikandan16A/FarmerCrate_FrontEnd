@@ -11,6 +11,7 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../utils/cloudinary_upload.dart';
+import 'navigation_utils.dart';
 
 class BillPreviewPage extends StatefulWidget {
   final dynamic order;  
@@ -309,6 +310,7 @@ class _BillPreviewPageState extends State<BillPreviewPage> {
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, 0, (index) {}),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(

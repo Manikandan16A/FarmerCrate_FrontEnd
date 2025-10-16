@@ -7,6 +7,8 @@ import 'transporter_dashboard.dart';
 import 'order_status_page.dart';
 import 'order_history_page.dart';
 import 'vehicle_page.dart';
+import 'navigation_utils.dart';
+import '../utils/cloudinary_upload.dart';
 
 class ProfilePage extends StatefulWidget {
   final String? token;
@@ -333,6 +335,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, _selectedIndex, _onNavItemTapped),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
           : RefreshIndicator(
@@ -361,7 +364,23 @@ class _ProfilePageState extends State<ProfilePage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
                       ),
-                      child: Icon(Icons.person, size: 50, color: Color(0xFF2E7D32)),
+                      child: ClipOval(
+                        child: profileData?['image_url'] != null && profileData!['image_url'].toString().isNotEmpty
+                            ? Image.network(
+                                CloudinaryUploader.optimizeImageUrl(
+                                  profileData!['image_url'],
+                                  width: 100,
+                                  height: 100,
+                                  quality: 'auto',
+                                  format: 'auto',
+                                ),
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 50, color: Color(0xFF2E7D32)),
+                              )
+                            : Icon(Icons.person, size: 50, color: Color(0xFF2E7D32)),
+                      ),
                     ),
                     SizedBox(height: 16),
                     Text(
