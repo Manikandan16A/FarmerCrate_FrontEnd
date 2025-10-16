@@ -121,6 +121,161 @@ class CustomerNavigationUtils {
     );
   }
 
+  static PreferredSizeWidget buildGlassmorphicAppBar({
+    required String title,
+    bool showSearch = false,
+    TextEditingController? searchController,
+    VoidCallback? onSearchToggle,
+    VoidCallback? onRefresh,
+    VoidCallback? onCartTap,
+    List<Widget>? additionalActions,
+  }) {
+    return AppBar(
+      backgroundColor: Colors.white.withOpacity(0.9),
+      elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.green[50]!.withOpacity(0.9),
+            ],
+          ),
+        ),
+      ),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: Container(
+            padding: EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.2),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Icon(Icons.menu, color: Colors.green[800], size: 18),
+          ),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      title: showSearch && searchController != null
+          ? Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: searchController,
+                autofocus: true,
+                onChanged: (value) {},
+                decoration: InputDecoration(
+                  hintText: 'Search products...',
+                  prefixIcon: Icon(Icons.search, color: Colors.green[600], size: 20),
+                  suffixIcon: searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(Icons.clear, color: Colors.grey[600], size: 20),
+                          onPressed: () {
+                            searchController.clear();
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+                ),
+                style: TextStyle(fontSize: 14),
+              ),
+            )
+          : ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [Colors.green[800]!, Colors.green[600]!],
+              ).createShader(bounds),
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+      actions: [
+        if (onSearchToggle != null)
+          IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.search, color: Colors.green[800], size: 18),
+            ),
+            onPressed: onSearchToggle,
+          ),
+        if (onRefresh != null)
+          IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.refresh, color: Colors.green[800], size: 18),
+            ),
+            onPressed: onRefresh,
+          ),
+        if (onCartTap != null)
+          IconButton(
+            icon: Container(
+              padding: EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withOpacity(0.2),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.shopping_cart, color: Colors.green[800], size: 18),
+            ),
+            onPressed: onCartTap,
+          ),
+        if (additionalActions != null) ...additionalActions,
+      ],
+    );
+  }
+
   static void handleNavigation(int index, BuildContext context, String? token) {
     Widget targetPage;
     switch (index) {
@@ -202,137 +357,293 @@ class CustomerDrawer extends StatelessWidget {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            DrawerHeader(
+            Container(
+              height: 250,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.green[600]!, Colors.green[400]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: customerImageUrl != null && customerImageUrl!.isNotEmpty
-                        ? NetworkImage(customerImageUrl!)
-                        : null,
-                    child: customerImageUrl == null || customerImageUrl!.isEmpty
-                        ? Icon(Icons.person, size: 30, color: Colors.white)
-                        : null,
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    customerName ?? 'Customer',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Positioned(
+                    top: -50,
+                    right: -50,
+                    child: Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.1),
+                      ),
                     ),
                   ),
-                  Text(
-                    'Welcome to FarmerCrate',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
+                  Positioned(
+                    bottom: -30,
+                    left: -30,
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withOpacity(0.05),
+                      ),
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: Colors.white,
+                              radius: 35,
+                              backgroundImage: (customerImageUrl != null && customerImageUrl!.isNotEmpty)
+                                  ? NetworkImage(customerImageUrl!)
+                                  : null,
+                              child: isLoadingProfile
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.green[700]!),
+                                      ),
+                                    )
+                                  : (customerImageUrl == null || customerImageUrl!.isEmpty)
+                                      ? Icon(Icons.person, size: 40, color: Colors.green[700])
+                                      : null,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            customerName != null && customerName!.isNotEmpty
+                                ? customerName!
+                                : 'Welcome!',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Explore Farm Fresh Products',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.green[600]),
-              title: Text('Home'),
+            SizedBox(height: 16),
+            _buildDrawerItem(
+              icon: Icons.home_outlined,
+              title: 'Home',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CustomerHomePage(token: token),
-                  ),
+                  parentContext,
+                  MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.shopping_bag, color: Colors.green[600]),
-              title: Text('Orders'),
+            _buildDrawerItem(
+              icon: Icons.shopping_bag_outlined,
+              title: 'Orders',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrderHistoryPage(token: token),
-                  ),
+                  parentContext,
+                  MaterialPageRoute(builder: (context) => OrderHistoryPage(token: token)),
                 );
               },
             ),
-            // ListTile(
-            //   leading: Icon(Icons.track_changes, color: Colors.green[600]),
-            //   title: Text('Track Orders'),
-            //   onTap: () {
-            //     Navigator.pop(context);
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => CustomerOrderTrackingPage(token: token),
-            //       ),
-            //     );
-            //   },
-            // ),
-            ListTile(
-              leading: Icon(Icons.category, color: Colors.green[600]),
-              title: Text('Categories'),
+            _buildDrawerItem(
+              icon: Icons.category_outlined,
+              title: 'Categories',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CategoryPage(token: token),
-                  ),
+                  parentContext,
+                  MaterialPageRoute(builder: (context) => CategoryPage(token: token)),
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.shopping_cart, color: Colors.green[600]),
-              title: Text('Cart'),
+            _buildDrawerItem(
+              icon: Icons.shopping_cart_outlined,
+              title: 'Cart',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CartPage(token: token),
-                  ),
+                  parentContext,
+                  MaterialPageRoute(builder: (context) => CartPage(token: token)),
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.person, color: Colors.green[600]),
-              title: Text('Profile'),
+            _buildDrawerItem(
+              icon: Icons.person_outline,
+              title: 'Profile',
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CustomerProfilePage(token: token),
-                  ),
+                  parentContext,
+                  MaterialPageRoute(builder: (context) => CustomerProfilePage(token: token ?? '')),
                 );
               },
             ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: Text('Logout'),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Divider(color: Colors.grey[300]),
+            ),
+            _buildDrawerItem(
+              icon: Icons.logout_outlined,
+              title: 'Logout',
               onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => LoginPage(),
-                  ),
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (BuildContext dialogContext) {
+                    return Dialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Color(0xFFFF5722), Color(0xFFD32F2F)],
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.logout_outlined, color: Colors.white, size: 32),
+                            ),
+                            SizedBox(height: 20),
+                            Text(
+                              'Confirm Logout',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 12),
+                            Text(
+                              'Are you sure you want to logout?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                            SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(dialogContext),
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: BorderSide(color: Colors.grey.shade300),
+                                      ),
+                                    ),
+                                    child: Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.pop(dialogContext);
+                                      Navigator.pushAndRemoveUntil(
+                                        parentContext,
+                                        MaterialPageRoute(builder: (context) => LoginPage()),
+                                        (Route<dynamic> route) => false,
+                                      );
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFFFF5722),
+                                      padding: EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
+                                    child: Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isSelected = false,
+  }) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: isSelected
+            ? LinearGradient(
+                colors: [Colors.green[600]!, Colors.green[400]!],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              )
+            : null,
+        color: isSelected ? null : Colors.transparent,
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: isSelected
+                ? Colors.white.withOpacity(0.2)
+                : Colors.green[600]!.withOpacity(0.1),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.white : Colors.green[600],
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : Colors.grey[800],
+          ),
+        ),
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

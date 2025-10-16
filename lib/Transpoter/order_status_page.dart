@@ -7,6 +7,7 @@ import 'transporter_dashboard.dart';
 import 'order_history_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
+import 'navigation_utils.dart';
 
 class OrderStatusPage extends StatefulWidget {
   final String? token;
@@ -163,6 +164,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
           ),
         ],
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, _selectedIndex, _onNavItemTapped),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
           : RefreshIndicator(

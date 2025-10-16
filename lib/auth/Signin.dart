@@ -8,6 +8,7 @@ import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
 import '../Transpoter/transporter_dashboard.dart';
 import '../delivery/delivery_dashboard.dart';
+import '../utils/snackbar_utils.dart';
 import 'Forget.dart';
 import 'Signup.dart';
 import 'customerFTL.dart';
@@ -137,9 +138,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             } catch (e, stackTrace) {
               print('❌ Error decoding token: $e');
               print('Stack trace: $stackTrace');
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error processing login. Please try again.'), backgroundColor: Colors.red),
-              );
+              SnackBarUtils.show(context, 'Error processing login. Please try again.');
             }
           }
           // Check if OTP verification is required for first-time customer login
@@ -222,13 +221,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               print('Role received: ${user['role']}');
               print('Available roles: farmer, customer, transporter, admin, delivery');
               
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Unknown user role: ${user['role']}. Please contact support.'),
-                  backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 5),
-                ),
-              );
+              SnackBarUtils.show(context, 'Unknown user role: ${user['role']}. Please contact support.');
             }
           }
           print('===================================\n');
@@ -248,13 +241,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             errorMessage = 'Login failed. Please try again.';
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 4),
-            ),
-          );
+          SnackBarUtils.show(context, errorMessage);
           print('===================================\n');
         }
       } catch (e, stackTrace) {
@@ -267,12 +254,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           _isLoading = false;
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackBarUtils.show(context, 'Error: $e');
         print('===================================\n');
       }
     } else {

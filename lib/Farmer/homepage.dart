@@ -12,6 +12,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../utils/cloudinary_upload.dart';
 import '../utils/notification_helper.dart';
+import '../utils/snackbar_utils.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -63,7 +64,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           _hasShownWelcome = true;
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted) {
-              NotificationHelper.showInfo(context, 'Welcome $name, to FarmerCrate');
+              SnackBarUtils.show(context, 'Welcome $name, to FarmerCrate');
             }
           });
         }
@@ -162,27 +163,27 @@ class _FarmersHomePageState extends State<FarmersHomePage> {
           errorMessage = 'Authentication failed. Please login again.';
           isLoading = false;
         });
-        if (mounted) NotificationHelper.showError(context, 'Authentication failed. Please login again.');
+        if (mounted) SnackBarUtils.show(context, 'Authentication failed. Please login again.');
       } else if (response.statusCode == 404) {
         setState(() {
           products = [];
           isLoading = false;
           errorMessage = 'No products found. Add your first product!';
         });
-        if (mounted) NotificationHelper.showInfo(context, 'No products found. Add your first product!');
+        if (mounted) SnackBarUtils.show(context, 'No products found. Add your first product!');
       } else {
         setState(() {
           errorMessage = 'Failed to fetch products. Status: ${response.statusCode}';
           isLoading = false;
         });
-        if (mounted) NotificationHelper.showError(context, 'Failed to fetch products. Status: ${response.statusCode}');
+        if (mounted) SnackBarUtils.show(context, 'Failed to fetch products. Status: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
         errorMessage = 'Network error: $e';
         isLoading = false;
       });
-      if (mounted) NotificationHelper.showError(context, 'Network error: $e');
+      if (mounted) SnackBarUtils.show(context, 'Network error: $e');
     }
   }
 
