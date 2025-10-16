@@ -596,14 +596,19 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> {
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
+    print('DEBUG: Order details - Full order: $order');
     final product = order['product'] ?? {};
     final farmer = product['farmer'] ?? {};
     final sourceTransporter = order['source_transporter'] ?? {};
     final destTransporter = order['destination_transporter'] ?? {};
     final deliveryPerson = order['delivery_person'] ?? {};
+    print('DEBUG: Source Transporter: $sourceTransporter');
+    print('DEBUG: Destination Transporter: $destTransporter');
+    print('DEBUG: Delivery Person: $deliveryPerson');
     final hasSourceTransporter = sourceTransporter.isNotEmpty && sourceTransporter['name'] != null;
     final hasDestTransporter = destTransporter.isNotEmpty && destTransporter['name'] != null;
     final hasDeliveryPerson = deliveryPerson.isNotEmpty && deliveryPerson['name'] != null;
+    print('DEBUG: Has Source: $hasSourceTransporter, Has Dest: $hasDestTransporter, Has Delivery: $hasDeliveryPerson');
     
     return Column(
       children: [

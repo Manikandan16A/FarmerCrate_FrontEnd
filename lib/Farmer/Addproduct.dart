@@ -38,7 +38,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
   DateTime? _harvestDate;
   DateTime? _expiryDate;
   bool _isAvailable = true;
-  List<File?> _selectedImages = [null, null, null];
+  List<File> _selectedImages = [];
 
   final List<String> _categories = [
     'Fruits',
@@ -105,6 +105,75 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     );
   }
 
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera_alt, color: Colors.green[600]),
+              title: Text('Take Photo'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final XFile? image = await _picker.pickImage(
+                    source: ImageSource.camera,
+                    maxWidth: 1920,
+                    maxHeight: 1920,
+                    imageQuality: 85,
+                  );
+                  if (image != null) {
+                    setState(() {
+                      _selectedImages.add(File(image.path));
+                    });
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Failed to take photo');
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library, color: Colors.green[600]),
+              title: Text('Upload from Device'),
+              onTap: () async {
+                Navigator.pop(context);
+                try {
+                  final List<XFile> images = await _picker.pickMultiImage(
+                    maxWidth: 1920,
+                    maxHeight: 1920,
+                    imageQuality: 85,
+                  );
+                  if (images.isNotEmpty) {
+                    setState(() {
+                      _selectedImages.addAll(images.map((img) => File(img.path)));
+                    });
+                  }
+                } catch (e) {
+                  _showErrorSnackBar('Failed to pick images');
+                }
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.cancel, color: Colors.red[600]),
+              title: Text('Cancel'),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
+  }
+
   Future<void> addProduct() async {
     if (_nameController.text.trim().isEmpty) {
       _showErrorSnackBar('Product name is required');
@@ -165,7 +234,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     });
 
     List<String> imageUrls = [];
-    for (var image in _selectedImages.where((img) => img != null)) {
+    for (var image in _selectedImages) {
       setState(() {
         _errorMessage = null;
         _isLoading = true;
@@ -429,99 +498,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
     );
   }
 
-  Future<void> _pickImage(int index) async {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt, color: Colors.green[600]),
-              title: Text('Take Photo'),
-              onTap: () async {
-                Navigator.pop(context);
-                try {
-                  final XFile? image = await _picker.pickImage(
-                    source: ImageSource.camera,
-                    imageQuality: 85,
-                    maxWidth: 1600,
-                    maxHeight: 1600,
-                  );
-                  if (image != null) {
-                    setState(() {
-                      _selectedImages[index] = File(image.path);
-                      _errorMessage = null;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.image, color: Colors.white),
-                            SizedBox(width: 12),
-                            Expanded(child: Text('Image ${index + 1} selected')),
-                          ],
-                        ),
-                        backgroundColor: Colors.green[600],
-                        behavior: SnackBarBehavior.floating,
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  _showErrorSnackBar('Failed to take photo');
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library, color: Colors.green[600]),
-              title: Text('Upload from Device'),
-              onTap: () async {
-                Navigator.pop(context);
-                try {
-                  final XFile? image = await _picker.pickImage(
-                    source: ImageSource.gallery,
-                    imageQuality: 85,
-                    maxWidth: 1600,
-                    maxHeight: 1600,
-                  );
-                  if (image != null) {
-                    setState(() {
-                      _selectedImages[index] = File(image.path);
-                      _errorMessage = null;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Row(
-                          children: [
-                            Icon(Icons.image, color: Colors.white),
-                            SizedBox(width: 12),
-                            Expanded(child: Text('Image ${index + 1} selected')),
-                          ],
-                        ),
-                        backgroundColor: Colors.green[600],
-                        behavior: SnackBarBehavior.floating,
-                        duration: Duration(seconds: 1),
-                      ),
-                    );
-                  }
-                } catch (e) {
-                  _showErrorSnackBar('Failed to pick image');
-                }
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.cancel, color: Colors.red[600]),
-              title: Text('Cancel'),
-              onTap: () => Navigator.pop(context),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   void _resetForm() {
     setState(() {
@@ -530,7 +507,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
       _priceController.clear();
       _quantity = 0;
       _selectedCategory = 'Fruits';
-      _selectedImages = [null, null, null];
+      _selectedImages = [];
       _harvestDate = null;
       _expiryDate = null;
       _isAvailable = true;
@@ -611,7 +588,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
                 _priceController.clear();
                 _quantity = 0;
                 _selectedCategory = 'Fruits';
-                _selectedImages = [null, null, null];
+                _selectedImages = [];
                 _harvestDate = null;
                 _expiryDate = null;
               });
@@ -675,37 +652,94 @@ SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: List.generate(3, (index) => Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
-                  child: GestureDetector(
-                    onTap: () => _pickImage(index),
-                    child: Container(
-                      height: 100,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.green.shade200, width: 2),
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.green.shade50,
-                      ),
-                      child: _selectedImages[index] != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.file(_selectedImages[index]!, fit: BoxFit.cover),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.add_photo_alternate, color: Colors.green.shade600, size: 30),
-                                SizedBox(height: 4),
-                                Text('Image ${index + 1}', style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
-                              ],
-                            ),
+            if (_selectedImages.isEmpty)
+              Center(
+                child: GestureDetector(
+                  onTap: _showImagePickerOptions,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.green.shade200, width: 2),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.green.shade50,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_photo_alternate, color: Colors.green.shade600, size: 40),
+                        SizedBox(height: 8),
+                        Text('Add Images', style: TextStyle(fontSize: 12, color: Colors.green.shade600, fontWeight: FontWeight.w600)),
+                      ],
                     ),
                   ),
                 ),
-              )),
-            ),
+              )
+            else
+              Container(
+                height: 120,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    ..._selectedImages.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      File image = entry.value;
+                      return Container(
+                        width: 100,
+                        margin: EdgeInsets.only(right: 8),
+                        child: Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.green.shade200, width: 2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.file(image, fit: BoxFit.cover, width: 100, height: 120),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => _removeImage(index),
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red[600],
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.close, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    GestureDetector(
+                      onTap: _showImagePickerOptions,
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.green.shade200, width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.green.shade50,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate, color: Colors.green.shade600, size: 30),
+                            SizedBox(height: 4),
+                            Text('Add More', style: TextStyle(fontSize: 10, color: Colors.green.shade600)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 20),
             Container(
               width: double.infinity,

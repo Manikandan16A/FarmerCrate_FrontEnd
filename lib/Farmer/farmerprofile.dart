@@ -16,6 +16,7 @@ import '../Customer/AppSettingsPage.dart';
 import '../Customer/AppInfo.dart';
 import '../common/help_support_page.dart';
 import '../common/feedback_page.dart';
+import '../common/faq_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -1043,7 +1044,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const HelpSupportPage()),
+                  MaterialPageRoute(builder: (context) => const FAQPage()),
                 );
               },
             ),
@@ -1160,7 +1161,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     );
   }
 
-  void _contactUs() {
+ void _contactUs() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1208,9 +1209,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             _buildContactOption(
               icon: Icons.email,
               title: 'Email',
-              subtitle: 'support@farmercrate.com',
+              subtitle: 'farmercrate@gmail.com',
               onTap: () async {
-                final uri = Uri.parse('mailto:support@farmercrate.com');
+                final uri = Uri.parse('mailto:farmercrate@gmail.com');
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri);
                 }
@@ -1220,9 +1221,9 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             _buildContactOption(
               icon: Icons.phone,
               title: 'Phone',
-              subtitle: '+91 1234567890',
+              subtitle: '+91 95510 84561',
               onTap: () async {
-                final uri = Uri.parse('tel:+911234567890');
+                final uri = Uri.parse('tel:+919551084561');
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri);
                 }

@@ -1300,6 +1300,45 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     );
   }
 
+  Widget _buildSortChip(String label, String value, IconData icon) {
+    final isSelected = sortBy == value;
+    return Padding(
+      padding: EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.green.shade700 : Colors.grey.shade600),
+            SizedBox(width: 4),
+            Text(label),
+          ],
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            sortBy = value;
+          });
+          _applyFiltersAndSort();
+        },
+        backgroundColor: Colors.white,
+        selectedColor: Colors.green.shade100,
+        checkmarkColor: Colors.green.shade700,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.green.shade700 : Colors.grey.shade700,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        ),
+        side: BorderSide(
+          color: isSelected ? Colors.green.shade400 : Colors.grey.shade300,
+          width: isSelected ? 2 : 1,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
   void _showImagePreview(String imageUrl) {
     showDialog(
       context: context,
@@ -1543,7 +1582,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.green.shade50, Colors.white],
@@ -1558,130 +1597,121 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade300, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Filter by Category',
-                        labelStyle: TextStyle(
-                          color: Colors.green.shade700,
-                          fontWeight: FontWeight.w600,
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.filter_list, color: Colors.green.shade700, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Filter by Category',
+                        style: TextStyle(
                           fontSize: 14,
-                        ),
-                        prefixIcon: Icon(Icons.filter_list, color: Colors.green.shade600, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                      items: categories.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        selectedCategory = newValue!;
-                        _applyFiltersAndSort();
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade300, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: sortBy,
-                      decoration: InputDecoration(
-                        labelText: 'Sort',
-                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
                           color: Colors.green.shade700,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
                         ),
-                        prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                      items: [
-                        DropdownMenuItem(value: 'createdAt', child: Text('Date', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'quantity', child: Text('Stock', style: TextStyle(fontSize: 13))),
-                      ],
-                      onChanged: (String? newValue) {
-                        sortBy = newValue!;
-                        _applyFiltersAndSort();
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade600, Colors.green.shade500],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    onPressed: () {
-                      isAscending = !isAscending;
-                      _applyFiltersAndSort();
-                    },
-                    icon: Icon(
-                      isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    tooltip: isAscending ? 'Ascending' : 'Descending',
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    children: categories.map((category) {
+                      final isSelected = selectedCategory == category;
+                      return Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(category),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              selectedCategory = category;
+                            });
+                            _applyFiltersAndSort();
+                          },
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.green.shade100,
+                          checkmarkColor: Colors.green.shade700,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.green.shade700 : Colors.grey.shade700,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          side: BorderSide(
+                            color: isSelected ? Colors.green.shade400 : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                SizedBox(height: 12),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.sort, color: Colors.green.shade700, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Sort By',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                      Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.green.shade600, Colors.green.shade500],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              isAscending = !isAscending;
+                            });
+                            _applyFiltersAndSort();
+                          },
+                          icon: Icon(
+                            isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          tooltip: isAscending ? 'Ascending' : 'Descending',
+                          padding: EdgeInsets.all(8),
+                          constraints: BoxConstraints(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      _buildSortChip('Date', 'createdAt', Icons.calendar_today),
+                      _buildSortChip('Name', 'name', Icons.sort_by_alpha),
+                      _buildSortChip('Category', 'category', Icons.category),
+                      _buildSortChip('Price', 'price', Icons.currency_rupee),
+                      _buildSortChip('Stock', 'quantity', Icons.inventory),
+                    ],
                   ),
                 ),
               ],
@@ -1818,13 +1848,23 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                   itemCount: filteredProducts.length,
                   itemBuilder: (context, index) {
                     final product = filteredProducts[index];
-                    return Card(
-                      margin: EdgeInsets.only(bottom: 12),
-                      elevation: 2,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: Colors.green.shade300, width: 1.5),
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white, Colors.green.shade50],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.15),
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.green.shade200, width: 2),
                       ),
                       child: Padding(
                         padding: EdgeInsets.all(16),
@@ -1953,63 +1993,111 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                   color: Colors.grey.shade600,
                                 ),
                               ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        product.name,
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      Text(
-                                        product.description,
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 2),
                                   ),
-                                ),
-                                _getStatusIcon(_getProductStatus(product)),
-                              ],
-                            ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.category, size: 16, color: Colors.grey.shade600),
-                                SizedBox(width: 4),
-                                Text(product.category),
-                                Spacer(),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _getProductStatus(product) == 'Active' ? Colors.green.shade100 :
-                                           _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade100 : Colors.red.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    _getProductStatus(product),
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade700 :
-                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade700 : Colors.red.shade700,
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          product.name,
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                        SizedBox(height: 6),
+                                        Text(
+                                          product.description,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 14,
+                                            height: 1.4,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 12),
+                                  Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade100 :
+                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade100 : Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: _getStatusIcon(_getProductStatus(product)),
+                                  ),
+                                ],
+                              ),
                             ),
-                            SizedBox(height: 8),
+                            SizedBox(height: 12),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.green.shade100, Colors.green.shade50],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.category, size: 18, color: Colors.green.shade700),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    product.category,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.green.shade800,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: _getProductStatus(product) == 'Active' ? Colors.green.shade600 :
+                                             _getProductStatus(product) == 'Low Stock' ? Colors.orange.shade600 : Colors.red.shade600,
+                                      borderRadius: BorderRadius.circular(8),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: (_getProductStatus(product) == 'Active' ? Colors.green :
+                                                 _getProductStatus(product) == 'Low Stock' ? Colors.orange : Colors.red).withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      _getProductStatus(product),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 12),
                             Row(
                               children: [
                                 Expanded(
@@ -2042,18 +2130,35 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       );
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(8),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.blue.shade50,
-                                        borderRadius: BorderRadius.circular(8),
+                                        gradient: LinearGradient(
+                                          colors: [Colors.blue.shade100, Colors.blue.shade50],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blue.shade300, width: 1.5),
                                       ),
                                       child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.inventory, size: 16, color: Colors.blue.shade700),
-                                          SizedBox(width: 4),
-                                          Text('${product.quantity} units', style: TextStyle(fontWeight: FontWeight.w600)),
-                                          Spacer(),
-                                          Icon(Icons.edit, size: 14, color: Colors.blue.shade700),
+                                          Icon(Icons.inventory, size: 18, color: Colors.blue.shade700),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            '${product.quantity}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.blue.shade800,
+                                            ),
+                                          ),
+                                          SizedBox(width: 2),
+                                          Text(
+                                            'units',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.blue.shade700,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -2090,17 +2195,26 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                       );
                                     },
                                     child: Container(
-                                      padding: EdgeInsets.all(8),
+                                      padding: EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.shade50,
-                                        borderRadius: BorderRadius.circular(8),
+                                        gradient: LinearGradient(
+                                          colors: [Colors.green.shade100, Colors.green.shade50],
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.green.shade300, width: 1.5),
                                       ),
                                       child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.currency_rupee, size: 16, color: Colors.green.shade700),
-                                          Text('₹${product.price.toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.w600)),
-                                          Spacer(),
-                                          Icon(Icons.edit, size: 14, color: Colors.green.shade700),
+                                          Icon(Icons.currency_rupee, size: 18, color: Colors.green.shade700),
+                                          Text(
+                                            '${product.price.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -2108,29 +2222,76 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                                SizedBox(width: 4),
-                                Text(
-                                  product.createdAt != null
-                                      ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
-                                      : 'Date not available',
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                ),
-                                Spacer(),
-                                IconButton(
-                                  onPressed: () => _showAddEditDialog(product: product),
-                                  icon: Icon(Icons.edit, color: Colors.blue),
-                                  tooltip: 'Edit Product',
-                                ),
-                                IconButton(
-                                  onPressed: () => _confirmDelete(product),
-                                  icon: Icon(Icons.delete, color: Colors.red),
-                                  tooltip: 'Delete Product',
-                                ),
-                              ],
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    product.createdAt != null
+                                        ? '${product.createdAt!.day}/${product.createdAt!.month}/${product.createdAt!.year}'
+                                        : 'Date not available',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.blue.shade600, Colors.blue.shade400],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.blue.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      onPressed: () => _showAddEditDialog(product: product),
+                                      icon: Icon(Icons.edit, color: Colors.white, size: 20),
+                                      tooltip: 'Edit Product',
+                                      padding: EdgeInsets.all(8),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.red.shade600, Colors.red.shade400],
+                                      ),
+                                      borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.red.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      onPressed: () => _confirmDelete(product),
+                                      icon: Icon(Icons.delete, color: Colors.white, size: 20),
+                                      tooltip: 'Delete Product',
+                                      padding: EdgeInsets.all(8),
+                                      constraints: BoxConstraints(),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
