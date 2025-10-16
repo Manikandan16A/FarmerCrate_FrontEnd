@@ -5,6 +5,7 @@ import 'transporter_dashboard.dart';
 import 'order_status_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
+import 'transporter_order_tracking.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   final String? token;
@@ -286,75 +287,108 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           onTap: () => _showOrderDetails(order),
           child: Padding(
             padding: EdgeInsets.all(16),
-            child: Row(
+            child: Column(
               children: [
-                if (imageUrl != null)
-                  Container(
-                    width: 70,
-                    height: 70,
-                    margin: EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.3)),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(7),
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(Icons.image, color: Colors.grey, size: 32),
-                      ),
-                    ),
-                  ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              product?['name'] ?? 'N/A',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                Row(
+                  children: [
+                    if (imageUrl != null)
+                      Container(
+                        width: 70,
+                        height: 70,
+                        margin: EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Color(0xFF2E7D32).withOpacity(0.3)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.image, color: Colors.grey, size: 32),
                           ),
-                          SizedBox(width: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _getStatusColor(status ?? ''),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              status ?? 'N/A',
-                              style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
-                            ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  product?['name'] ?? 'N/A',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(status ?? ''),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  status ?? 'N/A',
+                                  style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
+                              Text(
+                                '${order['total_price'] ?? 0}',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                              ),
+                              SizedBox(width: 12),
+                              Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
+                              SizedBox(width: 4),
+                              Text(
+                                'Qty: ${order['quantity'] ?? 0}',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.currency_rupee, size: 14, color: Colors.grey[600]),
-                          Text(
-                            '${order['total_price'] ?? 0}',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
-                          ),
-                          SizedBox(width: 12),
-                          Icon(Icons.shopping_cart, size: 14, color: Colors.grey[600]),
-                          SizedBox(width: 4),
-                          Text(
-                            'Qty: ${order['quantity'] ?? 0}',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                if (status?.toUpperCase() != 'COMPLETED' && status?.toUpperCase() != 'CANCELLED') ...[
+                  SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransporterOrderTrackingPage(
+                              token: widget.token,
+                              orderId: order['order_id'].toString(),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.track_changes, size: 18),
+                      label: Text('Track Order'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -377,82 +411,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   }
 
   void _showOrderDetails(dynamic order) {
-    final currentStatus = order['current_status']?.toString().toUpperCase() ?? '';
-    
-    // Always show pickup address as source address
     String addressLabel = 'Source Address';
     String addressValue = order['pickup_address'] ?? 'N/A';
-
-    // Rest of tracking steps logic...
-    final List<String> statusHistory = [
-      'PLACED',
-      'CONFIRMED',
-      'ASSIGNED',
-      'IN_TRANSIT',
-      'RECEIVED',
-      'COMPLETED',
-    ];
-    
-    print('DEBUG: Processing tracking steps for status: $currentStatus');
-    
-    final List<Map<String, dynamic>> trackingSteps = [];
-    
-    bool hasReachedCurrent = false;
-    for (var status in statusHistory) {
-      if (status == 'CANCELLED' && currentStatus == 'CANCELLED') {
-        trackingSteps.add({
-          'title': 'Order Cancelled',
-          'status': status,
-          'completed': true,
-          'current': true
-        });
-        break;
-      }
-      
-      bool isCompleted = false;
-      bool isCurrent = false;
-      
-      if (!hasReachedCurrent) {
-        if (status == currentStatus) {
-          isCompleted = true;
-          isCurrent = true;
-          hasReachedCurrent = true;
-        } else {
-          isCompleted = true;
-        }
-      }
-      
-      String title = '';
-      switch (status) {
-        case 'PLACED':
-          title = 'Order Placed';
-          break;
-        case 'CONFIRMED':
-          title = 'Order Confirmed';
-          break;
-        case 'ASSIGNED':
-          title = 'Assigned to Transporter';
-          break;
-        case 'IN_TRANSIT':
-          title = 'In Transit';
-          break;
-        case 'RECEIVED':
-          title = 'Order Received';
-          break;
-        case 'COMPLETED':
-          title = 'Order Completed';
-          break;
-        default:
-          title = status.capitalize();
-      }
-      
-      trackingSteps.add({
-        'title': title,
-        'status': status,
-        'completed': isCompleted,
-        'current': isCurrent
-      });
-    }
 
     showModalBottomSheet(
       context: context,
@@ -522,16 +482,6 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                       [
                         _buildDetailRow(addressLabel, addressValue),
                       ],
-                    ),
-                    SizedBox(height: 16),
-                    _buildDetailSection(
-                      'Tracking Timeline',
-                      Icons.timeline,
-                      trackingSteps.map((step) => _buildTrackingStep(
-                        step['title'],
-                        step['completed'],
-                        step['current']
-                      )).toList(),
                     ),
                   ],
                 ),
@@ -611,61 +561,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
     );
   }
 
-  Widget _buildTrackingStep(String title, bool completed, bool current) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: current 
-                  ? Colors.orange 
-                  : completed 
-                      ? Color(0xFF2E7D32) 
-                      : Colors.grey.shade300,
-            ),
-            child: Icon(
-              completed ? Icons.check : Icons.circle,
-              size: 16,
-              color: Colors.white,
-            ),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: current ? FontWeight.bold : FontWeight.normal,
-                    color: current 
-                        ? Colors.orange
-                        : completed 
-                            ? Color(0xFF2E7D32) 
-                            : Colors.black87,
-                  ),
-                ),
-                if (current)
-                  Text(
-                    'Current Status',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }
 
 extension StringExtension on String {
