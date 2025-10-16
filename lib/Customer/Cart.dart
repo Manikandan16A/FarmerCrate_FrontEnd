@@ -413,50 +413,6 @@ class _CartPageState extends State<CartPage> {
     }
   }
 
-  void _proceedToCheckout() {
-    final selectedItems = _cartItems.where((item) => item.isSelected).toList();
-    if (selectedItems.isEmpty) return;
-
-    if (selectedItems.length == 1) {
-      final item = selectedItems.first;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FarmerCratePaymentPage(
-            orderData: {
-              'product_id': item.productId,
-              'product_name': item.name,
-              'quantity': item.quantity,
-              'unit_price': item.price,
-              'total_price': item.price * item.quantity,
-            },
-            token: _token ?? widget.token ?? '',
-          ),
-        ),
-      );
-    } else {
-      int totalQuantity = selectedItems.fold(0, (sum, item) => sum + item.quantity);
-      double cartTotal = selectedItems.fold(0.0, (sum, item) => sum + (item.price * item.quantity));
-      double avgUnitPrice = cartTotal / totalQuantity;
-      
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => FarmerCratePaymentPage(
-            orderData: {
-              'product_id': selectedItems.first.productId,
-              'product_name': 'Multiple Items (${selectedItems.length} products)',
-              'quantity': totalQuantity,
-              'unit_price': avgUnitPrice,
-              'total_price': cartTotal,
-            },
-            token: _token ?? widget.token ?? '',
-          ),
-        ),
-      );
-    }
-  }
-
 
 
   @override
@@ -870,7 +826,36 @@ class _CartPageState extends State<CartPage> {
                         SizedBox(
                           width: 170,
                           child: ElevatedButton(
-                            onPressed: selectedCount > 0 ? _proceedToCheckout : null,
+                            onPressed: selectedCount > 0
+                                ? () {
+                                    final selectedItems = _cartItems.where((item) => item.isSelected).toList();
+                                    if (selectedItems.length == 1) {
+                                      final item = selectedItems.first;
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FarmerCratePaymentPage(
+                                            orderData: {
+                                              'product_id': item.productId,
+                                              'product_name': item.name,
+                                              'quantity': item.quantity,
+                                              'unit_price': item.price,
+                                              'total_price': item.price * item.quantity,
+                                            },
+                                            token: _token ?? widget.token ?? '',
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please select only one item for checkout'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                    }
+                                  }
+                                : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green[600],
                               padding: const EdgeInsets.symmetric(vertical: 14),

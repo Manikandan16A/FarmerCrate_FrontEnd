@@ -8,6 +8,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:ui' as ui;
 import '../utils/cloudinary_upload.dart';
+import 'navigation_utils.dart';
 
 class BillActionPage extends StatefulWidget {
   final dynamic order;
@@ -188,6 +189,7 @@ class _BillActionPageState extends State<BillActionPage> {
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, 0, (index) {}),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(

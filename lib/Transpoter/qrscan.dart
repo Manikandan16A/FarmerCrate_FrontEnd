@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'order_detail_page.dart';
+import 'navigation_utils.dart';
 
 class QRScanPage extends StatefulWidget {
   final String? token;
@@ -215,6 +216,7 @@ class _QRScanPageState extends State<QRScanPage> {
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(context, widget.token, 0, (index) {}),
       body: Stack(
         children: [
           MobileScanner(

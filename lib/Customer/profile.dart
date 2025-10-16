@@ -7,6 +7,7 @@ import '../auth/Signin.dart';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'order history.dart';
+import 'navigation_utils.dart';
 import 'AppInfo.dart';
 import 'wishlist.dart';
 import 'AppSettingsPage.dart';
@@ -912,8 +913,41 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
           ),
         ],
       ),
-      drawer: _buildSideNav(),
-  bottomNavigationBar: _buildBottomNav(),
+      drawer: CustomerNavigationUtils.buildCustomerDrawer(
+        parentContext: context,
+        token: widget.token,
+        customerImageUrl: _customerImageUrl,
+        customerName: _nameController.text,
+        isLoadingProfile: _isLoading,
+      ),
+      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
+        currentIndex: 3, // Profile is index 3
+        onTap: (index) {
+          switch (index) {
+            case 0:
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => CustomerHomePage(token: widget.token)),
+              );
+              break;
+            case 1:
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => CategoryPage(token: widget.token)),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+              );
+              break;
+            case 3:
+              // Already on profile page
+              break;
+          }
+        },
+      ),
     );
   }
 
@@ -1800,454 +1834,9 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
     );
   }
 
-  Widget _buildSideNav() {
-    return Drawer(
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF8F9FA), Color(0xFFFFFFFF)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            Container(
-              height: 250,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: -50,
-                    right: -50,
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.1),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: -30,
-                    left: -30,
-                    child: Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.05),
-                      ),
-                    ),
-                  ),
-                  SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                            ),
-                            child: CircleAvatar(
-                              backgroundColor: Colors.white,
-                              radius: 35,
-                              backgroundImage: (_customerImageUrl != null &&
-                                  _customerImageUrl!.isNotEmpty)
-                                  ? NetworkImage(_customerImageUrl!)
-                                  : null,
-                              child: (_customerImageUrl == null ||
-                                  _customerImageUrl!.isEmpty)
-                                  ? const Icon(Icons.person, size: 40,
-                                  color: Color(0xFF4CAF50))
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _nameController.text.isNotEmpty ? _nameController
-                                .text : 'Welcome!',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Customer Profile Management',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildDrawerItem(
-              icon: Icons.home_outlined,
-              title: 'Home',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) =>
-                      CustomerHomePage(token: widget.token)),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.category_outlined,
-              title: 'Categories',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => CategoryPage(token: widget.token)),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.shopping_cart_outlined,
-              title: 'Cart',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => CartPage(token: widget.token)),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.receipt_long_outlined,
-              title: 'Orders',
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => OrderHistoryPage()),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.person_outline,
-              title: 'Profile',
-              isSelected: true,
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Divider(color: Color(0xFFE2E8F0)),
-            ),
-            _buildDrawerItem(
-              icon: Icons.logout_outlined,
-              title: 'Logout',
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext dialogContext) {
-                    return Dialog(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFF5722),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.logout, color: Colors.white, size: 24),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Confirm Logout',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Are you sure you want to logout?',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 14, color: Colors.grey),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextButton(
-                                    onPressed: () => Navigator.pop(dialogContext),
-                                    child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () async {
-                                      Navigator.pop(dialogContext);
-                                      try {
-                                        final prefs = await SharedPreferences.getInstance();
-                                        await prefs.remove('auth_token');
-                                        await prefs.remove('jwt_token');
-                                      } catch (e) {}
-                                      Navigator.pushAndRemoveUntil(
-                                        context,
-                                        MaterialPageRoute(builder: (context) => LoginPage()),
-                                        (Route<dynamic> route) => false,
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFF5722),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    ),
-                                    child: const Text('Logout'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    bool isSelected = false,
-  }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: isSelected
-            ? const LinearGradient(
-                colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        )
-            : null,
-        color: isSelected ? null : Colors.transparent,
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: isSelected
-                ? Colors.white.withOpacity(0.2)
-                : const Color(0xFF4CAF50).withOpacity(0.1),
-          ),
-          child: Icon(
-            icon,
-            color: isSelected ? Colors.white : const Color(0xFF4CAF50),
-            size: 20,
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: isSelected ? Colors.white : const Color(0xFF2D3748),
-          ),
-        ),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, -10),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(25),
-          topRight: Radius.circular(25),
-        ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: const Color(0xFF4CAF50),
-          unselectedItemColor: Colors.grey[500],
-          currentIndex: 3,
-          selectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
-          onTap: (index) {
-            switch (index) {
-              case 0:
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) =>
-                      CustomerHomePage(token: widget.token)),
-                );
-                break;
-              case 1:
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => CategoryPage(token: widget.token)),
-                );
-                break;
-              case 2:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => CartPage(token: widget.token)),
-                );
-                break;
-              case 3:
-                // Already on profile page
-                break;
-            }
-          },
-          items: [
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.home_outlined),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.2),
-                      const Color(0xFF2E7D32).withOpacity(0.2),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Icon(Icons.home),
-              ),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.category_outlined),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.2),
-                      const Color(0xFF2E7D32).withOpacity(0.2),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Icon(Icons.category),
-              ),
-              label: 'Categories',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.shopping_cart_outlined),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.2),
-                      const Color(0xFF2E7D32).withOpacity(0.2),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Icon(Icons.shopping_cart),
-              ),
-              label: 'Cart',
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                child: const Icon(Icons.person_outline),
-              ),
-              activeIcon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF4CAF50).withOpacity(0.2),
-                      const Color(0xFF2E7D32).withOpacity(0.2),
-                    ],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: const Icon(Icons.person),
-              ),
-              label: 'Profile',
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
+
+
 }

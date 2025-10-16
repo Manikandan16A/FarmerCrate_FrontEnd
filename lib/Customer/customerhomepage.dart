@@ -6,6 +6,7 @@ import 'dart:math';
 import 'Categories.dart';
 import 'Cart.dart';
 import 'navigation_utils.dart';
+import '../utils/snackbar_utils.dart';
 
 import 'product_details_screen.dart';
 import 'TrendingPage.dart';
@@ -135,24 +136,10 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         });
 
         // Show error message for failed API call
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Failed to load products. Please try again.'),
-              ],
-            ),
-            backgroundColor: Colors.red[600],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            action: SnackBarAction(
-              label: 'Retry',
-              textColor: Colors.white,
-              onPressed: _fetchProducts,
-            ),
-          ),
+        SnackBarUtils.showApiError(
+          context,
+          'Failed to load products. Please try again.',
+          onRetry: _fetchProducts,
         );
       }
     } catch (e) {
@@ -163,24 +150,9 @@ class _CustomerHomePageState extends State<CustomerHomePage>
       });
 
       // Show error message for network issues
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.wifi_off, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Network error. Please check your connection.'),
-            ],
-          ),
-          backgroundColor: Colors.orange[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          action: SnackBarAction(
-            label: 'Retry',
-            textColor: Colors.white,
-            onPressed: _fetchProducts,
-          ),
-        ),
+      SnackBarUtils.showNetworkError(
+        context,
+        onRetry: _fetchProducts,
       );
     }
   }
