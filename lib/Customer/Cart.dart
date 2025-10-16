@@ -9,6 +9,7 @@ import '../utils/user_utils.dart';
 
 import 'order_confirm.dart';
 import 'product_details_screen.dart';
+import 'payment.dart';
 
 class CartItem {
   int cartItemId;
@@ -53,7 +54,27 @@ class CartItem {
     String imagesRaw = '';
     if (imagesField != null) {
       if (imagesField is List && imagesField.isNotEmpty) {
-        imagesRaw = (imagesField[0] ?? '').toString();
+        // Try to find primary image first
+        try {
+          final primaryImage = imagesField.firstWhere(
+            (img) => img is Map && img['is_primary'] == true,
+            orElse: () => null,
+          );
+          if (primaryImage != null && primaryImage is Map) {
+            imagesRaw = (primaryImage['image_url'] ?? primaryImage['url'] ?? '').toString();
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('Error finding primary image: $e');
+        }
+        // If no primary image found, take the first image
+        if (imagesRaw.isEmpty) {
+          final firstImg = imagesField[0];
+          if (firstImg is Map) {
+            imagesRaw = (firstImg['image_url'] ?? firstImg['url'] ?? '').toString();
+          } else {
+            imagesRaw = firstImg.toString();
+          }
+        }
       } else if (imagesField is String) {
         // If it's a comma-separated list, take the first
         imagesRaw = imagesField.split(',').map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
@@ -438,7 +459,56 @@ class _CartPageState extends State<CartPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.green.shade50, Colors.green.shade100],
+                ),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Colors.green.shade400, Colors.green.shade600],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 5,
+                          ),
+                        ],
+                      ),
+                      child: const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [Colors.green.shade700, Colors.green.shade500],
+                      ).createShader(bounds),
+                      child: const Text(
+                        'Loading cart...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : _error != null
           ? Center(
         child: Column(
@@ -759,23 +829,31 @@ class _CartPageState extends State<CartPage> {
                             onPressed: selectedCount > 0
                                 ? () {
                                     final selectedItems = _cartItems.where((item) => item.isSelected).toList();
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => OrderConfirmPage(
-                                          cartItems: selectedItems.map((item) => {
-                                                'name': item.name,
-                                                'description': item.description,
-                                                'price': item.price,
-                                                'quantity': item.quantity,
-                                                'images': item.images,
-                                                'product_id': item.productId,
-                                                'id': item.productId,
-                                              }).toList(),
-                                          token: widget.token,
+                                    if (selectedItems.length == 1) {
+                                      final item = selectedItems.first;
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => FarmerCratePaymentPage(
+                                            orderData: {
+                                              'product_id': item.productId,
+                                              'product_name': item.name,
+                                              'quantity': item.quantity,
+                                              'unit_price': item.price,
+                                              'total_price': item.price * item.quantity,
+                                            },
+                                            token: _token ?? widget.token ?? '',
+                                          ),
                                         ),
-                                      ),
-                                    );
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please select only one item for checkout'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                    }
                                   }
                                 : null,
                             style: ElevatedButton.styleFrom(
@@ -797,34 +875,7 @@ class _CartPageState extends State<CartPage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    // Delivery estimation / shipping preview
-                    Row(
-                      children: [
-                        Icon(Icons.local_shipping, color: Colors.grey[700], size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Estimated delivery: 2-4 days · Free shipping over ₹499',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // simple info dialog for shipping details
-                            showDialog(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text('Shipping & Delivery'),
-                                content: const Text('Orders are typically delivered within 2-4 business days. Shipping is free for orders over ₹499.'),
-                                actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
-                              ),
-                            );
-                          },
-                          child: const Text('Details'),
-                        ),
-                      ],
-                    ),
+
               ],
             ),
           ),

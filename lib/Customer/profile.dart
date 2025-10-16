@@ -6,7 +6,7 @@ import '../Customer/customerhomepage.dart';
 import '../auth/Signin.dart';
 import 'Categories.dart';
 import 'Cart.dart';
-import 'OrderHistory.dart';
+import 'order history.dart';
 import 'AppInfo.dart';
 import 'wishlist.dart';
 import 'AppSettingsPage.dart';

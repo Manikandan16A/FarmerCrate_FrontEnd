@@ -173,7 +173,7 @@ class _OrdersPageState extends State<OrdersPage> {
   void _showOrderDetails(Order order) {
     Color statusColor = order.status == 'pending'
         ? Colors.orange
-        : order.status == 'accepted'
+        : (order.status == 'accepted' || order.status == 'completed')
             ? Colors.green
             : Colors.red;
 
@@ -630,7 +630,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildOrderCard(Order order) {
     Color statusColor = order.status == 'pending'
         ? Colors.orange
-        : order.status == 'accepted'
+        : (order.status == 'accepted' || order.status == 'completed')
             ? Colors.green
             : Colors.red;
     bool isSelected = _selectedOrderIds.contains(order.id);
@@ -840,33 +840,6 @@ class _OrdersPageState extends State<OrdersPage> {
                             ),
                           ),
                         ],
-                      ),
-                    ] else ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => OrderTrackingPage(
-                                orderId: order.id,
-                                token: widget.token,
-                              ),
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[600],
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          icon: const Icon(Icons.track_changes, size: 16),
-                          label: const Text('Track Order', style: TextStyle(fontSize: 12)),
-                        ),
                       ),
                     ],
                   ],
@@ -1396,25 +1369,28 @@ class Order {
   factory Order.fromJson(Map<String, dynamic> json) {
     List<String> images = [];
     
-    // Parse product images from the new API structure
     var productData = json['product'];
     if (productData != null && productData['images'] is List) {
       var imagesList = productData['images'] as List;
-      images = imagesList
-          .where((img) => img is Map && img['image_url'] != null)
-          .map((img) => img['image_url'].toString())
-          .where((url) => url.isNotEmpty)
-          .toList();
-    }
-    
-    // Fallback to old structure if needed
-    if (images.isEmpty) {
-      var imageData = json['product']?['image_urls'];
-      if (imageData is List) {
-        images = imageData.map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
-      } else if (imageData is String && imageData.isNotEmpty) {
-        images = [imageData];
+      
+      String? primaryImage;
+      List<String> otherImages = [];
+      
+      for (var img in imagesList) {
+        if (img is Map && img['image_url'] != null) {
+          String imageUrl = img['image_url'].toString();
+          if (img['is_primary'] == true) {
+            primaryImage = imageUrl;
+          } else {
+            otherImages.add(imageUrl);
+          }
+        }
       }
+      
+      if (primaryImage != null) {
+        images.add(primaryImage);
+      }
+      images.addAll(otherImages);
     }
 
     return Order(

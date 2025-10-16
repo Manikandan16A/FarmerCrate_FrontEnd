@@ -1300,6 +1300,45 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     );
   }
 
+  Widget _buildSortChip(String label, String value, IconData icon) {
+    final isSelected = sortBy == value;
+    return Padding(
+      padding: EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.green.shade700 : Colors.grey.shade600),
+            SizedBox(width: 4),
+            Text(label),
+          ],
+        ),
+        selected: isSelected,
+        onSelected: (selected) {
+          setState(() {
+            sortBy = value;
+          });
+          _applyFiltersAndSort();
+        },
+        backgroundColor: Colors.white,
+        selectedColor: Colors.green.shade100,
+        checkmarkColor: Colors.green.shade700,
+        labelStyle: TextStyle(
+          color: isSelected ? Colors.green.shade700 : Colors.grey.shade700,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        ),
+        side: BorderSide(
+          color: isSelected ? Colors.green.shade400 : Colors.grey.shade300,
+          width: isSelected ? 2 : 1,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+    );
+  }
+
   void _showImagePreview(String imageUrl) {
     showDialog(
       context: context,
@@ -1543,7 +1582,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
       body: Column(
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [Colors.green.shade50, Colors.white],
@@ -1558,130 +1597,121 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
                 ),
               ],
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade300, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: selectedCategory,
-                      decoration: InputDecoration(
-                        labelText: 'Filter by Category',
-                        labelStyle: TextStyle(
-                          color: Colors.green.shade700,
-                          fontWeight: FontWeight.w600,
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.filter_list, color: Colors.green.shade700, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Filter by Category',
+                        style: TextStyle(
                           fontSize: 14,
-                        ),
-                        prefixIcon: Icon(Icons.filter_list, color: Colors.green.shade600, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                      items: categories.map((String category) {
-                        return DropdownMenuItem<String>(
-                          value: category,
-                          child: Text(category, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                        );
-                      }).toList(),
-                      onChanged: (String? newValue) {
-                        selectedCategory = newValue!;
-                        _applyFiltersAndSort();
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.green.shade300, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: DropdownButtonFormField<String>(
-                      value: sortBy,
-                      decoration: InputDecoration(
-                        labelText: 'Sort',
-                        labelStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
                           color: Colors.green.shade700,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
                         ),
-                        prefixIcon: Icon(Icons.sort, color: Colors.green.shade600, size: 20),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-                      ),
-                      items: [
-                        DropdownMenuItem(value: 'createdAt', child: Text('Date', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'name', child: Text('Name', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'category', child: Text('Category', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'price', child: Text('Price', style: TextStyle(fontSize: 13))),
-                        DropdownMenuItem(value: 'quantity', child: Text('Stock', style: TextStyle(fontSize: 13))),
-                      ],
-                      onChanged: (String? newValue) {
-                        sortBy = newValue!;
-                        _applyFiltersAndSort();
-                      },
-                    ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.green.shade600, Colors.green.shade500],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.green.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: IconButton(
-                    onPressed: () {
-                      isAscending = !isAscending;
-                      _applyFiltersAndSort();
-                    },
-                    icon: Icon(
-                      isAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    tooltip: isAscending ? 'Ascending' : 'Descending',
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    children: categories.map((category) {
+                      final isSelected = selectedCategory == category;
+                      return Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: FilterChip(
+                          label: Text(category),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              selectedCategory = category;
+                            });
+                            _applyFiltersAndSort();
+                          },
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.green.shade100,
+                          checkmarkColor: Colors.green.shade700,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.green.shade700 : Colors.grey.shade700,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontSize: 13,
+                          ),
+                          side: BorderSide(
+                            color: isSelected ? Colors.green.shade400 : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                SizedBox(height: 12),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.sort, color: Colors.green.shade700, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Sort By',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                      Spacer(),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.green.shade600, Colors.green.shade500],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          onPressed: () {
+                            setState(() {
+                              isAscending = !isAscending;
+                            });
+                            _applyFiltersAndSort();
+                          },
+                          icon: Icon(
+                            isAscending ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          tooltip: isAscending ? 'Ascending' : 'Descending',
+                          padding: EdgeInsets.all(8),
+                          constraints: BoxConstraints(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      _buildSortChip('Date', 'createdAt', Icons.calendar_today),
+                      _buildSortChip('Name', 'name', Icons.sort_by_alpha),
+                      _buildSortChip('Category', 'category', Icons.category),
+                      _buildSortChip('Price', 'price', Icons.currency_rupee),
+                      _buildSortChip('Stock', 'quantity', Icons.inventory),
+                    ],
                   ),
                 ),
               ],
