@@ -1061,7 +1061,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             children: [
               // Main wExpected to find ']'.elcome headline simplified and customer-specific
               Text(
-                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}, to FarmerCrate',
+                'Welcome ${customerName != null && customerName!.isNotEmpty ? customerName! : 'Customer'}',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -1448,7 +1448,7 @@ class _CustomerHomePageState extends State<CustomerHomePage>
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(6),
+                padding: EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1456,33 +1456,42 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       product.name,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 10,
+                        fontSize: 14,
                         color: Colors.grey[800],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey[500],
+                    SizedBox(height: 4),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Text(
+                        product.category,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Spacer(),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.green[600],
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '₹${product.price.toStringAsFixed(2)}',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 9,
+                          fontSize: 13,
                           color: Colors.white,
                         ),
                       ),
@@ -1723,9 +1732,10 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
-              aspectRatio: 1.0,
+              aspectRatio: 1.2,
               child: ClipRRect(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
                 child: _buildProductImage(
@@ -1733,87 +1743,147 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   double.infinity,
                   double.infinity,
                   _getProductIcon(product.name),
-                  30,
+                  40,
                 ),
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                        color: Colors.grey[800],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      product.category,
-                      style: TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey[500],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.star, color: Colors.amber[600], size: 8),
-                        SizedBox(width: 1),
-                        Text(
-                          '${product.rating.toStringAsFixed(1)}',
-                          style: TextStyle(fontSize: 7, color: Colors.grey[600]),
+            Padding(
+              padding: EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 17,
+                            color: Colors.grey[800],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                    Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              '₹${product.price.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 9,
-                                color: Colors.white,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
+                      ),
+                      if (product.name.length <= 10)
+                        Container(
+                          margin: EdgeInsets.only(left: 6),
+                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green[100],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            product.category,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.green[800],
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                        SizedBox(width: 3),
-                        GestureDetector(
-                          onTap: () => _addToCart(product),
-                          child: Container(
-                            padding: EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.orange[600],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Icon(
-                              Icons.add_shopping_cart,
-                              color: Colors.white,
-                              size: 9,
-                            ),
-                          ),
+                    ],
+                  ),
+                  if (product.name.length > 10) ...[
+                    SizedBox(height: 4),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green[100],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        product.category,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                  ],
+                  SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber[600], size: 14),
+                      SizedBox(width: 3),
+                      Text(
+                        '${product.rating.toStringAsFixed(1)}',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        '(${product.reviewCount})',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                  if (product.harvestDate != null || product.expiryDate != null) ...[
+                    SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (product.harvestDate != null) ...[
+                          Icon(Icons.calendar_today, size: 12, color: Colors.green[600]),
+                          SizedBox(width: 3),
+                          Text(
+                            _formatProductDate(product.harvestDate),
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                        if (product.harvestDate != null && product.expiryDate != null)
+                          SizedBox(width: 8),
+                        if (product.expiryDate != null) ...[
+                          Icon(Icons.event_busy, size: 12, color: Colors.red[600]),
+                          SizedBox(width: 3),
+                          Text(
+                            _formatProductDate(product.expiryDate),
+                            style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ],
                     ),
                   ],
-                ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.green[600],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '₹${product.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () => _addToCart(product),
+                        child: Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[600],
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Icon(
+                            Icons.add_shopping_cart,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],

@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'customerhomepage.dart';
 import 'navigation_utils.dart';
 import '../utils/user_utils.dart';
-import '../utils/snackbar_utils.dart';
 
 import 'order_confirm.dart';
 import 'product_details_screen.dart';
@@ -288,10 +287,14 @@ class _CartPageState extends State<CartPage> {
           }
         });
       } else {
-        SnackBarUtils.showError(context, 'Failed to update item quantity');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update item quantity')),
+        );
       }
     } catch (e) {
-      SnackBarUtils.showError(context, 'Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -308,9 +311,13 @@ class _CartPageState extends State<CartPage> {
         setState(() {
           _cartItems.removeWhere((item) => item.cartItemId == cartItemId);
         });
-        SnackBarUtils.showSuccess(context, 'Item removed from cart');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item removed from cart')),
+        );
       } else {
-        SnackBarUtils.showError(context, 'Failed to remove item');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to remove item')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -332,12 +339,18 @@ class _CartPageState extends State<CartPage> {
         setState(() {
           _cartItems.clear();
         });
-        SnackBarUtils.showSuccess(context, 'Cart cleared successfully');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Cart cleared successfully')),
+        );
       } else {
-        SnackBarUtils.showError(context, 'Failed to clear cart');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to clear cart')),
+        );
       }
     } catch (e) {
-      SnackBarUtils.showError(context, 'Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
   }
 
@@ -387,7 +400,9 @@ class _CartPageState extends State<CartPage> {
         if (product != null) {
           final actualStock = int.tryParse(product['quantity'].toString()) ?? 0;
           if (actualStock > 0 && item.quantity >= actualStock) {
-            SnackBarUtils.showWarning(context, 'Only $actualStock quantity available in stock');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Only $actualStock quantity available in stock')),
+            );
             return;
           }
         }
@@ -407,27 +422,38 @@ class _CartPageState extends State<CartPage> {
 
     return Scaffold(
       backgroundColor: Colors.green[50],
-      appBar: CustomerNavigationUtils.buildGlassmorphicAppBar(
-        title: 'Cart',
-        onRefresh: _isLoading ? null : _fetchCartItems,
-        additionalActions: [
+      appBar: AppBar(
+        backgroundColor: Colors.green[600],
+        elevation: 0,
+        title: const Text(
+          'Cart',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          // Refresh button to re-fetch cart items
+          IconButton(
+            icon: _isLoading
+                ? SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2.0,
+                    ),
+                  )
+                : const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _isLoading ? null : _fetchCartItems,
+            tooltip: 'Refresh Cart',
+          ),
+
           if (_cartItems.isNotEmpty)
             IconButton(
-              icon: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.withOpacity(0.2),
-                      blurRadius: 6,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Icon(Icons.delete_outline, color: Colors.green[800], size: 18),
-              ),
+              icon: const Icon(Icons.delete_outline, color: Colors.white),
               onPressed: () => _showClearCartDialog(),
             ),
         ],
@@ -821,7 +847,12 @@ class _CartPageState extends State<CartPage> {
                                         ),
                                       );
                                     } else {
-                                      SnackBarUtils.showWarning(context, 'Please select only one item for checkout');
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Please select only one item for checkout'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
                                     }
                                   }
                                 : null,

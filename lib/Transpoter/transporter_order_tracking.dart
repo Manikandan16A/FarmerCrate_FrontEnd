@@ -1,25 +1,23 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'customer_order_service.dart';
-import 'navigation_utils.dart';
+import 'transporter_order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../utils/cloudinary_upload.dart';
 
-class CustomerOrderTrackingPage extends StatefulWidget {
+class TransporterOrderTrackingPage extends StatefulWidget {
   final String? token;
   final String? orderId;
 
-  const CustomerOrderTrackingPage({
+  const TransporterOrderTrackingPage({
     super.key,
     this.token,
     this.orderId,
   });
 
   @override
-  State<CustomerOrderTrackingPage> createState() => _CustomerOrderTrackingPageState();
+  State<TransporterOrderTrackingPage> createState() => _TransporterOrderTrackingPageState();
 }
 
-class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> with SingleTickerProviderStateMixin {
+class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingPage> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   String? _error;
   List<dynamic> _activeShipments = [];
@@ -87,18 +85,14 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
 
   Future<String?> _resolveToken() async {
     if (widget.token != null && widget.token!.trim().isNotEmpty) {
-      print('DEBUG: Using provided token, length: ${widget.token!.length}');
       return widget.token;
     }
     try {
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
       final jwtToken = prefs.getString('jwt_token');
-      final resolvedToken = authToken ?? jwtToken;
-      print('DEBUG: Resolved token from SharedPreferences, length: ${resolvedToken?.length ?? 0}');
-      return resolvedToken;
+      return authToken ?? jwtToken;
     } catch (_) {
-      print('DEBUG: Failed to resolve token from SharedPreferences');
       return null;
     }
   }
@@ -113,9 +107,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
       return;
     }
 
-    print('DEBUG: About to fetch active shipments');
-    final result = await CustomerOrderService.getActiveShipments(token);
-    print('DEBUG: Got result: ${result['success']}, error: ${result['error']}');
+    final result = await TransporterOrderService.getActiveShipments(token);
     
     if (mounted) {
       setState(() {
@@ -123,16 +115,14 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
           _activeShipments = result['data'] as List<dynamic>;
           _error = null;
           
-          // Auto-select first order if none selected and we have shipments
           if (_selectedOrder == null && _activeShipments.isNotEmpty && widget.orderId == null) {
             _selectedOrder = _activeShipments.first;
             _fetchOrderTracking(_selectedOrder!['order_id'].toString());
           } else if (widget.orderId != null) {
-            // Select specific order if orderId provided
             final specificOrder = _activeShipments.firstWhere(
               (order) => order['order_id'].toString() == widget.orderId,
               orElse: () => <String, dynamic>{},
-          );
+            );
             if (specificOrder != null && specificOrder.isNotEmpty) {
               _selectedOrder = specificOrder;
               _fetchOrderTracking(widget.orderId!);
@@ -150,7 +140,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     final token = await _resolveToken();
     if (token == null) return;
 
-    final result = await CustomerOrderService.trackOrder(token, orderId);
+    final result = await TransporterOrderService.trackOrder(token, orderId);
     
     if (mounted && result['success'] == true) {
       setState(() {
@@ -324,7 +314,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
 
     final filteredSteps = _trackingSteps.where((step) => step['status']?.toUpperCase() != 'ASSIGNED').toList();
     final currentIndex = filteredSteps.indexWhere((step) => step['current'] == true);
-    final currentStatus = currentIndex >= 0 ? filteredSteps[currentIndex]['status'] : '';
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -478,36 +467,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     );
   }
 
-  Widget _buildTrackingStep(Map<String, dynamic> step, bool isActive) {
-    final isCurrent = step['current'] ?? false;
-    
-    return Container(
-      height: 40,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            step['label'] ?? 'Unknown Step',
-            style: TextStyle(
-              fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-              color: isActive ? Colors.black : Colors.grey,
-              fontSize: 14,
-            ),
-          ),
-          if (step['timestamp'] != null)
-            Text(
-              _formatDate(step['timestamp']),
-              style: TextStyle(
-                color: isActive ? Colors.grey[600] : Colors.grey[400],
-                fontSize: 11,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   IconData _getStepIcon(String status) {
     switch (status.toUpperCase()) {
       case 'PLACED':
@@ -539,7 +498,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     
     final order = _selectedOrder!;
     final displayStatus = _displayStatus(order['current_status']);
-    final statusColor = _getStatusColor(displayStatus);
     
     return Container(
       width: double.infinity,
@@ -604,11 +562,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
-    print('DEBUG: Building product card for order: ${order['order_id']}');
-    print('DEBUG: Order data: $order');
-    print('DEBUG: Total price: ${order['total_price']} (${order['total_price'].runtimeType})');
-    print('DEBUG: Quantity: ${order['quantity']} (${order['quantity'].runtimeType})');
-    
     final product = order['product'] ?? {};
     final images = product['images'] as List<dynamic>? ?? [];
     final primaryImage = images.firstWhere(
@@ -643,18 +596,8 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
               borderRadius: BorderRadius.circular(8),
               child: primaryImage['image_url']?.isNotEmpty == true
                   ? Image.network(
-                      CloudinaryUploader.optimizeImageUrl(primaryImage['image_url'], width: 80, height: 80),
+                      primaryImage['image_url'],
                       fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        );
-                      },
                       errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.image_not_supported,
                         color: Colors.grey[400],
@@ -706,19 +649,11 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
-    print('DEBUG: Order details - Full order: $order');
+    print('DEBUG: Full order data: $order');
     final product = order['product'] ?? {};
+    print('DEBUG: Product data: $product');
     final farmer = product['farmer'] ?? {};
-    final sourceTransporter = order['source_transporter'] ?? {};
-    final destTransporter = order['destination_transporter'] ?? {};
-    final deliveryPerson = order['delivery_person'] ?? {};
-    print('DEBUG: Source Transporter: $sourceTransporter');
-    print('DEBUG: Destination Transporter: $destTransporter');
-    print('DEBUG: Delivery Person: $deliveryPerson');
-    final hasSourceTransporter = sourceTransporter.isNotEmpty && sourceTransporter['name'] != null;
-    final hasDestTransporter = destTransporter.isNotEmpty && destTransporter['name'] != null;
-    final hasDeliveryPerson = deliveryPerson.isNotEmpty && deliveryPerson['name'] != null;
-    print('DEBUG: Has Source: $hasSourceTransporter, Has Dest: $hasDestTransporter, Has Delivery: $hasDeliveryPerson');
+    print('DEBUG: Farmer data: $farmer');
     
     return Column(
       children: [
@@ -765,153 +700,9 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'Wait for assigning'),
+              _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
               _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
               _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.purple[50]!, Colors.purple[100]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.purple.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[600],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.store, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Source Transporter',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF6A1B9A),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasSourceTransporter ? sourceTransporter['name'] : 'Wait for assigning', color: Colors.purple),
-              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasSourceTransporter ? sourceTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.purple),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue[50]!, Colors.blue[100]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[600],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.location_on, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Destination Transporter',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1976D2),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasDestTransporter ? destTransporter['name'] : 'Wait for assigning', color: Colors.blue),
-              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasDestTransporter ? destTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.blue),
-            ],
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.teal[50]!, Colors.teal[100]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.teal.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.teal[600],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.delivery_dining, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Delivery Person',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF00796B),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasDeliveryPerson ? deliveryPerson['name'] : 'Wait for assigning', color: Colors.teal),
-              _buildEnhancedDetailRow(Icons.phone, 'Contact', hasDeliveryPerson ? deliveryPerson['mobile_number'] ?? 'N/A' : 'N/A', color: Colors.teal),
             ],
           ),
         ),
@@ -953,42 +744,13 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
                 ],
               ),
               const SizedBox(height: 16),
+              _buildEnhancedDetailRow(Icons.location_on, 'Pickup Address', order['pickup_address'] ?? 'N/A', color: Colors.orange),
               _buildEnhancedDetailRow(Icons.location_on, 'Delivery Address', order['delivery_address'] ?? 'N/A', color: Colors.orange),
               _buildEnhancedDetailRow(Icons.payment, 'Payment Status', order['payment_status'] ?? 'Unknown', color: Colors.orange),
             ],
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

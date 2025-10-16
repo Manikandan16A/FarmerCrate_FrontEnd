@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'common_navigation.dart';
+import 'farmer_details_page.dart';
 
-class AdminUserManagementPage extends StatefulWidget {
+class FarmerManagementPage extends StatefulWidget {
   final String token;
   final dynamic user;
 
-  const AdminUserManagementPage({Key? key, required this.token, this.user}) : super(key: key);
+  const FarmerManagementPage({Key? key, required this.token, this.user}) : super(key: key);
 
   @override
-  State<AdminUserManagementPage> createState() => _AdminUserManagementPageState();
+  State<FarmerManagementPage> createState() => _FarmerManagementPageState();
 }
 
-class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
+class _FarmerManagementPageState extends State<FarmerManagementPage> {
   String _searchQuery = '';
   List<UserData> users = [];
   bool _isLoading = true; // Add loading state
@@ -478,7 +479,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> {
           icon: const Icon(Icons.delete, color: Colors.red),
           onPressed: () => _showDeleteConfirmation(user),
         ),
-        onTap: () => _showUserDetails(user),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FarmerDetailsPage(
+              farmerId: user.id,
+              token: widget.token,
+              user: widget.user,
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -48,6 +48,132 @@ class _DeliveryDashboardState extends State<DeliveryDashboard> with TickerProvid
 
   get bold => null;
 
+  Future<void> _showAvailabilityDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => false,
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.green[50]!, Colors.white],
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.green[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.delivery_dining, size: 48, color: Colors.green[700]),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Are you available?',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Set your availability status to start receiving delivery orders',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _handleAvailabilityStatus(false);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[300],
+                            foregroundColor: Colors.grey[800],
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.cancel_outlined, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Not Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _handleAvailabilityStatus(true);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green[600],
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.check_circle, size: 28),
+                              SizedBox(height: 4),
+                              Text(
+                                'Available',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleAvailabilityStatus(bool isAvailable) {
+    if (isAvailable) {
+      _showSnackBar('You are now available for deliveries', isInfo: true);
+      _loadDeliveryData();
+    } else {
+      _showSnackBar('You are offline. No orders will be assigned.', isWarning: true);
+    }
+  }
+
   void _showSnackBar(String message, {bool isError = false, bool isWarning = false, bool isInfo = false}) {
     Color backgroundColor;
     IconData icon;

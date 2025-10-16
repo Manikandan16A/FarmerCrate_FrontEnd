@@ -1,4 +1,4 @@
-import 'package:farmer_crate/Admin/requstaccept.dart';
+import 'package:farmer_crate/Admin/admin_homepage.dart';
 import 'package:flutter/material.dart';
 
 import '../auth/Signin.dart';
@@ -90,12 +90,12 @@ class AdminNavigation {
           ),
           ListTile(
             leading: Icon(Icons.pending_actions, color: Colors.green[600]),
-            title: const Text('User Management'),
+            title: const Text('Farmer Management'),
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AdminUserManagementPage(
+                  builder: (context) => FarmerManagementPage(
                     token: token,
                     user: user,
                   ),
@@ -212,7 +212,7 @@ class AdminNavigation {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AdminUserManagementPage(
+                  builder: (context) => FarmerManagementPage(
                     token: token,
                     user: user,
                   ),

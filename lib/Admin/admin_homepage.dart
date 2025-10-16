@@ -8,7 +8,7 @@ import 'dart:convert';
 
 import '../auth/Signin.dart';
 import 'ConsumerManagement.dart';
-import 'Farmeruser.dart';
+import 'user_management.dart';
 
 
 class AdminManagementPage extends StatefulWidget {
@@ -24,14 +24,71 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
   List<Farmer> farmers = [];
   List<Transporter> transporters = [];
   bool isLoading = true;
+  String selectedCategory = 'Farmer';
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  int totalFarmers = 0;
+  int totalCustomers = 0;
+  int activeOrders = 0;
+  int deliveryInProgress = 0;
   int _currentIndex = 0;
-  String selectedCategory = 'Farmer'; // Default selection
+  int farmersActiveToday = 0;
+  int lowStockFarmers = 0;
+  int newCustomersWeek = 0;
+  int pendingOrders = 0;
+  int deliveredOrders = 0;
+  int canceledOrders = 0;
+  int activeDelivery = 0;
+  int delayedDelivery = 0;
 
   @override
   void initState() {
     super.initState();
     _checkAdminAccess();
     _fetchData();
+    _fetchAnalytics();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchAnalytics() async {
+    try {
+      final token = widget.token;
+      final farmersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'), headers: {'Authorization': 'Bearer $token'});
+      if (farmersResp.statusCode == 200) {
+        final data = jsonDecode(farmersResp.body);
+        setState(() { totalFarmers = (data['farmers'] ?? data['data'] ?? []).length; });
+      }
+      final customersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/customers'), headers: {'Authorization': 'Bearer $token'});
+      if (customersResp.statusCode == 200) {
+        final data = jsonDecode(customersResp.body);
+        setState(() { totalCustomers = (data['customers'] ?? data['data'] ?? []).length; });
+      }
+      final ordersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/orders'), headers: {'Authorization': 'Bearer $token'});
+      if (ordersResp.statusCode == 200) {
+        final data = jsonDecode(ordersResp.body);
+        final orders = data['orders'] ?? data['data'] ?? [];
+        setState(() {
+          activeOrders = orders.length;
+          deliveryInProgress = orders.where((o) => o['status'] == 'in_transit' || o['status'] == 'processing').length;
+        });
+      }
+    } catch (e) {}
+  }
+
+  List<dynamic> _getFilteredList() {
+    final currentList = selectedCategory == 'Farmer' ? farmers : transporters;
+    if (_searchQuery.isEmpty) return currentList;
+    return currentList.where((item) {
+      final name = item is Farmer ? item.name : (item as Transporter).name;
+      final email = item is Farmer ? item.email : (item as Transporter).email;
+      final mobile = item is Farmer ? item.mobileNumber : (item as Transporter).mobileNumber;
+      return name.toLowerCase().contains(_searchQuery.toLowerCase()) || email.toLowerCase().contains(_searchQuery.toLowerCase()) || mobile.contains(_searchQuery);
+    }).toList();
   }
 
   Future<void> _checkAdminAccess() async {
@@ -810,14 +867,15 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     return Container(
       margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
+      padding: EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(screenWidth * 0.04),
+        color: Color(0xFFF0F0F0),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: screenWidth * 0.025,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 15,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -833,32 +891,42 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                   _fetchData();
                 }
               },
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
                 decoration: BoxDecoration(
                   gradient: selectedCategory == 'Farmer'
-                      ? const LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  )
+                      ? LinearGradient(
+                          colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                        )
                       : null,
-                  color: selectedCategory != 'Farmer' ? Colors.grey[100] : null,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                  color: selectedCategory != 'Farmer' ? Colors.transparent : null,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: selectedCategory == 'Farmer'
+                      ? [
+                          BoxShadow(
+                            color: Color(0xFF4CAF50).withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ]
+                      : [],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.agriculture,
-                      color: selectedCategory == 'Farmer' ? Colors.white : Colors.grey[600],
-                      size: screenWidth * 0.06,
+                      Icons.agriculture_rounded,
+                      color: selectedCategory == 'Farmer' ? Colors.white : Color(0xFF757575),
+                      size: screenWidth * 0.055,
                     ),
                     SizedBox(width: screenWidth * 0.02),
                     Text(
                       'Farmers',
                       style: TextStyle(
-                        color: selectedCategory == 'Farmer' ? Colors.white : Colors.grey[600],
+                        color: selectedCategory == 'Farmer' ? Colors.white : Color(0xFF757575),
                         fontWeight: FontWeight.bold,
-                        fontSize: screenWidth * 0.04,
+                        fontSize: screenWidth * 0.038,
                       ),
                     ),
                   ],
@@ -866,6 +934,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
               ),
             ),
           ),
+          SizedBox(width: 6),
           Expanded(
             child: GestureDetector(
               onTap: () {
@@ -876,32 +945,42 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
                   _fetchData();
                 }
               },
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.04),
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 200),
+                padding: EdgeInsets.symmetric(vertical: screenWidth * 0.035),
                 decoration: BoxDecoration(
                   gradient: selectedCategory == 'Transporter'
-                      ? const LinearGradient(
-                    colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
-                  )
+                      ? LinearGradient(
+                          colors: [Color(0xFF2196F3), Color(0xFF1565C0)],
+                        )
                       : null,
-                  color: selectedCategory != 'Transporter' ? Colors.grey[100] : null,
-                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
+                  color: selectedCategory != 'Transporter' ? Colors.transparent : null,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: selectedCategory == 'Transporter'
+                      ? [
+                          BoxShadow(
+                            color: Color(0xFF2196F3).withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ]
+                      : [],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.local_shipping,
-                      color: selectedCategory == 'Transporter' ? Colors.white : Colors.grey[600],
-                      size: screenWidth * 0.06,
+                      Icons.local_shipping_rounded,
+                      color: selectedCategory == 'Transporter' ? Colors.white : Color(0xFF757575),
+                      size: screenWidth * 0.055,
                     ),
                     SizedBox(width: screenWidth * 0.02),
                     Text(
                       'Transporters',
                       style: TextStyle(
-                        color: selectedCategory == 'Transporter' ? Colors.white : Colors.grey[600],
+                        color: selectedCategory == 'Transporter' ? Colors.white : Color(0xFF757575),
                         fontWeight: FontWeight.bold,
-                        fontSize: screenWidth * 0.04,
+                        fontSize: screenWidth * 0.038,
                       ),
                     ),
                   ],
@@ -928,41 +1007,117 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
         : transporters.where((transporter) => !transporter.isVerified).length;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 5,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: Icon(Icons.menu, color: Colors.green[800]),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
-        title: Text(
-          'FarmerCrate Admin',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+        elevation: 8,
+        shadowColor: Colors.black26,
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
           ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.15)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 26),
+            ),
+            SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Admin Dashboard',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Text(
+                  'Management Portal',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.refresh, color: Colors.green[800]),
-            onPressed: () {
-              _fetchData();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Refreshing ${selectedCategory.toLowerCase()}s list...'),
-                  backgroundColor: Colors.blue,
-                  duration: Duration(seconds: 1),
-                ),
-              );
-            },
+          Container(
+            margin: EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+              onPressed: () {
+                _fetchData();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                        SizedBox(width: 10),
+                        Text('Refreshing...', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    backgroundColor: Color(0xFF2E7D32),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: Duration(seconds: 1),
+                    margin: EdgeInsets.all(16),
+                  ),
+                );
+              },
+            ),
           ),
-          IconButton(
-            icon: Icon(Icons.notifications_outlined, color: Colors.green[800]),
-            onPressed: () {},
+          Container(
+            margin: EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
+              onPressed: () {},
+            ),
           ),
         ],
       ),
@@ -972,109 +1127,75 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           children: [
             DrawerHeader(
               decoration: BoxDecoration(
-                color: Colors.green[600],
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
+                  ),
+                  SizedBox(height: 16),
                   Text(
-                    'FarmerCrate Admin',
+                    'Admin Dashboard',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 24,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  SizedBox(height: 10),
+                  SizedBox(height: 4),
                   Text(
-                    'Welcome, Admin!',
+                    'Manage your platform',
                     style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
             ),
             ListTile(
-              leading: Icon(Icons.home, color: Colors.green[600]),
+              leading: Icon(Icons.home_rounded, color: Colors.green[600]),
               title: const Text('Home'),
               onTap: () {
-                setState(() { _currentIndex = 0; });
                 Navigator.pop(context);
+                setState(() => _currentIndex = 0);
               },
             ),
             ListTile(
-              leading: Icon(Icons.pending_actions, color: Colors.green[600]),
-              title: const Text('User Management'),
+              leading: Icon(Icons.manage_accounts_rounded, color: Colors.green[600]),
+              title: const Text('Management'),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdminUserManagementPage(
-                      token: widget.token,
-                      user: widget.user,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.people, color: Colors.green[600]),
-              title: const Text('Consumer Management'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CustomerManagementScreen(
-                      token: widget.token,
-                      user: widget.user,
-                    ),
-                  ),
-                );
                 Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
               },
             ),
             ListTile(
-              leading: Icon(Icons.analytics, color: Colors.green[600]),
+              leading: Icon(Icons.analytics_rounded, color: Colors.green[600]),
               title: const Text('Reports'),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportsPage(token: widget.token, user: widget.user),
-                  ),
-                );
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
               },
             ),
             ListTile(
-              leading: Icon(Icons.analytics, color: Colors.green[600]),
-              title: const Text('Transpoter Management'),
+              leading: Icon(Icons.person_rounded, color: Colors.green[600]),
+              title: const Text('Profile'),
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TransporterManagementPage(
-                      token: widget.token,
-                      user: widget.user,
-                    ),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_cart, color: Colors.green[600]),
-              title: const Text('Total Orders'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrdersManagementPage(
-                      user: widget.user,
-                      token: widget.token,
-                    ),
-                  ),
-                );
+                Navigator.pop(context);
+                _showAdminProfile();
               },
             ),
             const Divider(),
@@ -1082,164 +1203,57 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
               leading: Icon(Icons.logout, color: Colors.red[600]),
               title: const Text('Logout'),
               onTap: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => LoginPage()),
-                      (route) => false,
-                );
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
               },
             ),
           ],
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFE8F5E8),
-              Color(0xFFC8E6C9),
-              Color(0xFFA5D6A7),
-              Color(0xFF81C784),
+              Color(0xFFE8F5E9),
+              Color(0xFFF5F7FA),
             ],
-            stops: [0.0, 0.3, 0.6, 1.0],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              Container(
-                padding: EdgeInsets.all(screenWidth * 0.03),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$selectedCategory Management',
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.07,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF1B5E20),
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    Text(
-                      'Manage ${selectedCategory.toLowerCase()} accounts and verification',
-                      style: TextStyle(
-                        fontSize: screenWidth * 0.04,
-                        color: const Color(0xFF2E7D32),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildCategorySelector(),
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
-                padding: EdgeInsets.all(screenWidth * 0.04),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(screenWidth * 0.04),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: screenWidth * 0.025,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                      'Total ${selectedCategory}s',
-                      currentList.length.toString(),
-                      Icons.group,
-                    ),
-                    Container(
-                      height: screenHeight * 0.06,
-                      width: 1,
-                      color: const Color(0xFFE0E0E0),
-                    ),
-                    _buildStatItem(
-                      'Verified',
-                      verifiedCount.toString(),
-                      Icons.verified,
-                    ),
-                    Container(
-                      height: screenHeight * 0.06,
-                      width: 1,
-                      color: const Color(0xFFE0E0E0),
-                    ),
-                    _buildStatItem(
-                      'Pending',
-                      pendingCount.toString(),
-                      Icons.pending,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: screenHeight * 0.025),
+              _buildQuickAnalytics(),
+              SizedBox(height: screenHeight * 0.02),
               Expanded(
-                child: Container(
-                  margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.01),
-                  child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : currentList.isEmpty
-                      ? RefreshIndicator(
-                    onRefresh: _fetchData,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            selectedCategory == 'Farmer' ? Icons.agriculture : Icons.local_shipping,
-                            size: screenWidth * 0.2,
-                            color: Colors.grey[400],
-                          ),
-                          SizedBox(height: screenHeight * 0.02),
-                          Text(
-                            'No ${selectedCategory.toLowerCase()}s found',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.045,
-                              color: Colors.grey[600],
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: screenHeight * 0.01),
-                          Text(
-                            'Pull down to refresh',
-                            style: TextStyle(
-                              fontSize: screenWidth * 0.035,
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                      : RefreshIndicator(
-                    onRefresh: _fetchData,
-                    child: SingleChildScrollView(
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        padding: EdgeInsets.only(bottom: screenHeight * 0.025),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 1,
-                          childAspectRatio: screenWidth / (screenHeight * 0.2),
-                          mainAxisSpacing: screenHeight * 0.02,
-                        ),
-                        itemCount: currentList.length,
-                        itemBuilder: (context, index) {
-                          final item = currentList[index];
-                          return selectedCategory == 'Farmer'
-                              ? _buildFarmerCard(item as Farmer)
-                              : _buildTransporterCard(item as Transporter);
-                        },
-                      ),
-                    ),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
+                  child: Column(
+                    children: [
+                      _buildDashboardCard('Farmers', Icons.agriculture_rounded, Color(0xFF4CAF50), [
+                        _buildMetricTile('Total Farmers', totalFarmers.toString(), Icons.people),
+                        _buildMetricTile('Active Today', farmersActiveToday.toString(), Icons.trending_up),
+                        _buildMetricTile('Low Stock', lowStockFarmers.toString(), Icons.warning_amber),
+                      ]),
+                      SizedBox(height: 16),
+                      _buildDashboardCard('Customers', Icons.people_rounded, Color(0xFF2196F3), [
+                        _buildMetricTile('Total Customers', totalCustomers.toString(), Icons.group),
+                        _buildMetricTile('New This Week', newCustomersWeek.toString(), Icons.person_add),
+                      ]),
+                      SizedBox(height: 16),
+                      _buildDashboardCard('Orders', Icons.shopping_cart_rounded, Color(0xFFFF9800), [
+                        _buildMetricTile('Pending', pendingOrders.toString(), Icons.pending),
+                        _buildMetricTile('Delivered', deliveredOrders.toString(), Icons.check_circle),
+                        _buildMetricTile('Canceled', canceledOrders.toString(), Icons.cancel),
+                      ]),
+                      SizedBox(height: 16),
+                      _buildDashboardCard('Delivery', Icons.local_shipping_rounded, Color(0xFF9C27B0), [
+                        _buildMetricTile('Active Personnel', activeDelivery.toString(), Icons.delivery_dining),
+                        _buildMetricTile('In Transit', deliveryInProgress.toString(), Icons.local_shipping),
+                        _buildMetricTile('Delayed', delayedDelivery.toString(), Icons.access_time),
+                      ]),
+                      SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
@@ -1247,71 +1261,86 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           ),
         ),
       ),
-      bottomNavigationBar: Container(
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF2E7D32),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: TextStyle(fontSize: 12),
+        elevation: 8,
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 1) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+          } else if (index == 2) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Orders page coming soon'),
+                backgroundColor: Color(0xFF2E7D32),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else if (index == 3) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+          } else if (index == 4) {
+            _showAdminProfile();
+          }
+        },
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.manage_accounts_rounded), label: 'Management'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart_rounded), label: 'Orders'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_rounded), label: 'Reports'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+
+  void _showAdminProfile() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
         ),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: Colors.black,
-          unselectedItemColor: Colors.blueGrey,
-          selectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.normal,
-          ),
-          currentIndex: _currentIndex,
-          elevation: 0,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-            
-            // Handle navigation based on selected index
-            if (index == 1) { // Report tab
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReportsPage(token: widget.token, user: widget.user),
-                ),
-              );
-            } else if (index == 2) { // Orders tab
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrdersManagementPage(
-                    user: widget.user,
-                    token: widget.token,
-                  ),
-                ),
-              );
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home, size: 24),
-              label: 'Home',
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
             ),
-
-            BottomNavigationBarItem(
-              icon: Icon(Icons.pin_invoke_sharp, size: 24),
-              label: 'Report',
+            SizedBox(height: 20),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFF2E7D32),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline, size: 24),
-              label: 'Total Order',
+            SizedBox(height: 16),
+            Text(widget.user['name'] ?? 'Admin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            SizedBox(height: 4),
+            Text(widget.user['email'] ?? 'admin@farmercrate.com', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Color(0xFF2E7D32).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text('Administrator', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            SizedBox(height: 24),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
+              },
             ),
           ],
         ),
@@ -1319,33 +1348,166 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     );
   }
 
-  Widget _buildStatItem(String title, String value, IconData icon) {
+  Widget _buildQuickAnalytics() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
+      padding: EdgeInsets.all(screenWidth * 0.04),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)]),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Color(0xFF2E7D32).withOpacity(0.3), blurRadius: 15, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.analytics_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text('Quick Analytics', style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.04, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          SizedBox(height: screenWidth * 0.03),
+          Row(
+            children: [
+              Expanded(child: _buildAnalyticsItem('Farmers', totalFarmers.toString(), Icons.agriculture_rounded)),
+              Expanded(child: _buildAnalyticsItem('Customers', totalCustomers.toString(), Icons.people_rounded)),
+              Expanded(child: _buildAnalyticsItem('Orders', activeOrders.toString(), Icons.shopping_cart_rounded)),
+              Expanded(child: _buildAnalyticsItem('In Transit', deliveryInProgress.toString(), Icons.local_shipping_rounded)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsItem(String label, String value, IconData icon) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Column(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xFF2E7D32),
-          size: screenWidth * 0.07,
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, color: Colors.white, size: screenWidth * 0.05),
         ),
-        SizedBox(height: screenWidth * 0.02),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: screenWidth * 0.06,
-            fontWeight: FontWeight.bold,
-            color: const Color(0xFF1B5E20),
-          ),
-        ),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: screenWidth * 0.035,
-            color: const Color(0xFF424242),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        SizedBox(height: 6),
+        Text(value, style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.05, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: screenWidth * 0.028), textAlign: TextAlign.center),
       ],
+    );
+  }
+
+  Widget _buildDashboardCard(String title, IconData icon, Color color, List<Widget> metrics) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              SizedBox(width: 12),
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            ],
+          ),
+          SizedBox(height: 16),
+          ...metrics,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value, IconData icon) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Color(0xFFF8F9FA),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Color(0xFFE0E0E0)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: Color(0xFF757575), size: 20),
+          SizedBox(width: 12),
+          Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: Color(0xFF424242)))),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenWidth * 0.02),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 15, offset: Offset(0, 3))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) => setState(() => _searchQuery = value),
+        decoration: InputDecoration(
+          hintText: 'Search by name, email, or mobile...',
+          hintStyle: TextStyle(color: Colors.grey[400], fontSize: screenWidth * 0.037),
+          prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF2E7D32), size: 22),
+          suffixIcon: _searchQuery.isNotEmpty ? IconButton(icon: Icon(Icons.clear_rounded, color: Colors.grey[600], size: 20), onPressed: () { _searchController.clear(); setState(() => _searchQuery = ''); }) : null,
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String title, String value, IconData icon, Color color) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(screenWidth * 0.025),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: screenWidth * 0.065,
+            ),
+          ),
+          SizedBox(height: screenWidth * 0.025),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: screenWidth * 0.065,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          SizedBox(height: screenWidth * 0.01),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: screenWidth * 0.032,
+              color: Color(0xFF616161),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

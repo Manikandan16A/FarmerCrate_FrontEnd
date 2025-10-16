@@ -91,4 +91,84 @@ class OrderTrackingService {
       return null;
     }
   }
+
+  /// Get all active shipments for farmer (matching customer service pattern)
+  static Future<Map<String, dynamic>> getActiveShipments(String token) async {
+    try {
+      final uri = Uri.parse('$baseUrl/orders/active');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true) {
+          return {
+            'success': true,
+            'data': body['data'] ?? [],
+            'message': body['message'] ?? 'Active shipments fetched successfully',
+          };
+        } else {
+          return {
+            'success': false,
+            'error': body['message'] ?? 'Failed to fetch active shipments',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'error': 'Failed to fetch active shipments (${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Error fetching active shipments: $e',
+      };
+    }
+  }
+
+  /// Track specific order with detailed steps (matching customer service pattern)
+  static Future<Map<String, dynamic>> trackOrder(String token, String orderId) async {
+    try {
+      final uri = Uri.parse('$baseUrl/orders/$orderId/track');
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 20));
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true) {
+          return {
+            'success': true,
+            'data': body['data'] ?? {},
+            'message': body['message'] ?? 'Order tracking data fetched successfully',
+          };
+        } else {
+          return {
+            'success': false,
+            'error': body['message'] ?? 'Failed to fetch order tracking data',
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'error': 'Failed to fetch order tracking data (${response.statusCode})',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Error fetching order tracking data: $e',
+      };
+    }
+  }
 }
