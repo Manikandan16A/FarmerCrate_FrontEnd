@@ -1161,7 +1161,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     );
   }
 
-  void _contactUs() {
+``  void _contactUs() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(

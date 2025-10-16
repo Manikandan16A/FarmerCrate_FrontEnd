@@ -179,6 +179,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       case 'SHIPPED':
         return Colors.purple;
       case 'DELIVERED':
+      case 'COMPLETED':
         return Colors.green;
       case 'CANCELLED':
       case 'REFUNDED':
@@ -534,29 +535,30 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                             ),
                             child: const Text('Close'),
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.of(dialogContext).pop();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CustomerOrderTrackingPage(
-                                    token: widget.token,
-                                    orderId: o.orderId.toString(),
+                          if (o.status.toUpperCase() != 'DELIVERED' && o.status.toUpperCase() != 'COMPLETED')
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CustomerOrderTrackingPage(
+                                      token: widget.token,
+                                      orderId: o.orderId.toString(),
+                                    ),
                                   ),
+                                );
+                              },
+                              icon: const Icon(Icons.track_changes, size: 18),
+                              label: const Text('Track Order'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[600],
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.track_changes, size: 18),
-                            label: const Text('Track Order'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     );
@@ -897,33 +899,35 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => CustomerOrderTrackingPage(
-                                          token: widget.token,
-                                          orderId: o.orderId.toString(),
+                              if (o.status.toUpperCase() != 'DELIVERED' && o.status.toUpperCase() != 'COMPLETED') ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => CustomerOrderTrackingPage(
+                                            token: widget.token,
+                                            orderId: o.orderId.toString(),
+                                          ),
                                         ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.track_changes, size: 18),
+                                    label: const Text('Track Order'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue[600],
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.track_changes, size: 18),
-                                  label: const Text('Track Order'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue[600],
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),
