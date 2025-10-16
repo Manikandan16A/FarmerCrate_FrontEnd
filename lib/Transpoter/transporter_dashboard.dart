@@ -32,6 +32,44 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
     _fetchDeliveryPersons();
     _fetchAllocatedOrders();
     _fetchVehicles();
+    _showNewOrderNotification();
+  }
+
+  void _showNewOrderNotification() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (sourceOrders.isNotEmpty || destinationOrders.isNotEmpty) {
+        final totalOrders = sourceOrders.length + destinationOrders.length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.notifications_active, color: Colors.white, size: 20),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$totalOrders new order${totalOrders > 1 ? 's' : ''} waiting for assignment',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFF2E7D32),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: EdgeInsets.all(16),
+            elevation: 6,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
   }
 
   Future<void> _fetchDeliveryPersons() async {
@@ -92,6 +130,8 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           destinationOrders = destOrders;
           isLoadingOrders = false;
         });
+        
+        _showNewOrderNotification();
       } else {
         setState(() => isLoadingOrders = false);
         _showSnackBar('Failed to load allocated orders', isError: true);
