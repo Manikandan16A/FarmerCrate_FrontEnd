@@ -43,13 +43,17 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   Future<void> _fetchFarmers() async {
     setState(() => isLoading = true);
     try {
+      print('Fetching farmers with token: ${widget.token}');
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
         headers: {'Authorization': 'Bearer ${widget.token}'},
       );
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         final List<dynamic> data = responseData['data'] ?? [];
+        print('Parsed data count: ${data.length}');
         setState(() {
           farmers = data.map((farmer) {
             final products = farmer['products'] as List<dynamic>? ?? [];
@@ -79,10 +83,20 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
             };
           }).toList();
+          print('Farmers list updated: ${farmers.length} farmers');
         });
+      } else {
+        print('Failed to fetch farmers: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load farmers: ${response.statusCode}'), backgroundColor: Colors.red),
+        );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching farmers: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       setState(() => isLoading = false);
     }

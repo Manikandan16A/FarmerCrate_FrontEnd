@@ -63,23 +63,32 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
   Future<void> _fetchFarmerDetails() async {
     setState(() => isLoading = true);
     try {
+      print('Fetching farmer details for ID: ${widget.farmerId}');
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
         headers: {'Authorization': 'Bearer ${widget.token}'},
       );
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         final List<dynamic> data = responseData['data'] ?? [];
+        print('Total farmers: ${data.length}');
         final farmer = data.firstWhere(
           (f) => f['farmer_id'].toString() == widget.farmerId,
           orElse: () => null,
         );
+        print('Found farmer: ${farmer != null}');
         if (farmer != null) {
+          print('Farmer data: $farmer');
           final productsList = farmer['products'] as List<dynamic>? ?? [];
           final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
+          print('Products count: ${productsList.length}');
+          print('Order stats: $orderStats');
           Set<String> uniqueCustomers = {};
           List<Map<String, dynamic>> ordersList = [];
           List<Map<String, dynamic>> productData = [];
+          Map<String, Map<String, dynamic>> customerMap = {};
           
           for (var product in productsList) {
             productData.add({
@@ -93,7 +102,18 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
             for (var order in orders) {
               final customer = order['customer'] as Map<String, dynamic>?;
               if (customer != null) {
-                uniqueCustomers.add(customer['mobile_number']?.toString() ?? '');
+                String mobile = customer['mobile_number']?.toString() ?? '';
+                uniqueCustomers.add(mobile);
+                if (!customerMap.containsKey(mobile)) {
+                  customerMap[mobile] = {
+                    'name': customer['name'] ?? 'Unknown',
+                    'orders': 0,
+                    'spent': 0.0,
+                    'lastOrder': order['order_date']?.toString().split('T')[0] ?? 'N/A',
+                  };
+                }
+                customerMap[mobile]!['orders'] = (customerMap[mobile]!['orders'] as int) + 1;
+                customerMap[mobile]!['spent'] = (customerMap[mobile]!['spent'] as double) + ((order['farmer_amount'] ?? 0) as num).toDouble();
                 ordersList.add({
                   'id': 'ORD${order['order_id']}',
                   'customer': customer['name'] ?? 'Unknown',
@@ -123,11 +143,26 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
             };
             products = productData;
             orders = ordersList;
+            customers = customerMap.values.toList();
           });
+          print('Updated farmer data: $farmerData');
+          print('Products: ${products.length}, Orders: ${orders.length}, Customers: ${customers.length}');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Farmer not found'), backgroundColor: Colors.red),
+          );
         }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load: ${response.statusCode}'), backgroundColor: Colors.red),
+        );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('Error fetching farmer details: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       setState(() => isLoading = false);
     }
