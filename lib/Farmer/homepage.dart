@@ -789,8 +789,8 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
             sliver: SliverGrid(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
                 childAspectRatio: 0.72,
               ),
               delegate: SliverChildBuilderDelegate(
@@ -1073,6 +1073,11 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
       String? imageUrl,
       ) {
     final product = products.firstWhere((p) => p.name == name);
+    final status = _getProductStatus(product);
+    List<Color> statusGradient = status == 'Available' 
+        ? [Colors.green.shade400, Colors.green.shade600] 
+        : (status == 'Low Stock' ? [Colors.orange.shade400, Colors.orange.shade600] : [Colors.red.shade400, Colors.red.shade600]);
+    Color statusShadow = status == 'Available' ? Colors.green : (status == 'Low Stock' ? Colors.orange : Colors.red);
     
     String? firstImageUrl;
     if (imageUrl != null && imageUrl.isNotEmpty) {
@@ -1108,14 +1113,18 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[200]!, width: 1),
+          gradient: LinearGradient(
+            colors: [Colors.white, Colors.green.shade50],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.shade200, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.green.withOpacity(0.08),
-              blurRadius: 12,
-              offset: Offset(0, 4),
+              color: Colors.green.withOpacity(0.2),
+              blurRadius: 16,
+              offset: Offset(0, 6),
             ),
           ],
         ),
@@ -1124,20 +1133,51 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
           children: [
             Expanded(
               flex: 5,
-              child: ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                child: _buildProductImage(firstImageUrl),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    child: _buildProductImage(firstImageUrl),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: statusGradient,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: statusShadow.withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        status,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            Container(
-              height: 1,
-              color: Colors.grey[200],
             ),
             Expanded(
               flex: 4,
               child: Container(
-                color: Colors.grey[50],
-                padding: EdgeInsets.all(10),
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1149,69 +1189,63 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
                           name,
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 17,
+                            fontSize: 14,
                             color: Colors.grey[800],
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        SizedBox(height: 2),
+                        SizedBox(height: 3),
                         Text(
-                          product.category ?? 'Category',
+                          description,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 11,
                             color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (product.harvestDate != null) ...<Widget>[
-                          SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(Icons.calendar_today, size: 14, color: Colors.green[600]),
-                              SizedBox(width: 4),
-                              Text(
-                                '${product.harvestDate!.day}/${product.harvestDate!.month}/${product.harvestDate!.year}',
-                                style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (product.expiryDate != null) ...<Widget>[
-                          SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(Icons.event_busy, size: 14, color: Colors.orange[600]),
-                              SizedBox(width: 4),
-                              Text(
-                                '${product.expiryDate!.day}/${product.expiryDate!.month}/${product.expiryDate!.year}',
-                                style: TextStyle(fontSize: 14, color: Colors.grey[700], fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          price,
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Price',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            Text(
+                              price,
+                              style: TextStyle(
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
                         ),
                         Container(
-                          padding: EdgeInsets.all(6),
+                          padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.green[600],
-                            borderRadius: BorderRadius.circular(8),
+                            gradient: LinearGradient(
+                              colors: [Colors.green.shade400, Colors.green.shade600],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withOpacity(0.4),
+                                blurRadius: 8,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
                           ),
-                          child: Icon(Icons.arrow_forward, color: Colors.white, size: 14),
+                          child: Icon(Icons.arrow_forward, color: Colors.white, size: 16),
                         ),
                       ],
                     ),

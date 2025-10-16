@@ -1770,106 +1770,42 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                   double.infinity,
                   double.infinity,
                   _getProductIcon(product.name),
-                  30,
+                  40,
                 ),
               ),
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(4),
+                padding: EdgeInsets.all(6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            product.name,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                              color: Colors.grey[800],
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (product.name.length <= 10) ...[
-                          SizedBox(width: 4),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.green[100],
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              product.category,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.green[800],
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      product.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                        color: Colors.grey[800],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (product.name.length > 10) ...[
-                      SizedBox(height: 2),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.green[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          product.category,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.green[800],
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    Text(
+                      product.category,
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: Colors.grey[500],
                       ),
-                    ],
-                    if (product.harvestDate != null) ...[
-                      SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today, size: 13, color: Colors.green[600]),
-                          SizedBox(width: 4),
-                          Text(
-                            '${product.harvestDate!.day}/${product.harvestDate!.month}/${product.harvestDate!.year}',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
-                    if (product.expiryDate != null) ...[
-                      SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.event_busy, size: 13, color: Colors.orange[600]),
-                          SizedBox(width: 4),
-                          Text(
-                            '${product.expiryDate!.day}/${product.expiryDate!.month}/${product.expiryDate!.year}',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
-                    ],
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.amber[600], size: 8),
-                        SizedBox(width: 1),
+                        Icon(Icons.star, color: Colors.amber[600], size: 12),
+                        SizedBox(width: 2),
                         Text(
                           '${product.rating.toStringAsFixed(1)}',
-                          style: TextStyle(fontSize: 7, color: Colors.grey[600]),
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
@@ -1878,16 +1814,16 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                       children: [
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.green[600],
-                              borderRadius: BorderRadius.circular(7),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '₹${product.price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 17,
+                                fontSize: 9,
                                 color: Colors.white,
                               ),
                               textAlign: TextAlign.center,
@@ -1895,19 +1831,19 @@ class _CustomerHomePageState extends State<CustomerHomePage>
                             ),
                           ),
                         ),
-                        SizedBox(width: 4),
+                        SizedBox(width: 3),
                         GestureDetector(
                           onTap: () => _addToCart(product),
                           child: Container(
-                            padding: EdgeInsets.all(7),
+                            padding: EdgeInsets.all(4),
                             decoration: BoxDecoration(
                               color: Colors.orange[600],
-                              borderRadius: BorderRadius.circular(7),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Icon(
                               Icons.add_shopping_cart,
                               color: Colors.white,
-                              size: 15,
+                              size: 9,
                             ),
                           ),
                         ),

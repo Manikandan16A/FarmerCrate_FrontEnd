@@ -306,6 +306,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             print('Token: ${token?.substring(0, 20)}...');
             print('Full User Data: $user');
 
+            // Save token and user data to SharedPreferences for session persistence
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('jwt_token', token);
+            await prefs.setString('auth_token', token);
+            await prefs.setString('role', user['role']);
+            await prefs.setInt('user_id', user['id']);
+            if (user['name'] != null) await prefs.setString('username', user['name']);
+            print('✓ Token and user data saved to SharedPreferences');
+
             if (user['role'] == 'farmer') {
               print('Navigating to FarmersHomePage...');
               Navigator.pushReplacement(

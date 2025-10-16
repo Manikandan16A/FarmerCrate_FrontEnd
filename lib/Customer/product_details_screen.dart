@@ -410,16 +410,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
     });
 
     try {
-      print('Adding product ${productData!['id']} to cart with quantity $quantity');
+      final productId = productData!['product_id'] ?? productData!['id'] ?? widget.productId;
+      print('Adding product $productId to cart with quantity $quantity');
 
       final response = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/cart'),
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': 'Bearer ${widget.token}',
         },
         body: jsonEncode({
-          'productId': productData!['product_id'],
+          'product_id': productId,
+          'productId': productId,
           'quantity': quantity,
         }),
       );
