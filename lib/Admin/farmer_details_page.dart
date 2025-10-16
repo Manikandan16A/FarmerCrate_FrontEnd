@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class FarmerDetailsPage extends StatefulWidget {
   final String farmerId;
@@ -55,6 +57,80 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _fetchFarmerDetails();
+  }
+
+  Future<void> _fetchFarmerDetails() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final List<dynamic> data = responseData['data'] ?? [];
+        final farmer = data.firstWhere(
+          (f) => f['farmer_id'].toString() == widget.farmerId,
+          orElse: () => null,
+        );
+        if (farmer != null) {
+          final productsList = farmer['products'] as List<dynamic>? ?? [];
+          final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
+          Set<String> uniqueCustomers = {};
+          List<Map<String, dynamic>> ordersList = [];
+          List<Map<String, dynamic>> productData = [];
+          
+          for (var product in productsList) {
+            productData.add({
+              'name': product['name'] ?? 'Unknown',
+              'stock': product['stock_quantity'] ?? 0,
+              'price': product['price_per_unit'] ?? 0,
+              'status': (product['stock_quantity'] ?? 0) > 0 ? 'In Stock' : 'Out of Stock',
+              'image': '',
+            });
+            final orders = product['Orders'] as List<dynamic>? ?? [];
+            for (var order in orders) {
+              final customer = order['customer'] as Map<String, dynamic>?;
+              if (customer != null) {
+                uniqueCustomers.add(customer['mobile_number']?.toString() ?? '');
+                ordersList.add({
+                  'id': 'ORD${order['order_id']}',
+                  'customer': customer['name'] ?? 'Unknown',
+                  'product': product['name'] ?? 'Unknown',
+                  'qty': order['quantity'] ?? 0,
+                  'amount': order['farmer_amount'] ?? 0,
+                  'date': order['order_date']?.toString().split('T')[0] ?? 'N/A',
+                  'status': order['current_status'] ?? 'Pending',
+                });
+              }
+            }
+          }
+          
+          setState(() {
+            farmerData = {
+              'name': farmer['name'] ?? 'Unknown',
+              'email': farmer['email'] ?? 'N/A',
+              'phone': farmer['mobile_number'] ?? 'N/A',
+              'address': farmer['address'] ?? 'N/A',
+              'zone': farmer['zone'] ?? 'N/A',
+              'state': farmer['state'] ?? 'N/A',
+              'image': '',
+              'totalProducts': productsList.length,
+              'activeOrders': orderStats?['total_orders'] ?? 0,
+              'totalCustomers': uniqueCustomers.length,
+              'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
+            };
+            products = productData;
+            orders = ordersList;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching farmer details: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
   }
 
   @override

@@ -34,6 +34,60 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchFarmers();
+  }
+
+  Future<void> _fetchFarmers() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
+        headers: {'Authorization': 'Bearer ${widget.token}'},
+      );
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        final List<dynamic> data = responseData['data'] ?? [];
+        setState(() {
+          farmers = data.map((farmer) {
+            final products = farmer['products'] as List<dynamic>? ?? [];
+            final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
+            Set<String> uniqueCustomers = {};
+            for (var product in products) {
+              final orders = product['Orders'] as List<dynamic>? ?? [];
+              for (var order in orders) {
+                final customer = order['customer'] as Map<String, dynamic>?;
+                if (customer?['mobile_number'] != null) {
+                  uniqueCustomers.add(customer!['mobile_number'].toString());
+                }
+              }
+            }
+            return {
+              'id': farmer['farmer_id'] as int,
+              'name': farmer['name'] ?? 'Unknown',
+              'email': farmer['email'] ?? 'N/A',
+              'phone': farmer['mobile_number'] ?? 'N/A',
+              'address': farmer['address'] ?? 'N/A',
+              'zone': farmer['zone'] ?? 'N/A',
+              'state': farmer['state'] ?? 'N/A',
+              'district': farmer['district'] ?? 'N/A',
+              'products': products.length,
+              'orders': orderStats?['total_orders'] ?? 0,
+              'customers': uniqueCustomers.length,
+              'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
+            };
+          }).toList();
+        });
+      }
+    } catch (e) {
+      print('Error fetching farmers: $e');
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
@@ -63,6 +117,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           ),
         ),
         title: Text('User Management', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        actions: [
+          Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 24),
+              onPressed: _fetchFarmers,
+            ),
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -321,7 +388,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FarmerDetailsPage(farmerId: farmer['id'], token: widget.token, user: widget.user))),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FarmerDetailsPage(farmerId: farmer['id'].toString(), token: widget.token, user: widget.user))),
                   icon: Icon(Icons.visibility, size: 18),
                   label: Text('View Full Details'),
                   style: ElevatedButton.styleFrom(
@@ -355,10 +422,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildCustomersList() {
-    if (_isLoadingCustomers) {
-      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
-    }
-
     if (customers.isEmpty) {
       return Center(
         child: Column(
