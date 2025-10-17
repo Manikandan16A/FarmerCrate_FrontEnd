@@ -8,6 +8,8 @@ import 'farmer_details_page.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
 import 'customer_details_page.dart';
+import 'transporter_details_page.dart';
+import 'delivery_person_details_page.dart';
 
 class AdminUserManagementPage extends StatefulWidget {
   final dynamic user;
@@ -24,21 +26,25 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   String? expandedFarmerId;
   String? expandedCustomerId;
   
-  // Mock farmer data
-  List<Map<String, dynamic>> farmers = [
-    {'id': 'FARM001', 'name': 'John Farmer', 'email': 'john@example.com', 'phone': '+91 9876543210', 'products': 12, 'orders': 8, 'customers': 25, 'revenue': 45000},
-    {'id': 'FARM002', 'name': 'Sarah Green', 'email': 'sarah@example.com', 'phone': '+91 9876543211', 'products': 8, 'orders': 5, 'customers': 15, 'revenue': 32000},
-    {'id': 'FARM003', 'name': 'Mike Brown', 'email': 'mike@example.com', 'phone': '+91 9876543212', 'products': 15, 'orders': 12, 'customers': 30, 'revenue': 58000},
-    {'id': 'FARM004', 'name': 'Lisa White', 'email': 'lisa@example.com', 'phone': '+91 9876543213', 'products': 10, 'orders': 7, 'customers': 20, 'revenue': 38000},
-  ];
+  List<Map<String, dynamic>> farmers = [];
+  bool _isLoadingFarmers = false;
   
   List<Map<String, dynamic>> customers = [];
   bool _isLoadingCustomers = false;
+  List<Map<String, dynamic>> transporters = [];
+  bool _isLoadingTransporters = false;
+  String? expandedTransporterId;
+  List<Map<String, dynamic>> deliveryPersons = [];
+  bool _isLoadingDeliveryPersons = false;
+  String? expandedDeliveryPersonId;
 
   @override
   void initState() {
     super.initState();
+    _fetchFarmers();
     _fetchCustomers();
+    _fetchTransporters();
+    _fetchDeliveryPersons();
   }
 
   String _formatDate(String? dateString) {
@@ -48,6 +54,141 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
       return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
     } catch (e) {
       return 'N/A';
+    }
+  }
+
+  Future<void> _fetchFarmers() async {
+    setState(() => _isLoadingFarmers = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          farmers = (data['data'] as List).map((farmer) {
+            return {
+              'id': farmer['farmer_id']?.toString() ?? 'N/A',
+              'name': farmer['name'] ?? 'N/A',
+              'email': farmer['email'] ?? 'N/A',
+              'phone': farmer['mobile_number'] ?? 'N/A',
+              'address': farmer['address'] ?? 'N/A',
+              'zone': farmer['zone'] ?? 'N/A',
+              'state': farmer['state'] ?? 'N/A',
+              'district': farmer['district'] ?? 'N/A',
+              'age': farmer['age'] ?? 0,
+              'imageUrl': farmer['image_url'],
+              'isVerified': farmer['is_verified_by_gov'] ?? false,
+              'products': farmer['product_count'] ?? 0,
+              'orders': farmer['order_count'] ?? 0,
+              'revenue': (farmer['total_earnings'] ?? 0).toDouble(),
+            };
+          }).toList();
+          _isLoadingFarmers = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching farmers: $e');
+      setState(() => _isLoadingFarmers = false);
+    }
+  }
+
+  Future<void> _fetchDeliveryPersons() async {
+    setState(() => _isLoadingDeliveryPersons = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          deliveryPersons = (data['data'] as List).map((dp) {
+            final orderStats = dp['order_stats'] ?? {};
+            return {
+              'id': dp['delivery_person_id']?.toString() ?? 'N/A',
+              'name': dp['name'] ?? 'N/A',
+              'phone': dp['mobile_number'] ?? 'N/A',
+              'vehicleNumber': dp['vehicle_number'] ?? 'N/A',
+              'licenseNumber': dp['license_number'] ?? 'N/A',
+              'vehicleType': dp['vehicle_type'] ?? 'N/A',
+              'currentLocation': dp['current_location'] ?? 'N/A',
+              'imageUrl': dp['image_url'],
+              'licenseUrl': dp['license_url'],
+              'isAvailable': dp['is_available'] ?? false,
+              'rating': dp['rating'] ?? '0.00',
+              'totalOrders': orderStats['total_orders'] ?? 0,
+              'totalAmount': (orderStats['total_amount_received'] ?? 0).toDouble(),
+            };
+          }).toList();
+          _isLoadingDeliveryPersons = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching delivery persons: $e');
+      setState(() => _isLoadingDeliveryPersons = false);
+    }
+  }
+
+  Future<void> _fetchTransporters() async {
+    setState(() {
+      _isLoadingTransporters = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/transporters'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          transporters = (data['data'] as List).map((transporter) {
+            final orderStats = transporter['order_stats'] ?? {};
+            return {
+              'id': transporter['transporter_id']?.toString() ?? 'N/A',
+              'name': transporter['name'] ?? 'N/A',
+              'email': transporter['email'] ?? 'N/A',
+              'phone': transporter['mobile_number'] ?? 'N/A',
+              'address': transporter['address'] ?? 'N/A',
+              'zone': transporter['zone'] ?? 'N/A',
+              'state': transporter['state'] ?? 'N/A',
+              'district': transporter['district'] ?? 'N/A',
+              'age': transporter['age'] ?? 0,
+              'imageUrl': transporter['image_url'],
+              'totalOrders': orderStats['total_orders'] ?? 0,
+              'sourceOrders': orderStats['source_orders'] ?? 0,
+              'destOrders': orderStats['destination_orders'] ?? 0,
+              'totalAmount': (orderStats['total_amount_received'] ?? 0).toDouble(),
+              'verifiedStatus': transporter['verified_status'] ?? false,
+            };
+          }).toList();
+          _isLoadingTransporters = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching transporters: $e');
+      setState(() {
+        _isLoadingTransporters = false;
+      });
     }
   }
 
@@ -138,7 +279,12 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: _fetchCustomers,
+            onPressed: () {
+              _fetchFarmers();
+              _fetchCustomers();
+              _fetchTransporters();
+              _fetchDeliveryPersons();
+            },
             tooltip: 'Reload',
           ),
         ],
@@ -267,12 +413,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
                     ? _buildFarmersList()
                     : selectedFilter == 'Customers'
                         ? _buildCustomersList()
-                        : Container(
-                            color: Color(0xFFF5F7FA),
-                            child: Center(
-                              child: Text('$selectedFilter management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                            ),
-                          ),
+                        : selectedFilter == 'Transporters'
+                            ? _buildTransportersList()
+                            : selectedFilter == 'Delivery'
+                                ? _buildDeliveryPersonsList()
+                                : Container(
+                                    color: Color(0xFFF5F7FA),
+                                    child: Center(
+                                      child: Text('$selectedFilter management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                                    ),
+                                  ),
           ),
         ],
       ),
@@ -316,6 +466,23 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildFarmersList() {
+    if (_isLoadingFarmers) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
+    if (farmers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.agriculture_outlined, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No farmers found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
     return Container(
       color: Color(0xFFF5F7FA),
       child: ListView.builder(
@@ -350,14 +517,45 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
                       gradient: LinearGradient(colors: [Color(0xFF66BB6A), Color(0xFF2E7D32)]),
                       borderRadius: BorderRadius.circular(25),
                     ),
-                    child: Icon(Icons.person, size: 28, color: Colors.white),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: farmer['imageUrl'] != null && farmer['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              farmer['imageUrl'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 28, color: Colors.white),
+                            )
+                          : Icon(Icons.person, size: 28, color: Colors.white),
+                    ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(farmer['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(farmer['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+                            ),
+                            if (farmer['isVerified'])
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green[100],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'Verified',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.green[700],
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         Text(farmer['email'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
                       ],
                     ),
@@ -377,7 +575,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.green[50],
         borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
       ),
       child: Column(
@@ -387,24 +585,45 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               Expanded(child: _buildStatBox('Products', farmer['products'].toString(), Icons.inventory, Colors.blue)),
               SizedBox(width: 8),
               Expanded(child: _buildStatBox('Orders', farmer['orders'].toString(), Icons.shopping_cart, Colors.orange)),
-              SizedBox(width: 8),
-              Expanded(child: _buildStatBox('Customers', farmer['customers'].toString(), Icons.people, Colors.purple)),
             ],
           ),
           SizedBox(height: 12),
           Container(
             padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.shade200)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.shade300)),
+            child: Column(
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.currency_rupee, color: Colors.green[700], size: 20),
-                    Text('Total Revenue', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                    Row(
+                      children: [
+                        Icon(Icons.currency_rupee, color: Colors.green[700], size: 18),
+                        SizedBox(width: 8),
+                        Text('Total Revenue', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                      ],
+                    ),
+                    Text('₹${farmer['revenue'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700])),
                   ],
                 ),
-                Text('₹${farmer['revenue']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green[700])),
+                SizedBox(height: 8),
+                Divider(),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.phone, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Text(farmer['phone'], style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  ],
+                ),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('${farmer['zone']}, ${farmer['district']}, ${farmer['state']}', style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
+                  ],
+                ),
               ],
             ),
           ),
@@ -599,6 +818,422 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildCustomerStatBox(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.3))),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          SizedBox(height: 4),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransportersList() {
+    if (_isLoadingTransporters) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFFFF9800)));
+    }
+
+    if (transporters.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.local_shipping_outlined, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No transporters found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      color: Color(0xFFF5F7FA),
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: transporters.length,
+        itemBuilder: (context, index) => _buildTransporterAccordion(transporters[index]),
+      ),
+    );
+  }
+
+  Widget _buildTransporterAccordion(Map<String, dynamic> transporter) {
+    bool isExpanded = expandedTransporterId == transporter['id'];
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => expandedTransporterId = isExpanded ? null : transporter['id']),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [Color(0xFFFFB74D), Color(0xFFFF9800)]),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: transporter['imageUrl'] != null && transporter['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              transporter['imageUrl'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.local_shipping, size: 28, color: Colors.white),
+                            )
+                          : Icon(Icons.local_shipping, size: 28, color: Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(transporter['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFE65100))),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: transporter['verifiedStatus'] ? Colors.green[100] : Colors.red[100],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                transporter['verifiedStatus'] ? 'Verified' : 'Unverified',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: transporter['verifiedStatus'] ? Colors.green[700] : Colors.red[700],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(transporter['email'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                  Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.grey[600]),
+                ],
+              ),
+            ),
+          ),
+          if (isExpanded) _buildTransporterExpandedContent(transporter),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransporterExpandedContent(Map<String, dynamic> transporter) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange[50],
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildTransporterStatBox('Total Orders', transporter['totalOrders'].toString(), Icons.shopping_bag, Colors.orange)),
+              SizedBox(width: 8),
+              Expanded(child: _buildTransporterStatBox('Source', transporter['sourceOrders'].toString(), Icons.upload, Colors.purple)),
+              SizedBox(width: 8),
+              Expanded(child: _buildTransporterStatBox('Destination', transporter['destOrders'].toString(), Icons.download, Colors.blue)),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.orange.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.orange.shade300)),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.currency_rupee, color: Colors.orange[700], size: 18),
+                        SizedBox(width: 8),
+                        Text('Total Amount', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                      ],
+                    ),
+                    Text('₹${transporter['totalAmount'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.orange[700])),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Divider(),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.phone, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Text(transporter['phone'], style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  ],
+                ),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('${transporter['zone']}, ${transporter['district']}, ${transporter['state']}', style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TransporterDetailsPage(
+                          transporterId: transporter['id'],
+                          token: widget.token,
+                          transporter: transporter,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.visibility, size: 18),
+                  label: Text('View Full Details'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFFFF9800),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransporterStatBox(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.3))),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          SizedBox(height: 4),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryPersonsList() {
+    if (_isLoadingDeliveryPersons) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF9C27B0)));
+    }
+
+    if (deliveryPersons.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.delivery_dining_outlined, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No delivery persons found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      color: Color(0xFFF5F7FA),
+      child: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: deliveryPersons.length,
+        itemBuilder: (context, index) => _buildDeliveryPersonAccordion(deliveryPersons[index]),
+      ),
+    );
+  }
+
+  Widget _buildDeliveryPersonAccordion(Map<String, dynamic> dp) {
+    bool isExpanded = expandedDeliveryPersonId == dp['id'];
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => expandedDeliveryPersonId = isExpanded ? null : dp['id']),
+            child: Container(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [Color(0xFFAB47BC), Color(0xFF9C27B0)]),
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: dp['imageUrl'] != null && dp['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              dp['imageUrl'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.delivery_dining, size: 28, color: Colors.white),
+                            )
+                          : Icon(Icons.delivery_dining, size: 28, color: Colors.white),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(dp['name'], style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF6A1B9A))),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: dp['isAvailable'] ? Colors.green[100] : Colors.red[100],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                dp['isAvailable'] ? 'Available' : 'Busy',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: dp['isAvailable'] ? Colors.green[700] : Colors.red[700],
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(dp['vehicleNumber'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                  Icon(isExpanded ? Icons.expand_less : Icons.expand_more, color: Colors.grey[600]),
+                ],
+              ),
+            ),
+          ),
+          if (isExpanded) _buildDeliveryPersonExpandedContent(dp),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryPersonExpandedContent(Map<String, dynamic> dp) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.purple[50],
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildTransporterStatBox('Orders', dp['totalOrders'].toString(), Icons.shopping_bag, Colors.purple)),
+              SizedBox(width: 8),
+              Expanded(child: _buildTransporterStatBox('Rating', dp['rating'], Icons.star, Colors.amber)),
+              SizedBox(width: 8),
+              Expanded(child: _buildTransporterStatBox('Vehicle', dp['vehicleType'].toUpperCase(), Icons.two_wheeler, Colors.blue)),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.purple.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.purple.shade300)),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.phone, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Text(dp['phone'], style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  ],
+                ),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.badge, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Expanded(child: Text(dp['licenseNumber'], style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
+                  ],
+                ),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Expanded(child: Text(dp['currentLocation'], style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DeliveryPersonDetailsPage(
+                          deliveryPersonId: dp['id'],
+                          token: widget.token,
+                          deliveryPerson: dp,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.visibility, size: 18),
+                  label: Text('View Full Details'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF9C27B0),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryStatBox(String label, String value, IconData icon, Color color) {
     return Container(
       padding: EdgeInsets.all(10),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: color.withOpacity(0.3))),

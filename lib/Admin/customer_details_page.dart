@@ -305,73 +305,130 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                  ),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+                ),
+                child: Row(
                   children: [
-                    Text('Order #${order['order_id']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(icon: Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                    Icon(Icons.shopping_bag, color: Colors.white, size: 24),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(product['name'], style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                    IconButton(icon: Icon(Icons.close, color: Colors.white), onPressed: () => Navigator.pop(context)),
                   ],
                 ),
-                Divider(),
-                _buildDetailSection('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address']),
-                Divider(),
-                _buildDetailSection('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address']),
-                Divider(),
-                _buildDetailSection('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address']),
-                Divider(),
-                deliveryPerson != null
-                    ? _buildDetailSection('Delivery Person', deliveryPerson['name'], deliveryPerson['mobile_number'], deliveryPerson['vehicle_number'])
-                    : _buildWaitingSection('Delivery Person'),
-              ],
-            ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _buildDetailCard('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address'], farmer?['image_url'], Icons.agriculture),
+                      SizedBox(height: 12),
+                      _buildDetailCard('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address'], null, Icons.local_shipping),
+                      SizedBox(height: 12),
+                      _buildDetailCard('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address'], null, Icons.local_shipping),
+                      SizedBox(height: 12),
+                      deliveryPerson != null
+                          ? _buildDetailCard('Delivery Person', deliveryPerson['name'], deliveryPerson['mobile_number'], deliveryPerson['vehicle_number'], null, Icons.delivery_dining)
+                          : _buildWaitingCard('Delivery Person'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailSection(String title, String? name, String? contact, String? info) {
-    if (name == null) return _buildWaitingSection(title);
+  Widget _buildDetailCard(String title, String? name, String? contact, String? info, String? imageUrl, IconData icon) {
+    if (name == null) return _buildWaitingCard(title);
     
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green[200]!),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Row(
         children: [
-          Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green[700])),
-          SizedBox(height: 4),
-          Text(name, style: TextStyle(fontSize: 14)),
-          if (contact != null) Text(contact, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          if (info != null) Text(info, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.green[50],
+            backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+            child: imageUrl == null || imageUrl.isEmpty ? Icon(icon, color: Colors.green[700], size: 28) : null,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                SizedBox(height: 2),
+                Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                if (contact != null) ...[
+                  SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(Icons.phone, size: 12, color: Colors.grey[600]),
+                      SizedBox(width: 4),
+                      Text(contact, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    ],
+                  ),
+                ],
+                if (info != null) ...[
+                  SizedBox(height: 2),
+                  Text(info, style: TextStyle(fontSize: 11, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildWaitingSection(String title) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildWaitingCard(String title) {
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green[200]!, width: 1.5, style: BorderStyle.solid),
+      ),
+      child: Row(
         children: [
-          Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green[700])),
-          SizedBox(height: 4),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.green[50],
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.green[200]!),
+          CircleAvatar(
+            radius: 28,
+            backgroundColor: Colors.white,
+            child: Icon(Icons.hourglass_empty, color: Colors.green[700], size: 28),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                SizedBox(height: 2),
+                Text('Wait for assign', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.green[700], fontStyle: FontStyle.italic)),
+              ],
             ),
-            child: Text('Wait for assign', style: TextStyle(fontSize: 13, color: Colors.green[700], fontStyle: FontStyle.italic)),
           ),
         ],
       ),
