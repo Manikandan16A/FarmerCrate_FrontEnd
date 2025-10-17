@@ -4,6 +4,7 @@ import 'dart:convert';
 import '../auth/Signin.dart';
 import 'admin_homepage.dart';
 import 'adminreport.dart';
+import 'admin_orders_page.dart';
 import 'farmer_details_page.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
@@ -440,14 +441,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           if (index == 0) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Orders page coming soon'),
-                backgroundColor: Color(0xFF2E7D32),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {

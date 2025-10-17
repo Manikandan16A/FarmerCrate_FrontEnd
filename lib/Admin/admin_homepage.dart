@@ -57,28 +57,129 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
   }
 
   Future<void> _fetchAnalytics() async {
+    final token = widget.token;
+    print('\n========== ADMIN HOMEPAGE ANALYTICS ==========');
+    
+    // Fetch Farmers
     try {
-      final token = widget.token;
-      final farmersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'), headers: {'Authorization': 'Bearer $token'});
+      print('\n--- FETCHING FARMERS ---');
+      final farmersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Farmers Response Status: ${farmersResp.statusCode}');
       if (farmersResp.statusCode == 200) {
         final data = jsonDecode(farmersResp.body);
-        setState(() { totalFarmers = (data['farmers'] ?? data['data'] ?? []).length; });
+        final farmersList = data['farmers'] ?? data['data'] ?? [];
+        print('Total Farmers Count: ${farmersList.length}');
+        setState(() { totalFarmers = farmersList.length; });
       }
-      final customersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/customers'), headers: {'Authorization': 'Bearer $token'});
+    } catch (e) {
+      print('ERROR fetching farmers: $e');
+    }
+    
+    // Fetch Customers
+    try {
+      print('\n--- FETCHING CUSTOMERS ---');
+      final customersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/customers'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Customers Response Status: ${customersResp.statusCode}');
       if (customersResp.statusCode == 200) {
         final data = jsonDecode(customersResp.body);
-        setState(() { totalCustomers = (data['customers'] ?? data['data'] ?? []).length; });
+        final customersList = data['customers'] ?? data['data'] ?? [];
+        print('Total Customers Count: ${customersList.length}');
+        setState(() { totalCustomers = customersList.length; });
       }
-      final ordersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/orders'), headers: {'Authorization': 'Bearer $token'});
+    } catch (e) {
+      print('ERROR fetching customers: $e');
+    }
+    
+    // Fetch Orders
+    try {
+      print('\n--- FETCHING ORDERS ---');
+      final ordersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/orders/all'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Orders Response Status: ${ordersResp.statusCode}');
+      print('Orders Response Body: ${ordersResp.body}');
       if (ordersResp.statusCode == 200) {
         final data = jsonDecode(ordersResp.body);
         final orders = data['orders'] ?? data['data'] ?? [];
+        print('Total Orders Count: ${orders.length}');
+        
+        final pending = orders.where((o) => o['current_status']?.toUpperCase() == 'PLACED' || o['current_status']?.toUpperCase() == 'ASSIGNED').length;
+        final delivered = orders.where((o) => o['current_status']?.toUpperCase() == 'COMPLETED' || o['current_status']?.toUpperCase() == 'DELIVERED').length;
+        final canceled = orders.where((o) => o['current_status']?.toUpperCase() == 'CANCELLED').length;
+        final inProgress = orders.where((o) => o['current_status']?.toUpperCase() == 'IN_TRANSIT' || o['current_status']?.toUpperCase() == 'SHIPPED' || o['current_status']?.toUpperCase() == 'OUT_FOR_DELIVERY').length;
+        
+        print('Pending Orders: $pending');
+        print('Delivered Orders: $delivered');
+        print('Canceled Orders: $canceled');
+        print('Delivery In Progress: $inProgress');
+        
         setState(() {
           activeOrders = orders.length;
-          deliveryInProgress = orders.where((o) => o['status'] == 'in_transit' || o['status'] == 'processing').length;
+          pendingOrders = pending;
+          deliveredOrders = delivered;
+          canceledOrders = canceled;
+          deliveryInProgress = inProgress;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      print('ERROR fetching orders: $e');
+    }
+    
+    // Fetch Delivery Persons
+    try {
+      print('\n--- FETCHING DELIVERY PERSONS ---');
+      final deliveryResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Delivery Persons Response Status: ${deliveryResp.statusCode}');
+      print('Delivery Persons Response Body: ${deliveryResp.body}');
+      if (deliveryResp.statusCode == 200) {
+        final data = jsonDecode(deliveryResp.body);
+        final deliveryPersons = data['delivery_persons'] ?? data['data'] ?? [];
+        print('Total Delivery Persons: ${deliveryPersons.length}');
+        final active = deliveryPersons.where((dp) => dp['is_available'] == true).length;
+        print('Active Delivery Persons: $active');
+        setState(() {
+          activeDelivery = active;
+        });
+      }
+    } catch (e) {
+      print('ERROR fetching delivery persons: $e');
+    }
+    
+    // Fetch Dashboard Metrics
+    try {
+      print('\n--- FETCHING DASHBOARD METRICS ---');
+      final metricsResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/dashboard-metrics'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Dashboard Metrics Response Status: ${metricsResp.statusCode}');
+      if (metricsResp.statusCode == 200) {
+        final data = jsonDecode(metricsResp.body);
+        final metrics = data['data'] ?? {};
+        print('Farmers Active Today: ${metrics['farmersActiveToday']}');
+        print('Low Stock Farmers: ${metrics['lowStockFarmers']}');
+        print('New Customers Week: ${metrics['newCustomersWeek']}');
+        print('Delayed Delivery: ${metrics['delayedDelivery']}');
+        setState(() {
+          farmersActiveToday = metrics['farmersActiveToday'] ?? 0;
+          lowStockFarmers = metrics['lowStockFarmers'] ?? 0;
+          newCustomersWeek = metrics['newCustomersWeek'] ?? 0;
+          delayedDelivery = metrics['delayedDelivery'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('ERROR fetching dashboard metrics: $e');
+    }
+    
+    print('\n========== ANALYTICS SUMMARY ==========');
+    print('Total Farmers: $totalFarmers');
+    print('Farmers Active Today: $farmersActiveToday');
+    print('Low Stock Farmers: $lowStockFarmers');
+    print('Total Customers: $totalCustomers');
+    print('New Customers This Week: $newCustomersWeek');
+    print('Active Orders: $activeOrders');
+    print('Pending Orders: $pendingOrders');
+    print('Delivered Orders: $deliveredOrders');
+    print('Canceled Orders: $canceledOrders');
+    print('Delivery In Progress: $deliveryInProgress');
+    print('Active Delivery Personnel: $activeDelivery');
+    print('Delayed Deliveries: $delayedDelivery');
+    print('==========================================\n');
   }
 
   List<dynamic> _getFilteredList() {
