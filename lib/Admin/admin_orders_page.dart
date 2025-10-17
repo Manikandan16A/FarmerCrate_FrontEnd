@@ -9,6 +9,7 @@ import 'admin_order_tracking.dart';
 import 'admin_sidebar.dart';
 import 'user_management.dart';
 import 'adminreport.dart';
+import '../auth/Signin.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   final String token;
@@ -262,8 +263,19 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FDF8),
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 8,
+        shadowColor: Colors.black26,
         leading: Builder(
           builder: (context) => Container(
             margin: EdgeInsets.all(8),
@@ -277,22 +289,90 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
             ),
           ),
         ),
-        title: const Text(
-          'All Orders',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.15)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.shopping_cart_rounded, color: Colors.white, size: 26),
+            ),
+            SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'All Orders',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Text(
+                  'Order Management',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        elevation: 0,
-        centerTitle: true,
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchOrders,
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+              onPressed: () {
+                _fetchOrders();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                        SizedBox(width: 10),
+                        Text('Refreshing...', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    backgroundColor: Color(0xFF2E7D32),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: Duration(seconds: 1),
+                    margin: EdgeInsets.all(16),
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
+              onPressed: () {},
             ),
           ),
         ],
@@ -304,7 +384,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
                   ),
                   SizedBox(height: 16),
                   Text(
@@ -340,7 +420,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       ElevatedButton(
                         onPressed: _fetchOrders,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
+                          backgroundColor: const Color(0xFF2E7D32),
                           foregroundColor: Colors.white,
                         ),
                         child: const Text('Retry'),
@@ -381,7 +461,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _fetchOrders,
-                      color: const Color(0xFF4CAF50),
+                      color: const Color(0xFF2E7D32),
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _orders.length,
@@ -778,11 +858,13 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
               ),
             );
           } else if (index == 1) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+          } else if (index == 2) {
+            // Already on orders page
           } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
-            // Profile - could show profile modal
+            _showAdminProfile();
           }
         },
         items: [
@@ -792,6 +874,84 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           BottomNavigationBarItem(icon: Icon(Icons.analytics_rounded), label: 'Reports'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
+      ),
+    );
+  }
+
+  void _showAdminProfile() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 20),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFF2E7D32),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
+            ),
+            SizedBox(height: 16),
+            Text(
+              widget.user['name'] ?? 'Admin',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B5E20),
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              widget.user['email'] ?? 'admin@farmercrate.com',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Administrator',
+                style: TextStyle(
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -649,13 +649,12 @@ class _ReportsPageState extends State<ReportsPage> {
         unselectedLabelStyle: TextStyle(fontSize: 12),
         elevation: 8,
         onTap: (index) {
-          setState(() => _currentIndex = index);
           if (index == 0) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminManagementPage(user: widget.user, token: widget.token)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(user: widget.user, token: widget.token)));
           } else if (index == 1) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
             // Already on reports page
           } else if (index == 4) {
