@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'farmer_details_page.dart';
+import 'transporter_details_page.dart';
+import 'delivery_person_details_page.dart';
 
 class CustomerDetailsPage extends StatefulWidget {
   final String customerId;
@@ -333,18 +336,20 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage> {
               Flexible(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildDetailCard('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address'], farmer?['image_url'], Icons.agriculture),
-                      SizedBox(height: 12),
-                      _buildDetailCard('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address'], null, Icons.local_shipping),
-                      SizedBox(height: 12),
-                      _buildDetailCard('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address'], null, Icons.local_shipping),
-                      SizedBox(height: 12),
-                      deliveryPerson != null
-                          ? _buildDetailCard('Delivery Person', deliveryPerson['name'], deliveryPerson['mobile_number'], deliveryPerson['vehicle_number'], null, Icons.delivery_dining)
-                          : _buildWaitingCard('Delivery Person'),
-                    ],
+                  child: Builder(
+                    builder: (dialogContext) => Column(
+                      children: [
+                        _buildDetailCard('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address'], farmer?['image_url'], Icons.agriculture, data: farmer, dialogContext: dialogContext),
+                        SizedBox(height: 12),
+                        _buildDetailCard('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address'], sourceTransporter?['image_url'], Icons.local_shipping, data: sourceTransporter, dialogContext: dialogContext),
+                        SizedBox(height: 12),
+                        _buildDetailCard('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address'], destTransporter?['image_url'], Icons.local_shipping, data: destTransporter, dialogContext: dialogContext),
+                        SizedBox(height: 12),
+                        deliveryPerson != null && deliveryPerson['name'] != null
+                            ? _buildDetailCard('Delivery Person', deliveryPerson['name'], deliveryPerson['mobile_number'], deliveryPerson['vehicle_number'], deliveryPerson['image_url'], Icons.delivery_dining, data: deliveryPerson, dialogContext: dialogContext)
+                            : _buildWaitingCard('Delivery Person'),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -355,51 +360,146 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage> {
     );
   }
 
-  Widget _buildDetailCard(String title, String? name, String? contact, String? info, String? imageUrl, IconData icon) {
-    if (name == null) return _buildWaitingCard(title);
+  Widget _buildDetailCard(String title, String? name, String? contact, String? info, String? imageUrl, IconData icon, {dynamic data, BuildContext? dialogContext}) {
+    if (name == null || name.isEmpty) return _buildWaitingCard(title);
     
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green[200]!),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, 2))],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: Colors.green[50],
-            backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
-            child: imageUrl == null || imageUrl.isEmpty ? Icon(icon, color: Colors.green[700], size: 28) : null,
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                SizedBox(height: 2),
-                Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                if (contact != null) ...[
-                  SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Icon(Icons.phone, size: 12, color: Colors.grey[600]),
-                      SizedBox(width: 4),
-                      Text(contact, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    ],
-                  ),
-                ],
-                if (info != null) ...[
-                  SizedBox(height: 2),
-                  Text(info, style: TextStyle(fontSize: 11, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
-              ],
+    return GestureDetector(
+      onTap: () async {
+        if (dialogContext != null) {
+          Navigator.pop(dialogContext);
+        }
+        
+        if (title == 'Farmer' && data != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmerDetailsPage(
+                farmerId: data['farmer_id'].toString(),
+                token: widget.token,
+                user: data,
+              ),
             ),
-          ),
-        ],
+          );
+        } else if ((title == 'Source Transporter' || title == 'Destination Transporter') && data != null) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.orange)),
+          );
+          
+          final transporterId = data['transporter_id'].toString();
+          final fullData = await _fetchTransporterDetails(transporterId);
+          
+          Navigator.of(context, rootNavigator: true).pop();
+          
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TransporterDetailsPage(
+                  transporterId: transporterId,
+                  token: widget.token,
+                  transporter: fullData ?? {
+                    'name': data['name'] ?? 'Unknown',
+                    'email': 'N/A',
+                    'phone': data['mobile_number'] ?? 'N/A',
+                    'age': 0,
+                    'zone': 'N/A',
+                    'district': 'N/A',
+                    'state': 'N/A',
+                    'verifiedStatus': false,
+                    'totalOrders': 0,
+                    'totalAmount': 0.0,
+                    'sourceOrders': 0,
+                    'destOrders': 0,
+                    'imageUrl': null,
+                  },
+                ),
+              ),
+            );
+          }
+        } else if (title == 'Delivery Person' && data != null) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.purple)),
+          );
+          
+          final deliveryPersonId = data['delivery_person_id'].toString();
+          final fullData = await _fetchDeliveryPersonDetails(deliveryPersonId);
+          
+          Navigator.of(context, rootNavigator: true).pop();
+          
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DeliveryPersonDetailsPage(
+                  deliveryPersonId: deliveryPersonId,
+                  token: widget.token,
+                  deliveryPerson: fullData ?? {
+                    'id': data['delivery_person_id'],
+                    'name': data['name'] ?? 'Unknown',
+                    'vehicleNumber': data['vehicle_number'] ?? 'N/A',
+                    'isAvailable': false,
+                    'totalOrders': 0,
+                    'rating': '0.0',
+                    'phone': data['mobile_number'] ?? 'N/A',
+                    'licenseNumber': 'N/A',
+                    'currentLocation': 'N/A',
+                    'vehicleType': 'bike',
+                    'totalAmount': 0.0,
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.green[200]!),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: Offset(0, 2))],
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: Colors.green[50],
+              backgroundImage: imageUrl != null && imageUrl.isNotEmpty ? NetworkImage(imageUrl) : null,
+              child: imageUrl == null || imageUrl.isEmpty ? Icon(icon, color: Colors.green[700], size: 28) : null,
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+                  SizedBox(height: 2),
+                  Text(name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                  if (contact != null) ...[
+                    SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.phone, size: 12, color: Colors.grey[600]),
+                        SizedBox(width: 4),
+                        Text(contact, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ],
+                  if (info != null) ...[
+                    SizedBox(height: 2),
+                    Text(info, style: TextStyle(fontSize: 11, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
+          ],
+        ),
       ),
     );
   }
@@ -433,6 +533,90 @@ class _CustomerDetailsPageState extends State<CustomerDetailsPage> {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> _fetchTransporterDetails(String transporterId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/transporters'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final transporters = data['data'] as List;
+        final transporter = transporters.firstWhere(
+          (t) => t['transporter_id'].toString() == transporterId,
+          orElse: () => null,
+        );
+        
+        if (transporter != null) {
+          final stats = transporter['order_stats'] ?? {};
+          return {
+            'name': transporter['name'],
+            'email': transporter['email'] ?? 'N/A',
+            'phone': transporter['mobile_number'],
+            'age': transporter['age'] ?? 0,
+            'zone': transporter['zone'] ?? 'N/A',
+            'district': transporter['district'],
+            'state': transporter['state'],
+            'verifiedStatus': transporter['is_verified'] ?? false,
+            'totalOrders': stats['total_orders'] ?? 0,
+            'totalAmount': (stats['total_amount'] ?? 0.0).toDouble(),
+            'sourceOrders': stats['source_orders'] ?? 0,
+            'destOrders': stats['destination_orders'] ?? 0,
+            'imageUrl': transporter['image_url'],
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching transporter details: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _fetchDeliveryPersonDetails(String deliveryPersonId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final deliveryPersons = data['data'] as List;
+        final deliveryPerson = deliveryPersons.firstWhere(
+          (dp) => dp['delivery_person_id'].toString() == deliveryPersonId,
+          orElse: () => null,
+        );
+        
+        if (deliveryPerson != null) {
+          final stats = deliveryPerson['order_stats'] ?? {};
+          return {
+            'id': deliveryPerson['delivery_person_id'],
+            'name': deliveryPerson['name'],
+            'vehicleNumber': deliveryPerson['vehicle_number'],
+            'isAvailable': deliveryPerson['is_available'] ?? false,
+            'totalOrders': stats['total_orders'] ?? 0,
+            'rating': (stats['average_rating'] ?? 0.0).toString(),
+            'phone': deliveryPerson['mobile_number'],
+            'licenseNumber': deliveryPerson['license_number'] ?? 'N/A',
+            'currentLocation': deliveryPerson['current_location'] ?? 'N/A',
+            'vehicleType': deliveryPerson['vehicle_type'] ?? 'bike',
+            'totalAmount': (stats['total_amount'] ?? 0.0).toDouble(),
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching delivery person details: $e');
+    }
+    return null;
   }
 
   Color _getStatusColor(String status) {
