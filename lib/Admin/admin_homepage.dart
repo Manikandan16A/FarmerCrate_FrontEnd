@@ -3,6 +3,7 @@ import 'package:farmer_crate/Admin/total_order.dart';
 import 'package:farmer_crate/Admin/transpoter_mang.dart';
 import 'package:farmer_crate/Admin/admin_orders_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -1096,6 +1097,83 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     );
   }
 
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.exit_to_app, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Exit App',
+              style: TextStyle(
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to exit the app?',
+          style: TextStyle(
+            color: Color(0xFF424242),
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFF757575),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => SystemNavigator.pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+            ),
+            child: Text(
+              'Exit',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1109,7 +1187,9 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
         ? farmers.where((farmer) => !farmer.isVerified).length
         : transporters.where((transporter) => !transporter.isVerified).length;
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -1287,15 +1367,16 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
         unselectedLabelStyle: TextStyle(fontSize: 12),
         elevation: 8,
         onTap: (index) {
-          setState(() => _currentIndex = index);
           if (index == 1) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
             _showAdminProfile();
+          } else {
+            setState(() => _currentIndex = index);
           }
         },
         items: [
@@ -1306,6 +1387,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
+    ),
     );
   }
 

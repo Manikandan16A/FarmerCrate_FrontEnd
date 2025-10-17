@@ -186,7 +186,17 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
+          ),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF5F3FF),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -669,6 +679,7 @@ class _ReportsPageState extends State<ReportsPage> {
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
+    ),
     );
   }
 

@@ -262,7 +262,17 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
+          ),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -875,6 +885,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
+    ),
     );
   }
 

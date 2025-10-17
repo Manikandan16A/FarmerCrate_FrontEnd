@@ -158,10 +158,6 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   void _onNavItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-
     Widget targetPage;
     switch (index) {
       case 0:
@@ -180,11 +176,14 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         targetPage = CustomerHomePage(token: widget.token);
     }
 
+    if (index == 0) {
+      setState(() => _currentIndex = index);
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => targetPage),
     );
-
   }
 
   List<Product> get filteredProducts {

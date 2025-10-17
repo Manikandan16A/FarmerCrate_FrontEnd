@@ -250,7 +250,17 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
+          ),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -368,7 +378,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         unselectedLabelStyle: TextStyle(fontSize: 12),
         elevation: 8,
         onTap: (index) {
-          setState(() => _currentIndex = index);
           if (index == 0) {
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
@@ -377,6 +386,8 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
             Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
             _showAdminProfile();
+          } else {
+            setState(() => _currentIndex = index);
           }
         },
         items: [
@@ -387,6 +398,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
+    ),
     );
   }
 
