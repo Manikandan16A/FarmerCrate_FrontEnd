@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'farmer_details_page.dart';
+import 'customer_details_page.dart';
+import 'delivery_person_details_page.dart';
 
 class TransporterDetailsPage extends StatefulWidget {
   final String transporterId;
@@ -410,16 +413,18 @@ class _TransporterDetailsPageState extends State<TransporterDetailsPage> {
               Flexible(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildEnhancedDetailCard('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address'], farmer?['image_url'], Icons.agriculture, Colors.green),
-                      SizedBox(height: 12),
-                      _buildEnhancedDetailCard('Customer', customer?['name'], customer?['mobile_number'], customer?['address'], customer?['image_url'], Icons.person, Colors.blue),
-                      SizedBox(height: 12),
-                      _buildEnhancedDetailCard('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address'], null, Icons.upload, Colors.purple),
-                      SizedBox(height: 12),
-                      _buildEnhancedDetailCard('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address'], null, Icons.download, Colors.orange),
-                    ],
+                  child: Builder(
+                    builder: (dialogContext) => Column(
+                      children: [
+                        _buildEnhancedDetailCard('Farmer', farmer?['name'], farmer?['mobile_number'], farmer?['address'], farmer?['image_url'], Icons.agriculture, Colors.green, data: farmer, dialogContext: dialogContext),
+                        SizedBox(height: 12),
+                        _buildEnhancedDetailCard('Customer', customer?['name'], customer?['mobile_number'], customer?['address'], customer?['image_url'], Icons.person, Colors.blue, data: customer, dialogContext: dialogContext),
+                        SizedBox(height: 12),
+                        _buildEnhancedDetailCard('Source Transporter', sourceTransporter?['name'], sourceTransporter?['mobile_number'], sourceTransporter?['address'], null, Icons.upload, Colors.purple),
+                        SizedBox(height: 12),
+                        _buildEnhancedDetailCard('Destination Transporter', destTransporter?['name'], destTransporter?['mobile_number'], destTransporter?['address'], null, Icons.download, Colors.orange),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -430,90 +435,185 @@ class _TransporterDetailsPageState extends State<TransporterDetailsPage> {
     );
   }
 
-  Widget _buildEnhancedDetailCard(String title, String? name, String? contact, String? info, String? imageUrl, IconData icon, Color color) {
+  Widget _buildEnhancedDetailCard(String title, String? name, String? contact, String? info, String? imageUrl, IconData icon, Color color, {dynamic data, BuildContext? dialogContext}) {
     if (name == null) return SizedBox.shrink();
     
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-        boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 8, offset: Offset(0, 3))],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(14),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(35),
-                boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 6, offset: Offset(0, 2))],
+    return GestureDetector(
+      onTap: () async {
+        if (dialogContext != null) {
+          Navigator.pop(dialogContext);
+        }
+        
+        if (title == 'Farmer' && data != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmerDetailsPage(
+                farmerId: data['farmer_id'].toString(),
+                token: widget.token,
+                user: data,
               ),
-              child: CircleAvatar(
-                radius: 32,
-                backgroundColor: color.withOpacity(0.15),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(32),
-                  child: imageUrl != null && imageUrl.isNotEmpty
-                      ? Image.network(
-                          imageUrl,
-                          width: 64,
-                          height: 64,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Icon(icon, color: color, size: 30),
-                        )
-                      : Icon(icon, color: color, size: 30),
+            ),
+          );
+        } else if (title == 'Customer' && data != null) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.blue)),
+          );
+          
+          final customerId = data['customer_id'].toString();
+          final fullData = await _fetchCustomerDetails(customerId);
+          
+          Navigator.of(context, rootNavigator: true).pop();
+          
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CustomerDetailsPage(
+                  customerId: customerId,
+                  token: widget.token,
+                  customer: fullData ?? {
+                    'name': data['name'] ?? 'Unknown',
+                    'email': 'N/A',
+                    'phone': data['mobile_number'] ?? 'N/A',
+                    'age': 0,
+                    'address': data['address'] ?? 'N/A',
+                    'district': 'N/A',
+                    'state': 'N/A',
+                    'orders': 0,
+                    'spent': 0,
+                    'imageUrl': null,
+                  },
                 ),
               ),
-            ),
-            SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(title, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+            );
+          }
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          boxShadow: [BoxShadow(color: color.withOpacity(0.1), blurRadius: 8, offset: Offset(0, 3))],
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(35),
+                  boxShadow: [BoxShadow(color: color.withOpacity(0.2), blurRadius: 6, offset: Offset(0, 2))],
+                ),
+                child: CircleAvatar(
+                  radius: 32,
+                  backgroundColor: color.withOpacity(0.15),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: imageUrl != null && imageUrl.isNotEmpty
+                        ? Image.network(
+                            imageUrl,
+                            width: 64,
+                            height: 64,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Icon(icon, color: color, size: 30),
+                          )
+                        : Icon(icon, color: color, size: 30),
                   ),
-                  SizedBox(height: 6),
-                  Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                  if (contact != null) ...[ 
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.phone, size: 14, color: color),
-                        SizedBox(width: 6),
-                        Text(contact, style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ],
-                  if (info != null) ...[
-                    SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 14, color: color),
-                        SizedBox(width: 6),
-                        Expanded(child: Text(info, style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ],
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(title, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                    ),
+                    SizedBox(height: 6),
+                    Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                    if (contact != null) ...[ 
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.phone, size: 14, color: color),
+                          SizedBox(width: 6),
+                          Text(contact, style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+                    ],
+                    if (info != null) ...[
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 14, color: color),
+                          SizedBox(width: 6),
+                          Expanded(child: Text(info, style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 2, overflow: TextOverflow.ellipsis)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> _fetchCustomerDetails(String customerId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/customers'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final customers = data['data'] as List;
+        final customer = customers.firstWhere(
+          (c) => c['customer_id'].toString() == customerId,
+          orElse: () => null,
+        );
+        
+        if (customer != null) {
+          final stats = customer['order_stats'] ?? {};
+          return {
+            'name': customer['name'],
+            'email': customer['email'] ?? 'N/A',
+            'phone': customer['mobile_number'],
+            'age': customer['age'] ?? 0,
+            'address': customer['address'],
+            'district': customer['district'],
+            'state': customer['state'],
+            'orders': stats['total_orders'] ?? 0,
+            'spent': stats['total_spent'] ?? 0,
+            'imageUrl': customer['image_url'],
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching customer details: $e');
+    }
+    return null;
   }
 
   Color _getStatusColor(String status) {
