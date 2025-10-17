@@ -150,8 +150,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     switch (status?.toUpperCase()) {
       case 'PLACED': return 'Order Placed';
       case 'ASSIGNED': return 'Pickup from Farm';
-      case 'SHIPPED': return 'In Transit';
-      case 'IN_TRANSIT': return 'In Transit';
+      case 'SHIPPED': return 'Shipped';
       case 'RECEIVED': return 'Reached Hub';
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'COMPLETED': return 'Delivered';
@@ -201,7 +200,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
       case 'SHIPPED':
         return Colors.indigo;
       case 'IN_TRANSIT':
-        return Colors.teal;
       case 'RECEIVED':
         return Colors.cyan;
       case 'OUT_FOR_DELIVERY':
@@ -219,7 +217,8 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     switch (status?.toUpperCase()) {
       case 'PLACED': return 'Order Placed';
       case 'ASSIGNED': return 'Pickup from Farm';
-      case 'SHIPPED': return 'In Transit';
+      case 'SHIPPED': return 'Shipped';
+      case 'IN_TRANSIT': return 'Reached Hub';
       case 'RECEIVED': return 'Reached Hub';
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'COMPLETED': return 'Delivered';
@@ -264,7 +263,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
           ),
         ),
         title: Text(
-          'Order #${shipment['order_id']}',
+          'Your Order',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -606,13 +605,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Order #${order['order_id']}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
+
           const SizedBox(height: 8),
           Text(
             'Estimated delivery: ${_formatDate(order['estimated_delivery_time'])}',

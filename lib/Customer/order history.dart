@@ -175,9 +175,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
       case 'PLACED':
         return Colors.orange;
       case 'CONFIRMED':
+      case 'ASSIGNED':
         return Colors.blue;
       case 'SHIPPED':
         return Colors.purple;
+      case 'IN_TRANSIT':
+      case 'RECEIVED':
+        return Colors.cyan;
+      case 'OUT_FOR_DELIVERY':
+        return Colors.amber;
       case 'DELIVERED':
       case 'COMPLETED':
         return Colors.green;
@@ -241,6 +247,22 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         ),
       ],
     );
+  }
+
+  String _displayStatus(String status) {
+    switch (status.toUpperCase()) {
+      case 'PLACED': return 'Order Placed';
+      case 'ASSIGNED': return 'Pickup from Farm';
+      case 'SHIPPED': return 'Shipped';
+      case 'IN_TRANSIT': return 'Reached Hub';
+      case 'RECEIVED': return 'Reached Hub';
+      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
+      case 'COMPLETED': return 'Delivered';
+      case 'DELIVERED': return 'Delivered';
+      case 'CANCELLED': return 'Cancelled';
+      case 'REFUNDED': return 'Refunded';
+      default: return status;
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -492,7 +514,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                o.productName.isNotEmpty ? o.productName : 'Order #${o.orderId}',
+                                o.productName.isNotEmpty ? o.productName : 'Your Order',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -505,8 +527,8 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildDialogRow('Order ID', '${o.orderId}'),
-                            _buildDialogRow('Status', o.status),
+
+                            _buildDialogRow('Status', _displayStatus(o.status)),
                             _buildDialogRow('Quantity', '${o.quantity}'),
                             _buildDialogRow('Item Price', '₹${o.productPrice.toStringAsFixed(2)}'),
                             _buildDialogRow('Total Price', '₹${o.totalPrice.toStringAsFixed(2)}'),
@@ -641,7 +663,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    o.productName.isNotEmpty ? o.productName : 'Order #${o.orderId}',
+                                    o.productName.isNotEmpty ? o.productName : 'Your Order',
                                     style: const TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
@@ -656,7 +678,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
-                                      o.status,
+                                      _displayStatus(o.status),
                                       style: TextStyle(
                                         color: _statusColor(o.status),
                                         fontWeight: FontWeight.w600,
