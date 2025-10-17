@@ -5,13 +5,13 @@ import '../auth/Signin.dart';
 import 'admin_homepage.dart';
 import 'adminreport.dart';
 import 'admin_orders_page.dart';
+import 'common_drawer.dart';
 import 'farmer_details_page.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
 import 'customer_details_page.dart';
 import 'transporter_details_page.dart';
 import 'delivery_person_details_page.dart';
-import 'admin_sidebar.dart';
 
 class AdminUserManagementPage extends StatefulWidget {
   final dynamic user;
@@ -250,18 +250,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
-          ),
-        );
-        return false;
-      },
-      child: Scaffold(
-      resizeToAvoidBottomInset: false,
+    return Scaffold(
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -302,7 +291,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           ),
         ],
       ),
-      drawer: AdminSidebar(token: widget.token, user: widget.user),
+      drawer: AdminDrawer(token: widget.token, user: widget.user, currentIndex: 1),
       body: Column(
         children: [
           Container(
@@ -380,15 +369,27 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         elevation: 8,
         onTap: (index) {
           if (index == 0) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)),
+              (route) => false,
+            );
+          } else if (index == 1) {
+            // Already on management page
           } else if (index == 2) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)),
+              (route) => false,
+            );
           } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)),
+              (route) => false,
+            );
           } else if (index == 4) {
             _showAdminProfile();
-          } else {
-            setState(() => _currentIndex = index);
           }
         },
         items: [
@@ -399,7 +400,6 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
-    ),
     );
   }
 

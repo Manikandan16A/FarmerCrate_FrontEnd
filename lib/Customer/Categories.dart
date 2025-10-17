@@ -587,31 +587,30 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
   }
 
   void _onNavItemTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-    Widget targetPage;
-    switch (index) {
-      case 0:
-        targetPage = CustomerHomePage(token: widget.token);
-        break;
-      case 1:
-        targetPage = CategoryPage(token: widget.token);
-        break;
-      case 2:
-        targetPage = CartPage(token: widget.token);
-        break;
-      case 3:
-        targetPage = CustomerProfilePage(token: widget.token ?? '');
-        break;
-      default:
-        targetPage = CustomerHomePage(token: widget.token);
+    if (index != _currentIndex) {
+      Widget targetPage;
+      switch (index) {
+        case 0:
+          targetPage = CustomerHomePage(token: widget.token);
+          break;
+        case 1:
+          targetPage = CategoryPage(token: widget.token);
+          break;
+        case 2:
+          targetPage = CartPage(token: widget.token);
+          break;
+        case 3:
+          targetPage = CustomerProfilePage(token: widget.token ?? '');
+          break;
+        default:
+          targetPage = CustomerHomePage(token: widget.token);
+      }
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => targetPage),
+        (route) => false,
+      );
     }
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => targetPage),
-          (route) => false,
-    );
   }
 
   void _openFilterSheet() {
@@ -774,62 +773,74 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: CustomerNavigationUtils.buildGlassmorphicAppBar(
-        title: 'Categories',
-        showSearch: _isSearchVisible,
-        searchController: _searchController,
-        onSearchToggle: () {
-          setState(() {
-            _isSearchVisible = !_isSearchVisible;
-            if (!_isSearchVisible) {
-              _searchController.clear();
-            }
-          });
-        },
-        onRefresh: () {
-          _fetchImages();
-          _fetchFarmerNames();
-        },
-        onCartTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
-          );
-        },
-      ),
-      drawer: CustomerNavigationUtils.buildCustomerDrawer(
-        parentContext: context,
-        token: widget.token,
-        customerImageUrl: customerImageUrl,
-        customerName: customerName,
-        isLoadingProfile: false,
-      ),
-      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
-        currentIndex: _currentIndex,
-        onTap: _onNavItemTapped,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF66BB6A),
-              Color(0xFF4CAF50),
-              Color(0xFF2E7D32),
-            ],
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CustomerHomePage(token: widget.token),
           ),
+          (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
+        appBar: CustomerNavigationUtils.buildGlassmorphicAppBar(
+          title: 'Categories',
+          showSearch: _isSearchVisible,
+          searchController: _searchController,
+          onSearchToggle: () {
+            setState(() {
+              _isSearchVisible = !_isSearchVisible;
+              if (!_isSearchVisible) {
+                _searchController.clear();
+              }
+            });
+          },
+          onRefresh: () {
+            _fetchImages();
+            _fetchFarmerNames();
+          },
+          onCartTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+            );
+          },
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildSearchAndSort(),
-              _buildCategoryChips(),
-              const SizedBox(height: 8),
-              _buildActiveChips(),
-              _buildProductsSection(),
-            ],
+        drawer: CustomerNavigationUtils.buildCustomerDrawer(
+          parentContext: context,
+          token: widget.token,
+          customerImageUrl: customerImageUrl,
+          customerName: customerName,
+          isLoadingProfile: false,
+        ),
+        bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
+          currentIndex: _currentIndex,
+          onTap: _onNavItemTapped,
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF66BB6A),
+                Color(0xFF4CAF50),
+                Color(0xFF2E7D32),
+              ],
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildSearchAndSort(),
+                _buildCategoryChips(),
+                const SizedBox(height: 8),
+                _buildActiveChips(),
+                _buildProductsSection(),
+              ],
+            ),
           ),
         ),
       ),

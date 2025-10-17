@@ -378,8 +378,12 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitDialog();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.green[600],
         elevation: 0,
@@ -827,7 +831,39 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
           ],
         ),
       ),
+      ),
     );
+  }
+
+  Future<bool> _showExitDialog() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.exit_to_app, color: Colors.green[600]),
+            SizedBox(width: 8),
+            Text('Exit App', style: TextStyle(color: Colors.green[600], fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text('Are you sure you want to exit FarmerCrate?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Exit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
   }
 
   String _getProductStatus(Product product) {

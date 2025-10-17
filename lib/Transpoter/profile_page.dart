@@ -318,7 +318,15 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => TransporterDashboard(token: widget.token)),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
         title: Text('Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -495,6 +503,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -997,6 +1006,6 @@ class _ProfilePageState extends State<ProfilePage> {
     Share.share(
       'Check out FarmerCrate Transporter App - The best way to manage your delivery business!',
       subject: 'FarmerCrate Transporter App',
-    );
+      );
   }
 }

@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'customerhomepage.dart';
+import 'Categories.dart';
+import 'profile.dart';
 import 'navigation_utils.dart';
 import '../utils/user_utils.dart';
 
@@ -420,7 +422,18 @@ class _CartPageState extends State<CartPage> {
     double cartTotal = _cartItems.where((item) => item.isSelected).fold(0, (sum, item) => sum + item.price * item.quantity);
     int selectedCount = _cartItems.where((item) => item.isSelected).length;
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CustomerHomePage(token: widget.token),
+          ),
+          (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Colors.green[50],
       appBar: AppBar(
         backgroundColor: Colors.green[600],
@@ -887,7 +900,30 @@ class _CartPageState extends State<CartPage> {
       ),
       bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
         currentIndex: 2, // Cart is index 2
-        onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
+        onTap: (index) {
+          if (index != 2) {
+            Widget targetPage;
+            switch (index) {
+              case 0:
+                targetPage = CustomerHomePage(token: widget.token);
+                break;
+              case 1:
+                targetPage = CategoryPage(token: widget.token);
+                break;
+              case 3:
+                targetPage = CustomerProfilePage(token: widget.token ?? '');
+                break;
+              default:
+                targetPage = CustomerHomePage(token: widget.token);
+            }
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => targetPage),
+              (route) => false,
+            );
+          }
+        },
+      ),
       ),
     );
   }

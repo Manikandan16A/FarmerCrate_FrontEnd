@@ -1443,8 +1443,24 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    return WillPopScope(
+      onWillPop: () async {
+        // Check if we can pop the current route
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          // If no previous route, navigate to farmer homepage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmersHomePage(token: widget.token),
+            ),
+          );
+        }
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.green[600],
         elevation: 0,
@@ -2315,6 +2331,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -158,32 +158,31 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   void _onNavItemTapped(int index) {
-    Widget targetPage;
-    switch (index) {
-      case 0:
-        targetPage = CustomerHomePage(token: widget.token);
-        break;
-      case 1:
-        targetPage = CategoryPage(token: widget.token);
-        break;
-      case 2:
-        targetPage = CartPage(token: widget.token);
-        break;
-      case 3:
-        targetPage = CustomerProfilePage(token: widget.token);
-        break;
-      default:
-        targetPage = CustomerHomePage(token: widget.token);
-    }
+    if (index != _currentIndex) {
+      Widget targetPage;
+      switch (index) {
+        case 0:
+          targetPage = CustomerHomePage(token: widget.token);
+          break;
+        case 1:
+          targetPage = CategoryPage(token: widget.token);
+          break;
+        case 2:
+          targetPage = CartPage(token: widget.token);
+          break;
+        case 3:
+          targetPage = CustomerProfilePage(token: widget.token);
+          break;
+        default:
+          targetPage = CustomerHomePage(token: widget.token);
+      }
 
-    if (index == 0) {
-      setState(() => _currentIndex = index);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => targetPage),
+        (route) => false,
+      );
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => targetPage),
-    );
   }
 
   List<Product> get filteredProducts {
@@ -786,8 +785,12 @@ class _CustomerHomePageState extends State<CustomerHomePage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFFF8FDF8),
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitDialog();
+      },
+      child: Scaffold(
+        backgroundColor: Color(0xFFF8FDF8),
       extendBodyBehindAppBar: true,
       appBar: _buildGlassmorphicAppBar(),
       drawer: nav_utils.CustomerDrawer(
@@ -820,7 +823,39 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         ),
       ),
       bottomNavigationBar: _buildGlassmorphicBottomNav(),
+      ),
     );
+  }
+
+  Future<bool> _showExitDialog() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.exit_to_app, color: Color(0xFF1B5E20)),
+            SizedBox(width: 8),
+            Text('Exit App', style: TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text('Are you sure you want to exit FarmerCrate?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF1B5E20),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Exit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
   }
 
   PreferredSizeWidget _buildGlassmorphicAppBar() {
