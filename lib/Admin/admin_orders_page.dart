@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'admin_homepage.dart';
+import 'admin_order_tracking.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   final String token;
@@ -713,6 +714,35 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                                               ],
                                             ),
                                           ),
+                                          if (order.status.toUpperCase() != 'DELIVERED' && order.status.toUpperCase() != 'COMPLETED') ...[
+                                            const SizedBox(height: 12),
+                                            SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton.icon(
+                                                onPressed: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) => AdminOrderTrackingPage(
+                                                        token: widget.token,
+                                                        orderId: order.orderId.toString(),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                icon: const Icon(Icons.track_changes, size: 18),
+                                                label: const Text('Track Order'),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.blue[600],
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -918,7 +948,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[600],
+                        backgroundColor: Colors.grey[600],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -928,6 +958,35 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       child: const Text('Close', style: TextStyle(fontSize: 16)),
                     ),
                   ),
+                  if (order.status.toUpperCase() != 'DELIVERED' && order.status.toUpperCase() != 'COMPLETED') ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdminOrderTrackingPage(
+                                token: widget.token,
+                                orderId: order.orderId.toString(),
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.track_changes, size: 18),
+                        label: const Text('Track Order'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
