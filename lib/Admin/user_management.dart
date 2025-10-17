@@ -261,6 +261,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         return false;
       },
       child: Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(

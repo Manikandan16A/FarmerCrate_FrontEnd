@@ -40,6 +40,8 @@ class OrderItem {
   final String customerName;
   final String customerEmail;
   final String customerPhone;
+  final String customerImage;
+  final List<String> productImages;
 
   OrderItem({
     required this.orderId,
@@ -60,15 +62,26 @@ class OrderItem {
     required this.customerName,
     required this.customerEmail,
     required this.customerPhone,
+    required this.customerImage,
+    required this.productImages,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     final product = json['product'] ?? {};
     final images = product['images'] as List<dynamic>? ?? [];
     String imageUrl = '';
+    List<String> allImages = [];
     
     if (images.isNotEmpty) {
       try {
+        // Get all image URLs
+        for (var img in images) {
+          if (img is Map && img['image_url'] != null) {
+            allImages.add(img['image_url'].toString());
+          }
+        }
+        
+        // Get primary image for main display
         final primaryImage = images.firstWhere(
           (img) => img is Map && img['is_primary'] == true,
           orElse: () => null,
@@ -89,10 +102,12 @@ class OrderItem {
     final customer = json['customer'] ?? {};
     
     final customerName = (customer['name'] ?? '').toString();
+    final customerImage = (customer['image_url'] ?? '').toString();
     final deliveryPersonName = deliveryPerson != null ? (deliveryPerson['name'] ?? 'N/A').toString() : 'Wait for assigning';
     
     print('Customer data: $customer');
     print('Final customer name: $customerName');
+    print('Final customer image: $customerImage');
     print('Final delivery person: $deliveryPersonName');
     
     return OrderItem(
@@ -114,6 +129,8 @@ class OrderItem {
       customerName: customerName,
       customerEmail: (customer['email'] ?? '').toString(),
       customerPhone: (customer['mobile_number'] ?? '').toString(),
+      customerImage: customerImage,
+      productImages: allImages,
     );
   }
 }
@@ -273,6 +290,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
         return false;
       },
       child: Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -1053,11 +1071,27 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(30),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.grey[400],
-                          size: 30,
-                        ),
+                        child: order.customerImage.isNotEmpty
+                            ? Image.network(
+                                order.customerImage,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('Customer image load error: $error');
+                                  print('Customer image URL: ${order.customerImage}');
+                                  return Icon(
+                                    Icons.person,
+                                    color: Colors.grey[400],
+                                    size: 30,
+                                  );
+                                },
+                              )
+                            : Icon(
+                                Icons.person,
+                                color: Colors.grey[400],
+                                size: 30,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1090,23 +1124,52 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              if (order.productImage.isNotEmpty) ...[
-                Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!, width: 2),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      order.productImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[200],
-                        child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
-                      ),
+              if (order.productImages.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () => _showProductImages(order.productImages),
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green[200]!, width: 2),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            order.productImages.first,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                            ),
+                          ),
+                        ),
+                        if (order.productImages.length > 1)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '+${order.productImages.length - 1}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -1125,7 +1188,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[600],
+                        backgroundColor: Colors.red[600],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -1165,6 +1228,112 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     ),
                   ],
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showProductImages(List<String> images) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Product Images (${images.length})',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey[100],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  child: PageView.builder(
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            images[index],
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_not_supported, color: Colors.grey[400], size: 64),
+                                  SizedBox(height: 8),
+                                  Text('Image not available', style: TextStyle(color: Colors.grey[600])),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    images.length,
+                    (index) => Container(
+                      margin: EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.green[600],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

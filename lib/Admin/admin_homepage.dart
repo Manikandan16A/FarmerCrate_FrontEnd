@@ -1190,6 +1190,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
