@@ -7,6 +7,7 @@ import 'adminreport.dart';
 import 'farmer_details_page.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
+import 'customer_details_page.dart';
 
 class AdminUserManagementPage extends StatefulWidget {
   final dynamic user;
@@ -69,6 +70,14 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         
         setState(() {
           customers = (data['data'] as List).map((customer) {
+            final orderStats = customer['order_stats'] ?? {};
+            final orders = customer['orders'] as List? ?? [];
+            String lastOrderDate = _formatDate(customer['created_at']);
+            
+            if (orders.isNotEmpty) {
+              lastOrderDate = 'Recent';
+            }
+            
             return {
               'id': customer['customer_id']?.toString() ?? 'N/A',
               'name': customer['name'] ?? 'N/A',
@@ -79,9 +88,10 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               'state': customer['state'] ?? 'N/A',
               'district': customer['district'] ?? 'N/A',
               'age': customer['age'] ?? 0,
-              'orders': 0,
-              'spent': 0,
-              'lastOrder': _formatDate(customer['created_at']),
+              'imageUrl': customer['image_url'],
+              'orders': orderStats['total_orders'] ?? 0,
+              'spent': (orderStats['total_spent'] ?? 0).toInt(),
+              'lastOrder': lastOrderDate,
             };
           }).toList();
           _isLoadingCustomers = false;
@@ -125,6 +135,13 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           ),
         ),
         title: Text('User Management', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.white),
+            onPressed: _fetchCustomers,
+            tooltip: 'Reload',
+          ),
+        ],
       ),
       drawer: Drawer(
         child: ListView(
@@ -481,7 +498,16 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
                       gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1976D2)]),
                       borderRadius: BorderRadius.circular(25),
                     ),
-                    child: Icon(Icons.person, size: 28, color: Colors.white),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(25),
+                      child: customer['imageUrl'] != null && customer['imageUrl'].toString().isNotEmpty
+                          ? Image.network(
+                              customer['imageUrl'],
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 28, color: Colors.white),
+                            )
+                          : Icon(Icons.person, size: 28, color: Colors.white),
+                    ),
                   ),
                   SizedBox(width: 12),
                   Expanded(
@@ -544,12 +570,14 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Customer details page coming soon'),
-                        backgroundColor: Color(0xFF1976D2),
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => CustomerDetailsPage(
+                          customerId: customer['id'],
+                          token: widget.token,
+                          customer: customer,
+                        ),
                       ),
                     );
                   },
