@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'transporter_order_service.dart';
+import 'admin_order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/cloudinary_upload.dart';
 
-class TransporterOrderTrackingPage extends StatefulWidget {
+class AdminOrderTrackingPage extends StatefulWidget {
   final String? token;
   final String? orderId;
 
-  const TransporterOrderTrackingPage({
+  const AdminOrderTrackingPage({
     super.key,
     this.token,
     this.orderId,
   });
 
   @override
-  State<TransporterOrderTrackingPage> createState() => _TransporterOrderTrackingPageState();
+  State<AdminOrderTrackingPage> createState() => _AdminOrderTrackingPageState();
 }
 
-class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingPage> with SingleTickerProviderStateMixin {
+class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   String? _error;
   List<dynamic> _activeShipments = [];
@@ -107,7 +108,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
       return;
     }
 
-    final result = await TransporterOrderService.getActiveShipments(token);
+    final result = await AdminOrderService.getActiveShipments(token);
     
     if (mounted) {
       setState(() {
@@ -123,7 +124,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
               (order) => order['order_id'].toString() == widget.orderId,
               orElse: () => <String, dynamic>{},
             );
-            if (specificOrder != null && specificOrder.isNotEmpty) {
+            if (specificOrder.isNotEmpty) {
               _selectedOrder = specificOrder;
               _fetchOrderTracking(widget.orderId!);
             }
@@ -136,11 +137,25 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
     }
   }
 
+  String _mapStatusLabel(String? status) {
+    switch (status?.toUpperCase()) {
+      case 'PLACED': return 'Order Placed';
+      case 'ASSIGNED': return 'Pickup from Farm';
+      case 'SHIPPED': return 'Shipped';
+      case 'IN_TRANSIT': return 'Reached Hub';
+      case 'RECEIVED': return 'Reached Hub';
+      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
+      case 'COMPLETED': return 'Delivered';
+      case 'DELIVERED': return 'Delivered';
+      default: return status ?? 'Unknown';
+    }
+  }
+
   Future<void> _fetchOrderTracking(String orderId) async {
     final token = await _resolveToken();
     if (token == null) return;
 
-    final result = await TransporterOrderService.trackOrder(token, orderId);
+    final result = await AdminOrderService.trackOrder(token, orderId);
     
     if (mounted && result['success'] == true) {
       setState(() {
@@ -148,16 +163,48 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
         final steps = (data['tracking_steps'] as List<dynamic>? ?? [])
             .where((step) => step['status']?.toUpperCase() != 'IN_TRANSIT')
             .toList();
-        _trackingSteps = steps.map((step) => {
-          ...step,
-          'label': _mapStatusLabel(step['status']),
-        }).toList();
+        
+        // Always generate tracking steps from current order status since API doesn't provide them
+        _trackingSteps = _generateTrackingSteps(_selectedOrder!['current_status']);
+        
         final currentIndex = _trackingSteps.indexWhere((step) => step['current'] == true);
         if (currentIndex >= 0 && _trackingSteps.isNotEmpty) {
           _startVehicleAnimation(currentIndex, _trackingSteps.length);
         }
       });
     }
+  }
+
+  List<Map<String, dynamic>> _generateTrackingSteps(String? currentStatus) {
+    final allSteps = [
+      {'status': 'PLACED', 'label': 'Order Placed', 'timestamp': null, 'current': false},
+      {'status': 'ASSIGNED', 'label': 'Pickup from Farm', 'timestamp': null, 'current': false},
+      {'status': 'SHIPPED', 'label': 'Shipped', 'timestamp': null, 'current': false},
+      {'status': 'RECEIVED', 'label': 'Reached Hub', 'timestamp': null, 'current': false},
+      {'status': 'OUT_FOR_DELIVERY', 'label': 'Out for Delivery', 'timestamp': null, 'current': false},
+      {'status': 'COMPLETED', 'label': 'Delivered', 'timestamp': null, 'current': false},
+    ];
+    
+    final currentStatusUpper = currentStatus?.toUpperCase();
+    int currentIndex = -1;
+    
+    // Find current step index
+    for (int i = 0; i < allSteps.length; i++) {
+      if (allSteps[i]['status'] == currentStatusUpper || 
+          (currentStatusUpper == 'IN_TRANSIT' && allSteps[i]['status'] == 'RECEIVED')) {
+        currentIndex = i;
+        allSteps[i]['current'] = true;
+        break;
+      }
+    }
+    
+    // If status not found, default to first step
+    if (currentIndex == -1) {
+      currentIndex = 0;
+      allSteps[0]['current'] = true;
+    }
+    
+    return allSteps;
   }
 
   Future<void> _refreshData() async {
@@ -178,7 +225,6 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
       case 'SHIPPED':
         return Colors.indigo;
       case 'IN_TRANSIT':
-        return Colors.teal;
       case 'RECEIVED':
         return Colors.cyan;
       case 'OUT_FOR_DELIVERY':
@@ -197,18 +243,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
       case 'PLACED': return 'Order Placed';
       case 'ASSIGNED': return 'Pickup from Farm';
       case 'SHIPPED': return 'Shipped';
-      case 'RECEIVED': return 'Reached Hub';
-      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
-      case 'COMPLETED': return 'Delivered';
-      default: return status ?? 'Unknown';
-    }
-  }
-
-  String _mapStatusLabel(String? status) {
-    switch (status?.toUpperCase()) {
-      case 'PLACED': return 'Order Placed';
-      case 'ASSIGNED': return 'Pickup from Farm';
-      case 'SHIPPED': return 'Shipped';
+      case 'IN_TRANSIT': return 'Reached Hub';
       case 'RECEIVED': return 'Reached Hub';
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'COMPLETED': return 'Delivered';
@@ -539,7 +574,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Your Order',
+                'Order Details',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -564,7 +599,6 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
             ],
           ),
           const SizedBox(height: 12),
-
           const SizedBox(height: 8),
           Text(
             'Estimated delivery: ${_formatDate(order['estimated_delivery_time'])}',
@@ -613,7 +647,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
               borderRadius: BorderRadius.circular(8),
               child: primaryImage['image_url']?.isNotEmpty == true
                   ? Image.network(
-                      primaryImage['image_url'],
+                      CloudinaryUploader.optimizeImageUrl(primaryImage['image_url'], width: 80, height: 80),
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) => Icon(
                         Icons.image_not_supported,
@@ -666,11 +700,15 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
-    print('DEBUG: Full order data: $order');
     final product = order['product'] ?? {};
-    print('DEBUG: Product data: $product');
     final farmer = product['farmer'] ?? {};
-    print('DEBUG: Farmer data: $farmer');
+    final customer = order['customer'] ?? {};
+    final sourceTransporter = order['source_transporter'] ?? {};
+    final destTransporter = order['destination_transporter'] ?? {};
+    final deliveryPerson = order['delivery_person'] ?? {};
+    final hasSourceTransporter = sourceTransporter.isNotEmpty && sourceTransporter['name'] != null;
+    final hasDestTransporter = destTransporter.isNotEmpty && destTransporter['name'] != null;
+    final hasDeliveryPerson = deliveryPerson.isNotEmpty && deliveryPerson['name'] != null;
     
     return Column(
       children: [
@@ -720,6 +758,199 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
               _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
               _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
               _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue[50]!, Colors.blue[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.person, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Customer Details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1976D2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildEnhancedDetailRow(Icons.person, 'Name', customer['name'] ?? 'N/A', color: Colors.blue),
+              _buildEnhancedDetailRow(Icons.email, 'Email', customer['email'] ?? 'N/A', color: Colors.blue),
+              _buildEnhancedDetailRow(Icons.phone, 'Contact', customer['mobile_number'] ?? 'N/A', color: Colors.blue),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.purple[50]!, Colors.purple[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.purple.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.purple[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.store, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Source Transporter',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6A1B9A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildEnhancedDetailRow(Icons.person, 'Name', hasSourceTransporter ? sourceTransporter['name'] : 'Wait for assigning', color: Colors.purple),
+              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasSourceTransporter ? sourceTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.purple),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.indigo[50]!, Colors.indigo[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.indigo.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.location_on, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Destination Transporter',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF283593),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildEnhancedDetailRow(Icons.person, 'Name', hasDestTransporter ? destTransporter['name'] : 'Wait for assigning', color: Colors.indigo),
+              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasDestTransporter ? destTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.indigo),
+            ],
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.teal[50]!, Colors.teal[100]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.teal.withValues(alpha: 0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.teal[600],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.delivery_dining, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Delivery Person',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF00796B),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _buildEnhancedDetailRow(Icons.person, 'Name', hasDeliveryPerson ? deliveryPerson['name'] : 'Wait for assigning', color: Colors.teal),
+              _buildEnhancedDetailRow(Icons.phone, 'Contact', hasDeliveryPerson ? deliveryPerson['mobile_number'] ?? 'N/A' : 'N/A', color: Colors.teal),
             ],
           ),
         ),

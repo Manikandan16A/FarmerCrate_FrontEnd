@@ -141,7 +141,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> with SingleTicker
     switch (status?.toUpperCase()) {
       case 'PLACED': return 'Order Placed';
       case 'ASSIGNED': return 'Pickup from Farm';
-      case 'SHIPPED': return 'In Transit';
+      case 'SHIPPED': return 'Shipped';
       case 'RECEIVED': return 'Reached Hub';
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'COMPLETED': return 'Delivered';
@@ -209,7 +209,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> with SingleTicker
     switch (status?.toUpperCase()) {
       case 'PLACED': return 'Order Placed';
       case 'ASSIGNED': return 'Pickup from Farm';
-      case 'SHIPPED': return 'In Transit';
+      case 'SHIPPED': return 'Shipped';
       case 'RECEIVED': return 'Reached Hub';
       case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
       case 'COMPLETED': return 'Delivered';
@@ -490,13 +490,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage> with SingleTicker
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Order #${order['order_id']}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
+
           const SizedBox(height: 8),
           Text(
             'Estimated delivery: ${_formatDate(order['estimated_delivery_time'])}',

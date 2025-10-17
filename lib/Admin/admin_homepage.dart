@@ -1,6 +1,7 @@
 import 'package:farmer_crate/Admin/adminreport.dart';
 import 'package:farmer_crate/Admin/total_order.dart';
 import 'package:farmer_crate/Admin/transpoter_mang.dart';
+import 'package:farmer_crate/Admin/admin_orders_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -1275,14 +1276,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           if (index == 1) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Orders page coming soon'),
-                backgroundColor: Color(0xFF2E7D32),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
