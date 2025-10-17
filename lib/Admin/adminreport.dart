@@ -9,6 +9,8 @@ import 'admin_homepage.dart';
 import 'total_order.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
+import 'admin_orders_page.dart';
+import 'admin_sidebar.dart';
 
 
 class ReportsPage extends StatefulWidget {
@@ -270,94 +272,7 @@ class _ReportsPageState extends State<ReportsPage> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Icon(Icons.analytics, size: 40, color: Colors.white),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Reports Dashboard',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Order analytics & insights',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home_rounded, color: Colors.green[600]),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminManagementPage(user: widget.user, token: widget.token)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.manage_accounts_rounded, color: Colors.green[600]),
-              title: const Text('Management'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.analytics_rounded, color: Colors.green[600]),
-              title: const Text('Reports'),
-              onTap: () {
-                Navigator.pop(context);
-                // Already on reports page
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person_rounded, color: Colors.green[600]),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                _showAdminProfile();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: AdminSidebar(token: widget.token, user: widget.user),
       body: _isLoading
           ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
           : _error != null
@@ -740,15 +655,7 @@ class _ReportsPageState extends State<ReportsPage> {
           } else if (index == 1) {
             Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            // Orders page - you can add your orders page navigation here
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Orders page coming soon'),
-                backgroundColor: Color(0xFF2E7D32),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
             // Already on reports page
           } else if (index == 4) {

@@ -6,6 +6,9 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'admin_homepage.dart';
 import 'admin_order_tracking.dart';
+import 'admin_sidebar.dart';
+import 'user_management.dart';
+import 'adminreport.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   final String token;
@@ -261,16 +264,18 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FDF8),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
-              ),
-            );
-          },
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
         ),
         title: const Text(
           'All Orders',
@@ -292,6 +297,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           ),
         ],
       ),
+      drawer: AdminSidebar(token: widget.token, user: widget.user),
       body: _isLoading
           ? const Center(
               child: Column(
@@ -772,11 +778,11 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
               ),
             );
           } else if (index == 1) {
-            // Management - could navigate to user management
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
-            // Reports
+            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
-            // Profile
+            // Profile - could show profile modal
           }
         },
         items: [

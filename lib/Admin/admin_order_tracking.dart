@@ -3,6 +3,7 @@ import 'dart:async';
 import 'admin_order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/cloudinary_upload.dart';
+import 'admin_sidebar.dart';
 import 'farmer_details_page.dart';
 import 'transporter_details_page.dart';
 import 'customer_details_page.dart';
@@ -1497,9 +1498,18 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
         ),
         title: const Text('Order Tracking'),
         backgroundColor: Colors.green[600],
@@ -1511,6 +1521,7 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
           ),
         ],
       ),
+      drawer: AdminSidebar(token: widget.token ?? '', user: {}),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
