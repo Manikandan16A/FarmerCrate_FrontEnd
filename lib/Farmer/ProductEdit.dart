@@ -12,6 +12,7 @@ import 'homepage.dart';
 import 'orders_page.dart';
 import '../utils/cloudinary_upload.dart';
 import '../utils/notification_helper.dart';
+import 'common_drawer.dart';
 
 class Product {
   final int id;
@@ -1501,84 +1502,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[600],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'FarmerCrate',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Welcome, Farmer!',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.green[600]),
-              title: Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmersHomePage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_bag, color: Colors.green[600]),
-              title: Text('Orders'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => OrdersPage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person, color: Colors.green[600]),
-              title: Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmerProfilePage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: Text('Logout'),
-              onTap: _confirmLogout,
-            ),
-          ],
-        ),
-      ),
+      drawer: FarmerDrawer(token: widget.token, currentIndex: 2),
       body: Column(
         children: [
           Container(

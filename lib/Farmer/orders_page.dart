@@ -9,6 +9,7 @@ import '../auth/Signin.dart';
 import '../utils/cloudinary_upload.dart';
 import '../utils/notification_helper.dart';
 import 'order_tracking_page.dart';
+import 'common_drawer.dart';
 
 class OrdersPage extends StatefulWidget {
   final String? token;
@@ -1073,81 +1074,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FDF8),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.green[400]!, Colors.green[600]!],
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.agriculture, size: 48, color: Colors.white),
-                  SizedBox(height: 8),
-                  Text(
-                    'Farmer Menu',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.green[700]),
-              title: Text('Home', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmersHomePage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit, color: Colors.green[700]),
-              title: Text('Edit Product', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmerProductsPage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person, color: Colors.green[700]),
-              title: Text('Profile', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FarmerProfilePage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[700]),
-              title: Text('Logout', style: TextStyle(fontSize: 16)),
-              onTap: _confirmLogout,
-            ),
-          ],
-        ),
-      ),
+      drawer: FarmerDrawer(token: widget.token, currentIndex: 1),
       appBar: AppBar(
         backgroundColor: Colors.green[600],
         elevation: 0,

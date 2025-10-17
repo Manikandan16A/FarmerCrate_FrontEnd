@@ -382,6 +382,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             await prefs.setString('role', user['role']);
             await prefs.setInt('user_id', user['id']);
             if (user['name'] != null) await prefs.setString('username', user['name']);
+            await prefs.setBool('is_logged_in', true);
             print('✓ Token and user data saved to SharedPreferences');
 
             if (user['role'] == 'farmer') {

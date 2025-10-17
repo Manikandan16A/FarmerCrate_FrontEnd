@@ -19,6 +19,7 @@ import '../common/feedback_page.dart';
 import '../common/faq_page.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'common_drawer.dart';
 
 class FarmerProfilePage extends StatefulWidget {
   final String? token;
@@ -689,7 +690,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: _buildAppBar(),
-      drawer: _buildSideNav(),
+      drawer: FarmerDrawer(token: widget.token, currentIndex: 3),
       body: _isLoading ? _buildLoadingWidget() : _buildProfileForm(),
       bottomNavigationBar: _buildBottomNav(),
     );
