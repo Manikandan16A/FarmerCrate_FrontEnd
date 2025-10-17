@@ -95,17 +95,46 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         body: jsonEncode({'order_id': widget.order['order_id'], 'status': status}),
       );
 
+      setState(() => isUpdating = false);
+
       if (response.statusCode == 200) {
-        _showSnackBar('Order status updated to $status');
         Navigator.pop(context);
+        Navigator.pop(context);
+        await Future.delayed(Duration(milliseconds: 100));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.check_circle, color: Colors.white, size: 24),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(child: Text('Order status updated to $status', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500))),
+                ],
+              ),
+              backgroundColor: Color(0xFF2E7D32),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: EdgeInsets.all(16),
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              duration: Duration(seconds: 3),
+              elevation: 6,
+            ),
+          );
+        }
       } else {
         final errorData = jsonDecode(response.body);
         _showSnackBar(errorData['message'] ?? 'Failed to update status', isError: true);
       }
     } catch (e) {
-      _showSnackBar('Error: $e', isError: true);
-    } finally {
       setState(() => isUpdating = false);
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
