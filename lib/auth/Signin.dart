@@ -143,35 +143,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 builder: (context) => DeliveryDashboard(user: user, token: token),
                               ),
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(Icons.warning_amber, color: Colors.white, size: 20),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'You are offline. No orders will be assigned.',
-                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: Color(0xFFFF9800),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                margin: EdgeInsets.all(16),
-                                elevation: 6,
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
+                            SnackBarUtils.showWarning(context, 'You are offline. No orders will be assigned.');
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey[300],
@@ -206,35 +178,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 builder: (context) => DeliveryDashboard(user: user, token: token),
                               ),
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Container(
-                                      padding: EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(Icons.info_outline, color: Colors.white, size: 20),
-                                    ),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'You are now available for deliveries',
-                                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                backgroundColor: Color(0xFF2196F3),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                margin: EdgeInsets.all(16),
-                                elevation: 6,
-                                duration: Duration(seconds: 3),
-                              ),
-                            );
+                            SnackBarUtils.showInfo(context, 'You are now available for deliveries');
                             print('✓ Navigation to DeliveryDashboard successful');
                           },
                           style: ElevatedButton.styleFrom(
@@ -645,6 +589,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
                                         return 'Please enter your password';
+                                      }
+                                      if (value.length < 4) {
+                                        return 'Password must be at least 4 characters';
                                       }
                                       if (value.length > 8) {
                                         return 'Password must be 8 or fewer characters';

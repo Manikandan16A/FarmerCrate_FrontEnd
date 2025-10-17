@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import '../utils/cloudinary_upload.dart';
+import '../utils/snackbar_utils.dart';
 import 'Signin.dart';
 
 
@@ -266,25 +267,177 @@ super.dispose();
 
 Future<void> _pickImage() async {
 try {
-final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+final ImageSource? source = await showModalBottomSheet<ImageSource>(
+context: context,
+shape: const RoundedRectangleBorder(
+borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+),
+builder: (BuildContext context) {
+return Container(
+padding: const EdgeInsets.all(20),
+child: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+Container(
+width: 40,
+height: 4,
+margin: const EdgeInsets.only(bottom: 20),
+decoration: BoxDecoration(
+color: Colors.grey[300],
+borderRadius: BorderRadius.circular(2),
+),
+),
+const Text(
+'Select Image Source',
+style: TextStyle(
+fontSize: 18,
+fontWeight: FontWeight.bold,
+color: Color(0xFF2E7D32),
+),
+),
+const SizedBox(height: 20),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.camera_alt, color: Color(0xFF4CAF50)),
+),
+title: const Text('Camera'),
+subtitle: const Text('Take a new photo'),
+onTap: () => Navigator.pop(context, ImageSource.camera),
+),
+const Divider(),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.photo_library, color: Color(0xFF4CAF50)),
+),
+title: const Text('Gallery'),
+subtitle: const Text('Choose from gallery'),
+onTap: () => Navigator.pop(context, ImageSource.gallery),
+),
+const Divider(),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: Colors.grey[200],
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.close, color: Colors.grey),
+),
+title: const Text('Cancel'),
+subtitle: const Text('Go back'),
+onTap: () => Navigator.pop(context),
+),
+const SizedBox(height: 10),
+],
+),
+);
+},
+);
+
+if (source != null) {
+final XFile? image = await _picker.pickImage(source: source);
 if (image != null) {
 setState(() {
 _selectedImage = File(image.path);
 });
 }
+}
 } catch (e) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Error picking image: $e'),
-backgroundColor: Colors.red,
-),
-);
+SnackBarUtils.showError(context, 'Error picking image: $e');
 }
 }
 
 Future<void> _pickDocument(String documentType) async {
 try {
-final XFile? file = await _picker.pickImage(source: ImageSource.gallery);
+final ImageSource? source = await showModalBottomSheet<ImageSource>(
+context: context,
+shape: const RoundedRectangleBorder(
+borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+),
+builder: (BuildContext context) {
+return Container(
+padding: const EdgeInsets.all(20),
+child: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+Container(
+width: 40,
+height: 4,
+margin: const EdgeInsets.only(bottom: 20),
+decoration: BoxDecoration(
+color: Colors.grey[300],
+borderRadius: BorderRadius.circular(2),
+),
+),
+const Text(
+'Select Document Source',
+style: TextStyle(
+fontSize: 18,
+fontWeight: FontWeight.bold,
+color: Color(0xFF2E7D32),
+),
+),
+const SizedBox(height: 20),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.camera_alt, color: Color(0xFF4CAF50)),
+),
+title: const Text('Camera'),
+subtitle: const Text('Take a new photo'),
+onTap: () => Navigator.pop(context, ImageSource.camera),
+),
+const Divider(),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.photo_library, color: Color(0xFF4CAF50)),
+),
+title: const Text('Gallery'),
+subtitle: const Text('Choose from gallery'),
+onTap: () => Navigator.pop(context, ImageSource.gallery),
+),
+const Divider(),
+ListTile(
+leading: Container(
+padding: const EdgeInsets.all(10),
+decoration: BoxDecoration(
+color: Colors.grey[200],
+shape: BoxShape.circle,
+),
+child: const Icon(Icons.close, color: Colors.grey),
+),
+title: const Text('Cancel'),
+subtitle: const Text('Go back'),
+onTap: () => Navigator.pop(context),
+),
+const SizedBox(height: 10),
+],
+),
+);
+},
+);
+
+if (source != null) {
+final XFile? file = await _picker.pickImage(source: source);
 if (file != null) {
 setState(() {
 switch (documentType) {
@@ -303,13 +456,9 @@ break;
 }
 });
 }
+}
 } catch (e) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Error picking document: $e'),
-backgroundColor: Colors.red,
-),
-);
+SnackBarUtils.showError(context, 'Error picking document: $e');
 }
 }
 
@@ -459,12 +608,7 @@ String imageType = _selectedRole == 'Farmer'
 ? 'profile image'
     : 'profile image';
 
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Please select a $imageType'),
-backgroundColor: Colors.red,
-),
-);
+SnackBarUtils.showError(context, 'Please select a $imageType');
 return;
 }
 
@@ -472,12 +616,7 @@ return;
 if (_selectedRole == 'Transport') {
 if (_selectedAadharFile == null || _selectedPanFile == null ||
 _selectedVoterIdFile == null || _selectedLicenseFile == null) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Please upload all required documents (Aadhar, PAN, Voter ID, License)'),
-backgroundColor: Colors.red,
-),
-);
+SnackBarUtils.showError(context, 'Please upload all required documents (Aadhar, PAN, Voter ID, License)');
 return;
 }
 }
@@ -495,13 +634,7 @@ const maxRetries = 2;
 while (imageUrl == null && retryCount < maxRetries) {
 if (retryCount > 0) {
 // Show retry message
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Retrying image upload... ($retryCount/$maxRetries)'),
-backgroundColor: Colors.orange,
-duration: const Duration(seconds: 2),
-),
-);
+SnackBarUtils.showWarning(context, 'Retrying image upload... ($retryCount/$maxRetries)');
 }
 
 imageUrl = await CloudinaryUploader.uploadImage(_selectedImage!);
@@ -520,13 +653,7 @@ if (_selectedRole == 'Transport') {
 aadharUrl = await CloudinaryUploader.uploadImage(_selectedAadharFile!);
 if (aadharUrl == null) {
 setState(() { _isLoading = false; });
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Failed to upload Aadhar document. Please try again.'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, 'Failed to upload Aadhar document. Please try again.');
 return;
 }
 
@@ -534,13 +661,7 @@ return;
 panUrl = await CloudinaryUploader.uploadImage(_selectedPanFile!);
 if (panUrl == null) {
 setState(() { _isLoading = false; });
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Failed to upload PAN document. Please try again.'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, 'Failed to upload PAN document. Please try again.');
 return;
 }
 
@@ -548,13 +669,7 @@ return;
 voterIdUrl = await CloudinaryUploader.uploadImage(_selectedVoterIdFile!);
 if (voterIdUrl == null) {
 setState(() { _isLoading = false; });
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Failed to upload Voter ID document. Please try again.'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, 'Failed to upload Voter ID document. Please try again.');
 return;
 }
 
@@ -562,13 +677,7 @@ return;
 licenseUrl = await CloudinaryUploader.uploadImage(_selectedLicenseFile!);
 if (licenseUrl == null) {
 setState(() { _isLoading = false; });
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Failed to upload License document. Please try again.'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, 'Failed to upload License document. Please try again.');
 return;
 }
 }
@@ -576,13 +685,7 @@ return;
 // Handle null return from Cloudinary upload after all retries
 if (imageUrl == null) {
 setState(() { _isLoading = false; });
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Image upload failed after $maxRetries attempts. Please check your internet connection and try again.'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, 'Image upload failed after $maxRetries attempts. Please check your internet connection and try again.');
 return;
 }
 
@@ -620,13 +723,7 @@ _zoneController.text.trim().isEmpty ||
 _districtController.text.trim().isEmpty ||
 _stateController.text.trim().isEmpty ||
 _ageController.text.trim().isEmpty) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Please fill in all required fields'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 3),
-),
-);
+SnackBarUtils.showError(context, 'Please fill in all required fields');
 return;
 }
 
@@ -638,13 +735,7 @@ _voterIdNumberController.text.trim().isEmpty ||
 _licenseNumberController.text.trim().isEmpty ||
 _accountNumberController.text.trim().isEmpty ||
 _ifscCodeController.text.trim().isEmpty) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Please fill in all transporter-specific fields'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 3),
-),
-);
+SnackBarUtils.showError(context, 'Please fill in all transporter-specific fields');
 return;
 }
 }
@@ -728,13 +819,7 @@ Map<String, dynamic> responseData;
 try {
 responseData = jsonDecode(response.body);
 } catch (e) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Error registering user: Invalid server response - $e'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 3),
-),
-);
+SnackBarUtils.showError(context, 'Error registering user: Invalid server response - $e');
 return;
 }
 
@@ -743,13 +828,7 @@ if ((response.statusCode == 200 || response.statusCode == 201) &&
 // Standardized response structure: { success, message, data: { id, name, email, role } }
 final data = responseData['data'];
 if (data == null) {
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text('Missing data from server response'),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 3),
-),
-);
+SnackBarUtils.showError(context, 'Missing data from server response');
 return;
 }
 final Map<String, dynamic> userData = {
@@ -815,13 +894,7 @@ print('Error parsing error messages: $e');
 print('Registration failed: $errorMessage');
 print('Full response: ${response.body}');
 
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text(errorMessage),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, errorMessage);
 }
 } catch (error) {
 setState(() {
@@ -841,13 +914,7 @@ errorMessage = 'Error registering: $error';
 
 print('Registration error: $error');
 
-ScaffoldMessenger.of(context).showSnackBar(
-SnackBar(
-content: Text(errorMessage),
-backgroundColor: Colors.red,
-duration: const Duration(seconds: 5),
-),
-);
+SnackBarUtils.showError(context, errorMessage);
 }
 }
 }
@@ -1302,25 +1369,12 @@ validator: (value) {
 if (value == null || value.isEmpty) {
 return 'Please enter a password';
 }
-if (value.length < 8) {
-return 'Password must be at least 8 characters';
+if (value.length < 4) {
+return 'Password must be at least 4 characters';
 }
-
-// Check for mixed characters: numbers, alphabets, and symbols
-bool hasNumber = RegExp(r'[0-9]').hasMatch(value);
-bool hasAlphabet = RegExp(r'[a-zA-Z]').hasMatch(value);
-bool hasSymbol = RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value);
-
-if (!hasNumber) {
-return 'Password must contain at least one number';
+if (value.length > 8) {
+return 'Password must be 8 or fewer characters';
 }
-if (!hasAlphabet) {
-return 'Password must contain at least one letter';
-}
-if (!hasSymbol) {
-return 'Password must contain at least one symbol (!@#\$%^&*(),.?":{}|<>)';
-}
-
 return null;
 },
 ),
