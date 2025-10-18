@@ -327,7 +327,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             await prefs.setInt('user_id', user['id']);
             if (user['name'] != null) await prefs.setString('username', user['name']);
             await prefs.setBool('is_logged_in', true);
+            final expiryTime = DateTime.now().add(Duration(hours: 24)).millisecondsSinceEpoch;
+            await prefs.setInt('token_expiry', expiryTime);
             print('✓ Token and user data saved to SharedPreferences');
+            print('✓ Token expiry set to: ${DateTime.fromMillisecondsSinceEpoch(expiryTime)}');
 
             if (user['role'] == 'farmer') {
               print('Navigating to FarmersHomePage...');
