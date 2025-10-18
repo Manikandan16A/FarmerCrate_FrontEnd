@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-<<<<<<< HEAD
-=======
 import '../Customer/product_details_screen.dart';
 import 'customer_details_page.dart';
->>>>>>> ed86aa9e8520e0b2942086c14357134da067dd14
+
 
 class FarmerDetailsPage extends StatefulWidget {
   final String farmerId;
@@ -36,7 +34,6 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
   @override
   void initState() {
     super.initState();
-<<<<<<< HEAD
     _tabController = TabController(length: 4, vsync: this);
     _fetchFarmerDetails();
   }
@@ -147,12 +144,12 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
     } finally {
       setState(() => isLoading = false);
     }
-=======
+
     _tabController = TabController(length: 3, vsync: this);
     _fetchProducts();
     _fetchOrders();
     _fetchCustomers();
->>>>>>> ed86aa9e8520e0b2942086c14357134da067dd14
+
   }
 
   @override
