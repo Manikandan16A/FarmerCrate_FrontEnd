@@ -1,7 +1,9 @@
 import 'package:farmer_crate/Admin/adminreport.dart';
 import 'package:farmer_crate/Admin/total_order.dart';
 import 'package:farmer_crate/Admin/transpoter_mang.dart';
+import 'package:farmer_crate/Admin/admin_orders_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -9,6 +11,7 @@ import 'dart:convert';
 import '../auth/Signin.dart';
 import 'ConsumerManagement.dart';
 import 'user_management.dart';
+import 'admin_sidebar.dart';
 
 
 class AdminManagementPage extends StatefulWidget {
@@ -56,28 +59,129 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
   }
 
   Future<void> _fetchAnalytics() async {
+    final token = widget.token;
+    print('\n========== ADMIN HOMEPAGE ANALYTICS ==========');
+    
+    // Fetch Farmers
     try {
-      final token = widget.token;
-      final farmersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'), headers: {'Authorization': 'Bearer $token'});
+      print('\n--- FETCHING FARMERS ---');
+      final farmersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Farmers Response Status: ${farmersResp.statusCode}');
       if (farmersResp.statusCode == 200) {
         final data = jsonDecode(farmersResp.body);
-        setState(() { totalFarmers = (data['farmers'] ?? data['data'] ?? []).length; });
+        final farmersList = data['farmers'] ?? data['data'] ?? [];
+        print('Total Farmers Count: ${farmersList.length}');
+        setState(() { totalFarmers = farmersList.length; });
       }
-      final customersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/customers'), headers: {'Authorization': 'Bearer $token'});
+    } catch (e) {
+      print('ERROR fetching farmers: $e');
+    }
+    
+    // Fetch Customers
+    try {
+      print('\n--- FETCHING CUSTOMERS ---');
+      final customersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/customers'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Customers Response Status: ${customersResp.statusCode}');
       if (customersResp.statusCode == 200) {
         final data = jsonDecode(customersResp.body);
-        setState(() { totalCustomers = (data['customers'] ?? data['data'] ?? []).length; });
+        final customersList = data['customers'] ?? data['data'] ?? [];
+        print('Total Customers Count: ${customersList.length}');
+        setState(() { totalCustomers = customersList.length; });
       }
-      final ordersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/orders'), headers: {'Authorization': 'Bearer $token'});
+    } catch (e) {
+      print('ERROR fetching customers: $e');
+    }
+    
+    // Fetch Orders
+    try {
+      print('\n--- FETCHING ORDERS ---');
+      final ordersResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/orders/all'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Orders Response Status: ${ordersResp.statusCode}');
+      print('Orders Response Body: ${ordersResp.body}');
       if (ordersResp.statusCode == 200) {
         final data = jsonDecode(ordersResp.body);
         final orders = data['orders'] ?? data['data'] ?? [];
+        print('Total Orders Count: ${orders.length}');
+        
+        final pending = orders.where((o) => o['current_status']?.toUpperCase() == 'PLACED' || o['current_status']?.toUpperCase() == 'ASSIGNED').length;
+        final delivered = orders.where((o) => o['current_status']?.toUpperCase() == 'COMPLETED' || o['current_status']?.toUpperCase() == 'DELIVERED').length;
+        final canceled = orders.where((o) => o['current_status']?.toUpperCase() == 'CANCELLED').length;
+        final inProgress = orders.where((o) => o['current_status']?.toUpperCase() == 'IN_TRANSIT' || o['current_status']?.toUpperCase() == 'SHIPPED' || o['current_status']?.toUpperCase() == 'OUT_FOR_DELIVERY').length;
+        
+        print('Pending Orders: $pending');
+        print('Delivered Orders: $delivered');
+        print('Canceled Orders: $canceled');
+        print('Delivery In Progress: $inProgress');
+        
         setState(() {
           activeOrders = orders.length;
-          deliveryInProgress = orders.where((o) => o['status'] == 'in_transit' || o['status'] == 'processing').length;
+          pendingOrders = pending;
+          deliveredOrders = delivered;
+          canceledOrders = canceled;
+          deliveryInProgress = inProgress;
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      print('ERROR fetching orders: $e');
+    }
+    
+    // Fetch Delivery Persons
+    try {
+      print('\n--- FETCHING DELIVERY PERSONS ---');
+      final deliveryResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Delivery Persons Response Status: ${deliveryResp.statusCode}');
+      print('Delivery Persons Response Body: ${deliveryResp.body}');
+      if (deliveryResp.statusCode == 200) {
+        final data = jsonDecode(deliveryResp.body);
+        final deliveryPersons = data['delivery_persons'] ?? data['data'] ?? [];
+        print('Total Delivery Persons: ${deliveryPersons.length}');
+        final active = deliveryPersons.where((dp) => dp['is_available'] == true).length;
+        print('Active Delivery Persons: $active');
+        setState(() {
+          activeDelivery = active;
+        });
+      }
+    } catch (e) {
+      print('ERROR fetching delivery persons: $e');
+    }
+    
+    // Fetch Dashboard Metrics
+    try {
+      print('\n--- FETCHING DASHBOARD METRICS ---');
+      final metricsResp = await http.get(Uri.parse('https://farmercrate.onrender.com/api/admin/dashboard-metrics'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'}).timeout(Duration(seconds: 10));
+      print('Dashboard Metrics Response Status: ${metricsResp.statusCode}');
+      if (metricsResp.statusCode == 200) {
+        final data = jsonDecode(metricsResp.body);
+        final metrics = data['data'] ?? {};
+        print('Farmers Active Today: ${metrics['farmersActiveToday']}');
+        print('Low Stock Farmers: ${metrics['lowStockFarmers']}');
+        print('New Customers Week: ${metrics['newCustomersWeek']}');
+        print('Delayed Delivery: ${metrics['delayedDelivery']}');
+        setState(() {
+          farmersActiveToday = metrics['farmersActiveToday'] ?? 0;
+          lowStockFarmers = metrics['lowStockFarmers'] ?? 0;
+          newCustomersWeek = metrics['newCustomersWeek'] ?? 0;
+          delayedDelivery = metrics['delayedDelivery'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('ERROR fetching dashboard metrics: $e');
+    }
+    
+    print('\n========== ANALYTICS SUMMARY ==========');
+    print('Total Farmers: $totalFarmers');
+    print('Farmers Active Today: $farmersActiveToday');
+    print('Low Stock Farmers: $lowStockFarmers');
+    print('Total Customers: $totalCustomers');
+    print('New Customers This Week: $newCustomersWeek');
+    print('Active Orders: $activeOrders');
+    print('Pending Orders: $pendingOrders');
+    print('Delivered Orders: $deliveredOrders');
+    print('Canceled Orders: $canceledOrders');
+    print('Delivery In Progress: $deliveryInProgress');
+    print('Active Delivery Personnel: $activeDelivery');
+    print('Delayed Deliveries: $delayedDelivery');
+    print('==========================================\n');
   }
 
   List<dynamic> _getFilteredList() {
@@ -993,6 +1097,83 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
     );
   }
 
+  Future<bool> _onWillPop() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.exit_to_app, color: Colors.white, size: 20),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Exit App',
+              style: TextStyle(
+                color: Color(0xFF1B5E20),
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to exit the app?',
+          style: TextStyle(
+            color: Color(0xFF424242),
+            fontSize: 16,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFF757575),
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => SystemNavigator.pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 2,
+            ),
+            child: Text(
+              'Exit',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1006,7 +1187,10 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
         ? farmers.where((farmer) => !farmer.isVerified).length
         : transporters.where((transporter) => !transporter.isVerified).length;
 
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
         flexibleSpace: Container(
@@ -1121,94 +1305,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Admin Dashboard',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Manage your platform',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home_rounded, color: Colors.green[600]),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-                setState(() => _currentIndex = 0);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.manage_accounts_rounded, color: Colors.green[600]),
-              title: const Text('Management'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.analytics_rounded, color: Colors.green[600]),
-              title: const Text('Reports'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person_rounded, color: Colors.green[600]),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                _showAdminProfile();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: AdminSidebar(token: widget.token, user: widget.user),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -1271,22 +1368,16 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
         unselectedLabelStyle: TextStyle(fontSize: 12),
         elevation: 8,
         onTap: (index) {
-          setState(() => _currentIndex = index);
           if (index == 1) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
           } else if (index == 2) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Orders page coming soon'),
-                backgroundColor: Color(0xFF2E7D32),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            );
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)));
           } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
             _showAdminProfile();
+          } else {
+            setState(() => _currentIndex = index);
           }
         },
         items: [
@@ -1297,6 +1388,7 @@ class _AdminManagementPageState extends State<AdminManagementPage> {
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
       ),
+    ),
     );
   }
 

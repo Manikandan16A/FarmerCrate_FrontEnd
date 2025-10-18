@@ -8,6 +8,7 @@ import 'order_history_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
 import 'navigation_utils.dart';
+import 'transporter_order_tracking.dart';
 
 class OrderStatusPage extends StatefulWidget {
   final String? token;
@@ -141,7 +142,15 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => TransporterDashboard(token: widget.token)),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
         title: Text('Order Status', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -318,6 +327,7 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -415,24 +425,51 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
                   Text('Qty: ${order['quantity'] ?? 0}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                 ],
               ),
-              if (status == 'ASSIGNED')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => BillPreviewPage(order: order, token: widget.token)),
-                    );
-                    _fetchOrders();
-                  },
-                  icon: Icon(Icons.receipt_long, size: 16),
-                  label: Text('Bill', style: TextStyle(fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF2E7D32),
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (status != 'COMPLETED' && status != 'DELIVERED' && status != 'CANCELLED')
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransporterOrderTrackingPage(
+                              token: widget.token,
+                              orderId: order['order_id']?.toString(),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: Icon(Icons.location_on, size: 16),
+                      label: Text('Track', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  if (status == 'ASSIGNED')
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => BillPreviewPage(order: order, token: widget.token)),
+                        );
+                        _fetchOrders();
+                      },
+                      icon: Icon(Icons.receipt_long, size: 16),
+                      label: Text('Bill', style: TextStyle(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF2E7D32),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ],

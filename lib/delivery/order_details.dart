@@ -121,7 +121,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
               Text('Are you sure you want to mark this order as completed?'),
               SizedBox(height: 8),
               Text(
-                'Order #${widget.order['id']}',
+                'Order Details',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 4),
@@ -160,9 +160,14 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       case 'completed':
         return Color(0xFF4CAF50);
       case 'assigned':
-      case 'in_transit':
+      case 'shipped':
         return Color(0xFFFF9800);
+      case 'received':
+        return Color(0xFF00BCD4);
+      case 'out_for_delivery':
+        return Color(0xFFFFC107);
       case 'pending':
+      case 'placed':
         return Color(0xFF2196F3);
       default:
         return Colors.grey;
@@ -173,7 +178,7 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Order #${widget.order['id']}'),
+        title: Text('Order Details'),
         backgroundColor: Color(0xFF4CAF50),
         elevation: 0,
         actions: [

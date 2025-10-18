@@ -9,13 +9,15 @@ import 'payment.dart';
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
   final String token;
-  final Map<String, dynamic>? productData; // Add this to pass product data directly
+  final Map<String, dynamic>? productData;
+  final bool isAdminView;
 
   const ProductDetailScreen({
     Key? key,
     required this.productId,
     required this.token,
     this.productData,
+    this.isAdminView = false,
   }) : super(key: key);
 
   @override
@@ -551,10 +553,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> with TickerPr
           : productData == null
           ? _buildNoDataState()
           : _buildProductDetail(),
-      bottomNavigationBar: !isLoading && error == null && productData != null
+      bottomNavigationBar: !isLoading && error == null && productData != null && !widget.isAdminView
           ? _buildBottomActionBar()
+          : widget.isAdminView
+          ? null
           : CustomerNavigationUtils.buildCustomerBottomNav(
-        currentIndex: 0, // Product details is not in bottom nav, use home
+        currentIndex: 0,
         onTap: (index) => CustomerNavigationUtils.handleNavigation(index, context, widget.token),
       ),
     );

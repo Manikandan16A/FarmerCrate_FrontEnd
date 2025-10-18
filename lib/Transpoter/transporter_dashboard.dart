@@ -6,6 +6,7 @@ import 'order_status_page.dart' show OrderStatusPage;
 import 'order_history_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
+import 'navigation_utils.dart';
 
 class TransporterDashboard extends StatefulWidget {
   final String? token;
@@ -112,25 +113,25 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         final allOrders = data['data'] ?? [];
         print('Total Orders: ${allOrders.length}');
         print('All Orders: $allOrders');
-        
-        final srcOrders = allOrders.where((order) => 
-          order['transporter_role'] == 'PICKUP_SHIPPING' && 
-          order['current_status'] == 'PLACED'
+
+        final srcOrders = allOrders.where((order) =>
+        order['transporter_role'] == 'PICKUP_SHIPPING' &&
+            order['current_status'] == 'PLACED'
         ).toList();
-        final destOrders = allOrders.where((order) => 
-          order['transporter_role'] == 'DELIVERY' && 
-          order['current_status'] == 'RECEIVED'
+        final destOrders = allOrders.where((order) =>
+        order['transporter_role'] == 'DELIVERY' &&
+            order['current_status'] == 'RECEIVED'
         ).toList();
-        
+
         print('Source Orders Count: ${srcOrders.length}');
         print('Destination Orders Count: ${destOrders.length}');
-        
+
         setState(() {
           sourceOrders = srcOrders;
           destinationOrders = destOrders;
           isLoadingOrders = false;
         });
-        
+
         _showNewOrderNotification();
       } else {
         setState(() => isLoadingOrders = false);
@@ -181,7 +182,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
   Future<void> _assignVehicle(int orderId, String orderType) async {
     await _fetchVehicles();
-    
+
     int? selectedVehicleId;
     String? selectedVehicleType;
     int? selectedDeliveryPersonId;
@@ -199,119 +200,119 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isSourceOrder) ...[
-                Text('Select Vehicle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2E7D32))),
-                SizedBox(height: 12),
-                if (permanentVehicles.isNotEmpty) ...[
-                  Text('Permanent Vehicles', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey[700])),
-                  SizedBox(height: 8),
-                  ...permanentVehicles.map((vehicle) => Container(
-                    margin: EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF2E7D32) : Colors.grey[300]!, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                      color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF2E7D32).withOpacity(0.05) : Colors.white,
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedVehicleId = vehicle['vehicle_id'];
-                          selectedVehicleType = 'permanent';
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF2E7D32).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(Icons.local_shipping, color: Color(0xFF2E7D32), size: 28),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(vehicle['vehicle_number'] ?? 'N/A', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
-                                  SizedBox(height: 4),
-                                  Text('${vehicle['vehicle_type']?.toUpperCase() ?? 'N/A'}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                                  SizedBox(height: 2),
-                                  Text('Capacity: ${vehicle['capacity'] ?? 0} tons', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                                ],
-                              ),
-                            ),
-                            if (selectedVehicleId == vehicle['vehicle_id'])
-                              Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 24),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )),
-                ],
-                if (temporaryVehicles.isNotEmpty) ...[
+                  Text('Select Vehicle', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2E7D32))),
                   SizedBox(height: 12),
-                  Text('Temporary Vehicles', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey[700])),
-                  SizedBox(height: 8),
-                  ...temporaryVehicles.map((vehicle) => Container(
-                    margin: EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF4CAF50) : Colors.grey[300]!, width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                      color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF4CAF50).withOpacity(0.05) : Colors.white,
-                    ),
-                    child: InkWell(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedVehicleId = vehicle['vehicle_id'];
-                          selectedVehicleType = 'temporary';
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                color: Color(0xFF4CAF50).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
+                  if (permanentVehicles.isNotEmpty) ...[
+                    Text('Permanent Vehicles', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey[700])),
+                    SizedBox(height: 8),
+                    ...permanentVehicles.map((vehicle) => Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF2E7D32) : Colors.grey[300]!, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                        color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF2E7D32).withOpacity(0.05) : Colors.white,
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedVehicleId = vehicle['vehicle_id'];
+                            selectedVehicleType = 'permanent';
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF2E7D32).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.local_shipping, color: Color(0xFF2E7D32), size: 28),
                               ),
-                              child: Icon(Icons.directions_car, color: Color(0xFF4CAF50), size: 28),
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(vehicle['vehicle_number'] ?? 'N/A', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50))),
-                                  SizedBox(height: 4),
-                                  Text('${vehicle['vehicle_type']?.toUpperCase() ?? 'N/A'}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                                  SizedBox(height: 2),
-                                  Text('Capacity: ${vehicle['capacity'] ?? 0} tons', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                                ],
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(vehicle['vehicle_number'] ?? 'N/A', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2E7D32))),
+                                    SizedBox(height: 4),
+                                    Text('${vehicle['vehicle_type']?.toUpperCase() ?? 'N/A'}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                                    SizedBox(height: 2),
+                                    Text('Capacity: ${vehicle['capacity'] ?? 0} tons', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                  ],
+                                ),
                               ),
-                            ),
-                            if (selectedVehicleId == vehicle['vehicle_id'])
-                              Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 24),
-                          ],
+                              if (selectedVehicleId == vehicle['vehicle_id'])
+                                Icon(Icons.check_circle, color: Color(0xFF2E7D32), size: 24),
+                            ],
+                          ),
                         ),
                       ),
+                    )),
+                  ],
+                  if (temporaryVehicles.isNotEmpty) ...[
+                    SizedBox(height: 12),
+                    Text('Temporary Vehicles', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey[700])),
+                    SizedBox(height: 8),
+                    ...temporaryVehicles.map((vehicle) => Container(
+                      margin: EdgeInsets.only(bottom: 8),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF4CAF50) : Colors.grey[300]!, width: 2),
+                        borderRadius: BorderRadius.circular(12),
+                        color: selectedVehicleId == vehicle['vehicle_id'] ? Color(0xFF4CAF50).withOpacity(0.05) : Colors.white,
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedVehicleId = vehicle['vehicle_id'];
+                            selectedVehicleType = 'temporary';
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF4CAF50).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(Icons.directions_car, color: Color(0xFF4CAF50), size: 28),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(vehicle['vehicle_number'] ?? 'N/A', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF4CAF50))),
+                                    SizedBox(height: 4),
+                                    Text('${vehicle['vehicle_type']?.toUpperCase() ?? 'N/A'}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                                    SizedBox(height: 2),
+                                    Text('Capacity: ${vehicle['capacity'] ?? 0} tons', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                                  ],
+                                ),
+                              ),
+                              if (selectedVehicleId == vehicle['vehicle_id'])
+                                Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 24),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )),
+                  ],
+                  if (permanentVehicles.isEmpty && temporaryVehicles.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: Text('No vehicles available', style: TextStyle(color: Colors.grey[600]))),
                     ),
-                  )),
-                ],
-                if (permanentVehicles.isEmpty && temporaryVehicles.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: Center(child: Text('No vehicles available', style: TextStyle(color: Colors.grey[600]))),
-                  ),
-                Divider(height: 32),
+                  Divider(height: 32),
                 ],
                 if (!isSourceOrder)
                   SizedBox(height: 8),
@@ -345,17 +346,17 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
               child: Text('Cancel', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
-              onPressed: (isSourceOrder 
+              onPressed: (isSourceOrder
                   ? (selectedVehicleId != null && selectedDeliveryPersonId != null)
                   : (selectedDeliveryPersonId != null))
                   ? () {
-                      Navigator.pop(context);
-                      if (isSourceOrder) {
-                        _confirmBothAssignments(orderId, selectedVehicleId!, selectedVehicleType!, selectedDeliveryPersonId!);
-                      } else {
-                        _confirmDeliveryPersonOnly(orderId, selectedDeliveryPersonId!);
-                      }
-                    }
+                Navigator.pop(context);
+                if (isSourceOrder) {
+                  _confirmBothAssignments(orderId, selectedVehicleId!, selectedVehicleType!, selectedDeliveryPersonId!);
+                } else {
+                  _confirmDeliveryPersonOnly(orderId, selectedDeliveryPersonId!);
+                }
+              }
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF2E7D32),
@@ -378,7 +379,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
       };
       print('\n========== DESTINATION TRANSPORTER ASSIGNMENT ==========');
       print('Delivery Person Assignment Payload: $personPayload');
-      
+
       final personResponse = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/transporters/assign-order'),
         headers: {
@@ -394,8 +395,8 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
       if (personResponse.statusCode == 200 || personResponse.statusCode == 201) {
         final personData = jsonDecode(personResponse.body);
         final assignedPerson = deliveryPersons.firstWhere(
-            (p) => p['delivery_person_id'] == deliveryPersonId, orElse: () => {});
-        
+                (p) => p['delivery_person_id'] == deliveryPersonId, orElse: () => {});
+
         print('Order ID: $orderId');
         print('--- Delivery Person Details ---');
         print('Delivery Person ID: $deliveryPersonId');
@@ -404,7 +405,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         print('Vehicle Type: ${assignedPerson['vehicle_type'] ?? 'N/A'}');
         print('Orders Assigned: ${personData['data']?['orders_assigned'] ?? 'N/A'}');
         print('Assignment Status: ${personData['data']?['status'] ?? 'N/A'}');
-        
+
         // Update order status to IN_TRANSIT
         print('\n--- Updating Order Status to IN_TRANSIT ---');
         final statusResponse = await http.put(
@@ -415,10 +416,10 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           },
           body: jsonEncode({'order_id': orderId, 'status': 'IN_TRANSIT'}),
         );
-        
+
         print('Status Update Response: ${statusResponse.statusCode}');
         print('Status Update Body: ${statusResponse.body}');
-        
+
         if (statusResponse.statusCode == 200) {
           print('✅ Order status updated to IN_TRANSIT');
           print('==========================================\n');
@@ -428,7 +429,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           print('==========================================\n');
           _showSnackBar('Delivery person assigned successfully!');
         }
-        
+
         _fetchAllocatedOrders();
         _fetchDeliveryPersons();
       } else {
@@ -449,7 +450,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         'vehicle_type': vehicleType,
       };
       print('Vehicle Assignment Payload: $vehiclePayload');
-      
+
       // Assign vehicle first
       final vehicleResponse = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/transporters/assign-vehicle'),
@@ -475,7 +476,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         'delivery_person_id': deliveryPersonId,
       };
       print('Delivery Person Assignment Payload: $personPayload');
-      
+
       final personResponse = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/transporters/assign-order'),
         headers: {
@@ -492,16 +493,16 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         // Parse responses to get details
         final vehicleData = jsonDecode(vehicleResponse.body);
         final personData = jsonDecode(personResponse.body);
-        
+
         // Find vehicle details
-        final assignedVehicle = vehicleType == 'permanent' 
+        final assignedVehicle = vehicleType == 'permanent'
             ? permanentVehicles.firstWhere((v) => v['vehicle_id'] == vehicleId, orElse: () => {})
             : temporaryVehicles.firstWhere((v) => v['vehicle_id'] == vehicleId, orElse: () => {});
-        
+
         // Find delivery person details
         final assignedPerson = deliveryPersons.firstWhere(
-            (p) => p['delivery_person_id'] == deliveryPersonId, orElse: () => {});
-        
+                (p) => p['delivery_person_id'] == deliveryPersonId, orElse: () => {});
+
         print('\n========== SOURCE TRANSPORTER ASSIGNMENT SUCCESSFUL ==========');
         print('Order ID: $orderId');
         print('\n--- Vehicle Details ---');
@@ -519,7 +520,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
         print('Orders Assigned: ${personData['data']?['orders_assigned'] ?? 'N/A'}');
         print('New Status: ${personData['data']?['status'] ?? 'N/A'}');
         print('==========================================\n');
-        
+
         _showSnackBar('Vehicle and delivery person assigned successfully!');
         _fetchAllocatedOrders();
         _fetchDeliveryPersons();
@@ -554,7 +555,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
     Color backgroundColor;
     IconData icon;
-    
+
     if (isError) {
       backgroundColor = Color(0xFFD32F2F);
       icon = Icons.error_outline;
@@ -602,7 +603,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
   void _onNavItemTapped(int index) {
     if (index == _selectedIndex) return;
-    
+
     Widget page;
     switch (index) {
       case 1:
@@ -620,7 +621,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
       default:
         return;
     }
-    
+
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => page));
   }
 
@@ -675,12 +676,64 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.exit_to_app, color: Colors.red, size: 24),
+                ),
+                SizedBox(width: 12),
+                Text('Exit App', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text('Are you sure you want to exit the app?', style: TextStyle(fontSize: 16)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text('Cancel', style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: Icon(Icons.exit_to_app, size: 18),
+                label: Text('Exit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
+        ) ?? false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
         title: Text('Transporter Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Color(0xFF2E7D32),
         iconTheme: IconThemeData(color: Colors.white),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         actions: [
           IconButton(
             icon: Icon(Icons.qr_code_scanner, color: Colors.white),
@@ -701,90 +754,11 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: Container(
-          color: Colors.white,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0xFF2E7D32).withOpacity(0.3),
-                      blurRadius: 10,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(Icons.local_shipping, size: 40, color: Colors.white),
-                    ),
-                    SizedBox(height: 12),
-                    Text('Transporter', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                    SizedBox(height: 4),
-                    Text('Dashboard', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 15)),
-                  ],
-                ),
-              ),
-              SizedBox(height: 8),
-              _buildDrawerItem(Icons.dashboard, 'Dashboard', 0, _selectedIndex == 0, () {
-                Navigator.pop(context);
-                setState(() => _selectedIndex = 0);
-              }),
-              _buildDrawerItem(Icons.track_changes, 'Order Tracking', 1, _selectedIndex == 1, () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderStatusPage(token: widget.token)));
-              }),
-              _buildDrawerItem(Icons.history, 'Order History', 2, _selectedIndex == 2, () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => OrderHistoryPage(token: widget.token)));
-              }),
-              _buildDrawerItem(Icons.local_shipping, 'Vehicles', 3, _selectedIndex == 3, () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => VehiclePage(token: widget.token)));
-              }),
-              _buildDrawerItem(Icons.person, 'Profile', 4, _selectedIndex == 4, () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ProfilePage(token: widget.token)));
-              }),
-              Divider(height: 32, thickness: 1, indent: 16, endIndent: 16),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _logout();
-                  },
-                  icon: Icon(Icons.logout, size: 20),
-                  label: Text('Logout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 2,
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-            ],
-          ),
-        ),
+      drawer: TransporterNavigationUtils.buildTransporterDrawer(
+          context,
+          widget.token,
+          _selectedIndex,
+          _onNavItemTapped
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -872,16 +846,16 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
                     isLoadingPersons
                         ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
                         : deliveryPersons.isEmpty
-                            ? _buildEmptyState('No delivery persons found', Icons.person_off)
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: deliveryPersons.length,
-                                itemBuilder: (context, index) {
-                                  final person = deliveryPersons[index];
-                                  return _buildDeliveryPersonCard(person);
-                                },
-                              ),
+                        ? _buildEmptyState('No delivery persons found', Icons.person_off)
+                        : ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: deliveryPersons.length,
+                      itemBuilder: (context, index) {
+                        final person = deliveryPersons[index];
+                        return _buildDeliveryPersonCard(person);
+                      },
+                    ),
                     SizedBox(height: 24),
                     Row(
                       children: [
@@ -904,16 +878,16 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
                     isLoadingOrders
                         ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
                         : sourceOrders.isEmpty
-                            ? _buildEmptyState('No source orders', Icons.inbox)
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: sourceOrders.length,
-                                itemBuilder: (context, index) {
-                                  final order = sourceOrders[index];
-                                  return _buildOrderCard(order, 'source');
-                                },
-                              ),
+                        ? _buildEmptyState('No source orders', Icons.inbox)
+                        : ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: sourceOrders.length,
+                      itemBuilder: (context, index) {
+                        final order = sourceOrders[index];
+                        return _buildOrderCard(order, 'source');
+                      },
+                    ),
                     SizedBox(height: 24),
                     Row(
                       children: [
@@ -936,16 +910,16 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
                     isLoadingOrders
                         ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
                         : destinationOrders.isEmpty
-                            ? _buildEmptyState('No destination orders', Icons.inbox)
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                physics: NeverScrollableScrollPhysics(),
-                                itemCount: destinationOrders.length,
-                                itemBuilder: (context, index) {
-                                  final order = destinationOrders[index];
-                                  return _buildOrderCard(order, 'destination');
-                                },
-                              ),
+                        ? _buildEmptyState('No destination orders', Icons.inbox)
+                        : ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: destinationOrders.length,
+                      itemBuilder: (context, index) {
+                        final order = destinationOrders[index];
+                        return _buildOrderCard(order, 'destination');
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1033,6 +1007,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           ],
         ),
       ),
+    ),
     );
   }
 
@@ -1093,19 +1068,19 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
               borderRadius: BorderRadius.circular(10),
               child: imageUrl != null && imageUrl.isNotEmpty
                   ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)]),
-                        ),
-                        child: Icon(Icons.person, color: Colors.white, size: 28),
-                      );
-                    })
+                return Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)]),
+                  ),
+                  child: Icon(Icons.person, color: Colors.white, size: 28),
+                );
+              })
                   : Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)]),
-                      ),
-                      child: Icon(Icons.person, color: Colors.white, size: 28),
-                    ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF4CAF50)]),
+                ),
+                child: Icon(Icons.person, color: Colors.white, size: 28),
+              ),
             ),
           ),
           SizedBox(width: 16),
@@ -1213,15 +1188,15 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
                       borderRadius: BorderRadius.circular(7),
                       child: imageUrl != null
                           ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: Color(0xFF2E7D32).withOpacity(0.1),
-                                child: Icon(Icons.shopping_bag, color: Color(0xFF2E7D32), size: 24),
-                              );
-                            })
+                        return Container(
+                          color: Color(0xFF2E7D32).withOpacity(0.1),
+                          child: Icon(Icons.shopping_bag, color: Color(0xFF2E7D32), size: 24),
+                        );
+                      })
                           : Container(
-                              color: Color(0xFF2E7D32).withOpacity(0.1),
-                              child: Icon(Icons.shopping_bag, color: Color(0xFF2E7D32), size: 24),
-                            ),
+                        color: Color(0xFF2E7D32).withOpacity(0.1),
+                        child: Icon(Icons.shopping_bag, color: Color(0xFF2E7D32), size: 24),
+                      ),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -1309,41 +1284,6 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem(IconData icon, String title, int index, bool isSelected, VoidCallback onTap) {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: isSelected ? Color(0xFF2E7D32).withOpacity(0.1) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? Color(0xFF2E7D32).withOpacity(0.3) : Colors.transparent,
-          width: 1,
-        ),
-      ),
-      child: ListTile(
-        leading: Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: isSelected ? Color(0xFF2E7D32) : Color(0xFF2E7D32).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: isSelected ? Colors.white : Color(0xFF2E7D32), size: 22),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Color(0xFF2E7D32) : Colors.grey[800],
-          ),
-        ),
-        trailing: isSelected ? Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF2E7D32)) : null,
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

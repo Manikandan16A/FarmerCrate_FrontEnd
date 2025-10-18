@@ -146,6 +146,18 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     }
   }
 
+  String _mapStatusLabel(String? status) {
+    switch (status?.toUpperCase()) {
+      case 'PLACED': return 'Order Placed';
+      case 'ASSIGNED': return 'Pickup from Farm';
+      case 'SHIPPED': return 'Shipped';
+      case 'RECEIVED': return 'Reached Hub';
+      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
+      case 'COMPLETED': return 'Delivered';
+      default: return status ?? 'Unknown';
+    }
+  }
+
   Future<void> _fetchOrderTracking(String orderId) async {
     final token = await _resolveToken();
     if (token == null) return;
@@ -155,11 +167,16 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
     if (mounted && result['success'] == true) {
       setState(() {
         final data = result['data'] as Map<String, dynamic>;
-        _trackingSteps = data['tracking_steps'] as List<dynamic> ?? [];
-        final filteredSteps = _trackingSteps.where((step) => step['status']?.toUpperCase() != 'ASSIGNED').toList();
-        final currentIndex = filteredSteps.indexWhere((step) => step['current'] == true);
-        if (currentIndex >= 0 && filteredSteps.isNotEmpty) {
-          _startVehicleAnimation(currentIndex, filteredSteps.length);
+        final steps = (data['tracking_steps'] as List<dynamic>? ?? [])
+            .where((step) => step['status']?.toUpperCase() != 'IN_TRANSIT')
+            .toList();
+        _trackingSteps = steps.map((step) => {
+          ...step,
+          'label': _mapStatusLabel(step['status']),
+        }).toList();
+        final currentIndex = _trackingSteps.indexWhere((step) => step['current'] == true);
+        if (currentIndex >= 0 && _trackingSteps.isNotEmpty) {
+          _startVehicleAnimation(currentIndex, _trackingSteps.length);
         }
       });
     }
@@ -183,7 +200,6 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
       case 'SHIPPED':
         return Colors.indigo;
       case 'IN_TRANSIT':
-        return Colors.teal;
       case 'RECEIVED':
         return Colors.cyan;
       case 'OUT_FOR_DELIVERY':
@@ -198,8 +214,16 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
   }
 
   String _displayStatus(String? status) {
-    if (status?.toUpperCase() == 'SHIPPED') return 'IN_TRANSIT';
-    return status ?? 'Unknown';
+    switch (status?.toUpperCase()) {
+      case 'PLACED': return 'Order Placed';
+      case 'ASSIGNED': return 'Pickup from Farm';
+      case 'SHIPPED': return 'Shipped';
+      case 'IN_TRANSIT': return 'Reached Hub';
+      case 'RECEIVED': return 'Reached Hub';
+      case 'OUT_FOR_DELIVERY': return 'Out for Delivery';
+      case 'COMPLETED': return 'Delivered';
+      default: return status ?? 'Unknown';
+    }
   }
 
   Widget _buildShipmentCard(Map<String, dynamic> shipment) {
@@ -239,7 +263,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
           ),
         ),
         title: Text(
-          'Order #${shipment['order_id']}',
+          'Your Order',
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -322,9 +346,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
       );
     }
 
-    final filteredSteps = _trackingSteps.where((step) => step['status']?.toUpperCase() != 'ASSIGNED').toList();
-    final currentIndex = filteredSteps.indexWhere((step) => step['current'] == true);
-    final currentStatus = currentIndex >= 0 ? filteredSteps[currentIndex]['status'] : '';
+    final currentIndex = _trackingSteps.indexWhere((step) => step['current'] == true);
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -358,10 +380,10 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
                 child: ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredSteps.length,
+                  itemCount: _trackingSteps.length,
                   separatorBuilder: (context, index) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
-                    final step = filteredSteps[index];
+                    final step = _trackingSteps[index];
                     final isActive = index <= currentIndex;
                     final isCurrent = step['current'] ?? false;
                     return Row(
@@ -410,7 +432,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
               ),
               SizedBox(
                 width: 60,
-                height: filteredSteps.length * 56.0,
+                height: _trackingSteps.length * 56.0,
                 child: Stack(
                   children: [
                     Positioned(
@@ -431,7 +453,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
                         builder: (context, child) {
                           final progress = _vehicleAnimation!.value;
                           final stepHeight = 56.0;
-                          final topPosition = progress * (filteredSteps.length - 1) * stepHeight;
+                          final topPosition = progress * (_trackingSteps.length - 1) * stepHeight;
                           final greenHeight = topPosition + 20;
                           return Positioned(
                             right: 20,
@@ -453,9 +475,9 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
                         builder: (context, child) {
                           final progress = _vehicleAnimation!.value;
                           final stepHeight = 56.0;
-                          final topPosition = progress * (filteredSteps.length - 1) * stepHeight;
-                          final animatedIndex = (progress * (filteredSteps.length - 1)).round().clamp(0, filteredSteps.length - 1);
-                          final animatedStatus = filteredSteps[animatedIndex]['status'] ?? '';
+                          final topPosition = progress * (_trackingSteps.length - 1) * stepHeight;
+                          final animatedIndex = (progress * (_trackingSteps.length - 1)).round().clamp(0, _trackingSteps.length - 1);
+                          final animatedStatus = _trackingSteps[animatedIndex]['status'] ?? '';
                           final vehicleIcon = _getVehicleIcon(animatedStatus);
                           return Positioned(
                             right: 0,
@@ -583,13 +605,7 @@ class _CustomerOrderTrackingPageState extends State<CustomerOrderTrackingPage> w
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            'Order #${order['order_id']}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
+
           const SizedBox(height: 8),
           Text(
             'Estimated delivery: ${_formatDate(order['estimated_delivery_time'])}',
