@@ -4,7 +4,6 @@ import 'dart:convert';
 import '../Customer/product_details_screen.dart';
 import 'customer_details_page.dart';
 
-
 class FarmerDetailsPage extends StatefulWidget {
   final String farmerId;
   final String token;
@@ -34,122 +33,10 @@ class _FarmerDetailsPageState extends State<FarmerDetailsPage> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _fetchFarmerDetails();
-  }
-
-  Future<void> _fetchFarmerDetails() async {
-    setState(() => isLoading = true);
-    try {
-      print('Fetching farmer details for ID: ${widget.farmerId}');
-      final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
-        headers: {'Authorization': 'Bearer ${widget.token}'},
-      );
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final List<dynamic> data = responseData['data'] ?? [];
-        print('Total farmers: ${data.length}');
-        final farmer = data.firstWhere(
-          (f) => f['farmer_id'].toString() == widget.farmerId,
-          orElse: () => null,
-        );
-        print('Found farmer: ${farmer != null}');
-        if (farmer != null) {
-          print('Farmer data: $farmer');
-          final productsList = farmer['products'] as List<dynamic>? ?? [];
-          final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
-          print('Products count: ${productsList.length}');
-          print('Order stats: $orderStats');
-          Set<String> uniqueCustomers = {};
-          List<Map<String, dynamic>> ordersList = [];
-          List<Map<String, dynamic>> productData = [];
-          Map<String, Map<String, dynamic>> customerMap = {};
-          
-          for (var product in productsList) {
-            productData.add({
-              'name': product['name'] ?? 'Unknown',
-              'stock': product['stock_quantity'] ?? 0,
-              'price': product['price_per_unit'] ?? 0,
-              'status': (product['stock_quantity'] ?? 0) > 0 ? 'In Stock' : 'Out of Stock',
-              'image': '',
-            });
-            final orders = product['Orders'] as List<dynamic>? ?? [];
-            for (var order in orders) {
-              final customer = order['customer'] as Map<String, dynamic>?;
-              if (customer != null) {
-                String mobile = customer['mobile_number']?.toString() ?? '';
-                uniqueCustomers.add(mobile);
-                if (!customerMap.containsKey(mobile)) {
-                  customerMap[mobile] = {
-                    'name': customer['name'] ?? 'Unknown',
-                    'orders': 0,
-                    'spent': 0.0,
-                    'lastOrder': order['order_date']?.toString().split('T')[0] ?? 'N/A',
-                  };
-                }
-                customerMap[mobile]!['orders'] = (customerMap[mobile]!['orders'] as int) + 1;
-                customerMap[mobile]!['spent'] = (customerMap[mobile]!['spent'] as double) + ((order['farmer_amount'] ?? 0) as num).toDouble();
-                ordersList.add({
-                  'id': 'ORD${order['order_id']}',
-                  'customer': customer['name'] ?? 'Unknown',
-                  'product': product['name'] ?? 'Unknown',
-                  'qty': order['quantity'] ?? 0,
-                  'amount': order['farmer_amount'] ?? 0,
-                  'date': order['order_date']?.toString().split('T')[0] ?? 'N/A',
-                  'status': order['current_status'] ?? 'Pending',
-                });
-              }
-            }
-          }
-          
-          setState(() {
-            farmerData = {
-              'name': farmer['name'] ?? 'Unknown',
-              'email': farmer['email'] ?? 'N/A',
-              'phone': farmer['mobile_number'] ?? 'N/A',
-              'address': farmer['address'] ?? 'N/A',
-              'zone': farmer['zone'] ?? 'N/A',
-              'state': farmer['state'] ?? 'N/A',
-              'image': '',
-              'totalProducts': productsList.length,
-              'activeOrders': orderStats?['total_orders'] ?? 0,
-              'totalCustomers': uniqueCustomers.length,
-              'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
-            };
-            products = productData;
-            orders = ordersList;
-            customers = customerMap.values.toList();
-          });
-          print('Updated farmer data: $farmerData');
-          print('Products: ${products.length}, Orders: ${orders.length}, Customers: ${customers.length}');
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Farmer not found'), backgroundColor: Colors.red),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load: ${response.statusCode}'), backgroundColor: Colors.red),
-        );
-      }
-    } catch (e, stackTrace) {
-      print('Error fetching farmer details: $e');
-      print('Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => isLoading = false);
-    }
-
     _tabController = TabController(length: 3, vsync: this);
     _fetchProducts();
     _fetchOrders();
     _fetchCustomers();
-
   }
 
   @override

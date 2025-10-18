@@ -24,36 +24,173 @@ class AdminUserManagementPage extends StatefulWidget {
 
 class _AdminUserManagementPageState extends State<AdminUserManagementPage> with SingleTickerProviderStateMixin {
   int _currentIndex = 1;
-  String selectedFilter = 'Farmers';
-  int? expandedFarmerId;
+  String? selectedFilter;
+  String? expandedFarmerId;
   String? expandedCustomerId;
-  bool isLoading = false;
-  List<Map<String, dynamic>> farmers = [];
   
-  // Mock farmer data
-  List<Map<String, dynamic>> farmers = [
-    {'id': 'FARM001', 'name': 'John Farmer', 'email': 'john@example.com', 'phone': '+91 9876543210', 'products': 12, 'orders': 8, 'customers': 25, 'revenue': 45000},
-    {'id': 'FARM002', 'name': 'Sarah Green', 'email': 'sarah@example.com', 'phone': '+91 9876543211', 'products': 8, 'orders': 5, 'customers': 15, 'revenue': 32000},
-    {'id': 'FARM003', 'name': 'Mike Brown', 'email': 'mike@example.com', 'phone': '+91 9876543212', 'products': 15, 'orders': 12, 'customers': 30, 'revenue': 58000},
-    {'id': 'FARM004', 'name': 'Lisa White', 'email': 'lisa@example.com', 'phone': '+91 9876543213', 'products': 10, 'orders': 7, 'customers': 20, 'revenue': 38000},
-  ];
+  List<Map<String, dynamic>> farmers = [];
+  bool _isLoadingFarmers = false;
   
   List<Map<String, dynamic>> customers = [];
   bool _isLoadingCustomers = false;
+  List<Map<String, dynamic>> transporters = [];
+  bool _isLoadingTransporters = false;
+  String? expandedTransporterId;
+  List<Map<String, dynamic>> deliveryPersons = [];
+  bool _isLoadingDeliveryPersons = false;
+  String? expandedDeliveryPersonId;
 
   @override
   void initState() {
     super.initState();
+    _fetchFarmers();
     _fetchCustomers();
+    _fetchTransporters();
+    _fetchDeliveryPersons();
   }
 
-  Future<void> _fetchFarmers() async {
-    setState(() => isLoading = true);
+  String _formatDate(String? dateString) {
+    if (dateString == null || dateString == 'N/A') return 'N/A';
     try {
       final date = DateTime.parse(dateString);
       return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}';
     } catch (e) {
       return 'N/A';
+    }
+  }
+
+  Future<void> _fetchFarmers() async {
+    setState(() => _isLoadingFarmers = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/farmers'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          farmers = (data['data'] as List).map((farmer) {
+            return {
+              'id': farmer['farmer_id']?.toString() ?? 'N/A',
+              'name': farmer['name'] ?? 'N/A',
+              'email': farmer['email'] ?? 'N/A',
+              'phone': farmer['mobile_number'] ?? 'N/A',
+              'address': farmer['address'] ?? 'N/A',
+              'zone': farmer['zone'] ?? 'N/A',
+              'state': farmer['state'] ?? 'N/A',
+              'district': farmer['district'] ?? 'N/A',
+              'age': farmer['age'] ?? 0,
+              'imageUrl': farmer['image_url'],
+              'isVerified': farmer['is_verified_by_gov'] ?? false,
+              'products': farmer['product_count'] ?? 0,
+              'orders': farmer['order_count'] ?? 0,
+              'revenue': (farmer['total_earnings'] ?? 0).toDouble(),
+            };
+          }).toList();
+          _isLoadingFarmers = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching farmers: $e');
+      setState(() => _isLoadingFarmers = false);
+    }
+  }
+
+  Future<void> _fetchDeliveryPersons() async {
+    setState(() => _isLoadingDeliveryPersons = true);
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          deliveryPersons = (data['data'] as List).map((dp) {
+            final orderStats = dp['order_stats'] ?? {};
+            return {
+              'id': dp['delivery_person_id']?.toString() ?? 'N/A',
+              'name': dp['name'] ?? 'N/A',
+              'phone': dp['mobile_number'] ?? 'N/A',
+              'vehicleNumber': dp['vehicle_number'] ?? 'N/A',
+              'licenseNumber': dp['license_number'] ?? 'N/A',
+              'vehicleType': dp['vehicle_type'] ?? 'N/A',
+              'currentLocation': dp['current_location'] ?? 'N/A',
+              'imageUrl': dp['image_url'],
+              'licenseUrl': dp['license_url'],
+              'isAvailable': dp['is_available'] ?? false,
+              'rating': dp['rating'] ?? '0.00',
+              'totalOrders': orderStats['total_orders'] ?? 0,
+              'totalAmount': (orderStats['total_amount_received'] ?? 0).toDouble(),
+            };
+          }).toList();
+          _isLoadingDeliveryPersons = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching delivery persons: $e');
+      setState(() => _isLoadingDeliveryPersons = false);
+    }
+  }
+
+  Future<void> _fetchTransporters() async {
+    setState(() {
+      _isLoadingTransporters = true;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/transporters'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        setState(() {
+          transporters = (data['data'] as List).map((transporter) {
+            final orderStats = transporter['order_stats'] ?? {};
+            return {
+              'id': transporter['transporter_id']?.toString() ?? 'N/A',
+              'name': transporter['name'] ?? 'N/A',
+              'email': transporter['email'] ?? 'N/A',
+              'phone': transporter['mobile_number'] ?? 'N/A',
+              'address': transporter['address'] ?? 'N/A',
+              'zone': transporter['zone'] ?? 'N/A',
+              'state': transporter['state'] ?? 'N/A',
+              'district': transporter['district'] ?? 'N/A',
+              'age': transporter['age'] ?? 0,
+              'imageUrl': transporter['image_url'],
+              'totalOrders': orderStats['total_orders'] ?? 0,
+              'sourceOrders': orderStats['source_orders'] ?? 0,
+              'destOrders': orderStats['destination_orders'] ?? 0,
+              'totalAmount': (orderStats['total_amount_received'] ?? 0).toDouble(),
+              'verifiedStatus': transporter['verified_status'] ?? false,
+            };
+          }).toList();
+          _isLoadingTransporters = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching transporters: $e');
+      setState(() {
+        _isLoadingTransporters = false;
+      });
     }
   }
 
@@ -64,60 +201,50 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
 
     try {
       final response = await http.get(
-        Uri.parse('https://farmercrate.onrender.com/api/admin/getAllFarmers'),
-        headers: {'Authorization': 'Bearer ${widget.token}'},
+        Uri.parse('https://farmercrate.onrender.com/api/admin/customers'),
+        headers: {
+          'Authorization': 'Bearer ${widget.token}',
+          'Content-Type': 'application/json',
+        },
       );
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        final List<dynamic> data = responseData['data'] ?? [];
-        print('Parsed data count: ${data.length}');
+        final data = jsonDecode(response.body);
+        
         setState(() {
-          farmers = data.map((farmer) {
-            final products = farmer['products'] as List<dynamic>? ?? [];
-            final orderStats = farmer['order_stats'] as Map<String, dynamic>?;
-            Set<String> uniqueCustomers = {};
-            for (var product in products) {
-              final orders = product['Orders'] as List<dynamic>? ?? [];
-              for (var order in orders) {
-                final customer = order['customer'] as Map<String, dynamic>?;
-                if (customer?['mobile_number'] != null) {
-                  uniqueCustomers.add(customer!['mobile_number'].toString());
-                }
-              }
+          customers = (data['data'] as List).map((customer) {
+            final orderStats = customer['order_stats'] ?? {};
+            final orders = customer['orders'] as List? ?? [];
+            String lastOrderDate = _formatDate(customer['created_at']);
+            
+            if (orders.isNotEmpty) {
+              lastOrderDate = 'Recent';
             }
+            
             return {
-              'id': farmer['farmer_id'] as int,
-              'name': farmer['name'] ?? 'Unknown',
-              'email': farmer['email'] ?? 'N/A',
-              'phone': farmer['mobile_number'] ?? 'N/A',
-              'address': farmer['address'] ?? 'N/A',
-              'zone': farmer['zone'] ?? 'N/A',
-              'state': farmer['state'] ?? 'N/A',
-              'district': farmer['district'] ?? 'N/A',
-              'products': products.length,
-              'orders': orderStats?['total_orders'] ?? 0,
-              'customers': uniqueCustomers.length,
-              'revenue': (orderStats?['total_revenue'] ?? 0).toDouble(),
+              'id': customer['customer_id']?.toString() ?? 'N/A',
+              'name': customer['name'] ?? 'N/A',
+              'email': customer['email'] ?? 'N/A',
+              'phone': customer['mobile_number'] ?? 'N/A',
+              'address': customer['address'] ?? 'N/A',
+              'zone': customer['zone'] ?? 'N/A',
+              'state': customer['state'] ?? 'N/A',
+              'district': customer['district'] ?? 'N/A',
+              'age': customer['age'] ?? 0,
+              'imageUrl': customer['image_url'],
+              'orders': orderStats['total_orders'] ?? 0,
+              'spent': (orderStats['total_spent'] ?? 0).toInt(),
+              'lastOrder': lastOrderDate,
             };
           }).toList();
-          print('Farmers list updated: ${farmers.length} farmers');
+          _isLoadingCustomers = false;
         });
-      } else {
-        print('Failed to fetch farmers: ${response.statusCode}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load farmers: ${response.statusCode}'), backgroundColor: Colors.red),
-        );
       }
-    } catch (e, stackTrace) {
-      print('Error fetching farmers: $e');
-      print('Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => isLoading = false);
+    } catch (e) {
+      print('Error fetching customers: $e');
+      setState(() {
+        _isLoadingCustomers = false;
+      });
     }
   }
 
@@ -154,7 +281,12 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         actions: [
           IconButton(
             icon: Icon(Icons.refresh, color: Colors.white),
-            onPressed: _fetchCustomers,
+            onPressed: () {
+              _fetchFarmers();
+              _fetchCustomers();
+              _fetchTransporters();
+              _fetchDeliveryPersons();
+            },
             tooltip: 'Reload',
           ),
         ],
@@ -169,19 +301,19 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _buildFilterChip('Farmers', Icons.agriculture_rounded, Color(0xFF4CAF50), (selectedFilter ?? 'Farmers') == 'Farmers', () {
+                  _buildFilterChip('Farmers', Icons.agriculture_rounded, Color(0xFF4CAF50), selectedFilter == 'Farmers', () {
                     setState(() => selectedFilter = 'Farmers');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Customers', Icons.people_rounded, Color(0xFF2196F3), (selectedFilter ?? 'Farmers') == 'Customers', () {
+                  _buildFilterChip('Customers', Icons.people_rounded, Color(0xFF2196F3), selectedFilter == 'Customers', () {
                     setState(() => selectedFilter = 'Customers');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Transporters', Icons.local_shipping_rounded, Color(0xFFFF9800), (selectedFilter ?? 'Farmers') == 'Transporters', () {
+                  _buildFilterChip('Transporters', Icons.local_shipping_rounded, Color(0xFFFF9800), selectedFilter == 'Transporters', () {
                     setState(() => selectedFilter = 'Transporters');
                   }),
                   SizedBox(width: 8),
-                  _buildFilterChip('Delivery', Icons.delivery_dining_rounded, Color(0xFF9C27B0), (selectedFilter ?? 'Farmers') == 'Delivery', () {
+                  _buildFilterChip('Delivery', Icons.delivery_dining_rounded, Color(0xFF9C27B0), selectedFilter == 'Delivery', () {
                     setState(() => selectedFilter = 'Delivery');
                   }),
                 ],
@@ -189,18 +321,40 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
             ),
           ),
           Expanded(
-            child: isLoading
-                ? Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)))
-                : (selectedFilter ?? 'Farmers') == 'Farmers'
+            child: selectedFilter == null
+                ? Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFFE8F5E9), Color(0xFFF5F7FA)],
+                      ),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.manage_accounts_rounded, size: 80, color: Colors.grey[300]),
+                          SizedBox(height: 16),
+                          Text('Select a category to manage', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                  )
+                : selectedFilter == 'Farmers'
                     ? _buildFarmersList()
-                    : (selectedFilter ?? 'Farmers') == 'Customers'
+                    : selectedFilter == 'Customers'
                         ? _buildCustomersList()
-                        : Container(
-                            color: Color(0xFFF5F7FA),
-                            child: Center(
-                              child: Text('$selectedFilter management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                            ),
-                          ),
+                        : selectedFilter == 'Transporters'
+                            ? _buildTransportersList()
+                            : selectedFilter == 'Delivery'
+                                ? _buildDeliveryPersonsList()
+                                : Container(
+                                    color: Color(0xFFF5F7FA),
+                                    child: Center(
+                                      child: Text('$selectedFilter management coming soon', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+                                    ),
+                                  ),
           ),
         ],
       ),
@@ -250,6 +404,23 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildFarmersList() {
+    if (_isLoadingFarmers) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
+    if (farmers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.agriculture_outlined, size: 64, color: Colors.grey[400]),
+            SizedBox(height: 16),
+            Text('No farmers found', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
+          ],
+        ),
+      );
+    }
+
     return Container(
       color: Color(0xFFF5F7FA),
       child: ListView.builder(
@@ -261,7 +432,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildFarmerAccordion(Map<String, dynamic> farmer) {
-    bool isExpanded = expandedFarmerId == farmer['id'] as int;
+    bool isExpanded = expandedFarmerId == farmer['id'];
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -272,7 +443,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
       child: Column(
         children: [
           InkWell(
-            onTap: () => setState(() => expandedFarmerId = isExpanded ? null : farmer['id'] as int),
+            onTap: () => setState(() => expandedFarmerId = isExpanded ? null : farmer['id']),
             child: Container(
               padding: EdgeInsets.all(16),
               child: Row(
@@ -357,17 +528,40 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           SizedBox(height: 12),
           Container(
             padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.shade200)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.shade300)),
+            child: Column(
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(Icons.currency_rupee, color: Colors.green[700], size: 20),
-                    Text('Total Revenue', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                    Row(
+                      children: [
+                        Icon(Icons.currency_rupee, color: Colors.green[700], size: 18),
+                        SizedBox(width: 8),
+                        Text('Total Revenue', style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+                      ],
+                    ),
+                    Text('₹${farmer['revenue'].toStringAsFixed(2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green[700])),
                   ],
                 ),
-                Text('₹${farmer['revenue']}', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green[700])),
+                SizedBox(height: 8),
+                Divider(),
+                SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.phone, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Text(farmer['phone'], style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                  ],
+                ),
+                SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(Icons.location_on, size: 16, color: Colors.grey[700]),
+                    SizedBox(width: 8),
+                    Expanded(child: Text('${farmer['zone']}, ${farmer['district']}, ${farmer['state']}', style: TextStyle(fontSize: 13, color: Colors.grey[700]))),
+                  ],
+                ),
               ],
             ),
           ),
@@ -376,7 +570,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FarmerDetailsPage(farmerId: farmer['id'].toString(), token: widget.token, user: widget.user))),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => FarmerDetailsPage(farmerId: farmer['id'], token: widget.token, user: widget.user))),
                   icon: Icon(Icons.visibility, size: 18),
                   label: Text('View Full Details'),
                   style: ElevatedButton.styleFrom(
@@ -410,6 +604,10 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
   }
 
   Widget _buildCustomersList() {
+    if (_isLoadingCustomers) {
+      return Center(child: CircularProgressIndicator(color: Color(0xFF2E7D32)));
+    }
+
     if (customers.isEmpty) {
       return Center(
         child: Column(
