@@ -1184,14 +1184,14 @@ icon: Icons.account_balance_outlined,
 keyboardType: TextInputType.number,
 inputFormatters: [
 FilteringTextInputFormatter.digitsOnly,
-LengthLimitingTextInputFormatter(10),
+LengthLimitingTextInputFormatter(20),
 ],
 validator: (value) {
 if (value == null || value.isEmpty) {
 return 'Please enter your account number';
 }
-if (value.length != 10) {
-return 'Account number must be exactly 10 digits';
+if (value.length < 9) {
+return 'Account number must be at least 9 digits';
 }
 return null;
 },
