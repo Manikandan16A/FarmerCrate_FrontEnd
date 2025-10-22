@@ -525,8 +525,24 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FDF8),
+    return WillPopScope(
+      onWillPop: () async {
+        // Check if we can pop the current route
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          // If no previous route, navigate to farmer homepage
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FarmersHomePage(token: widget.token),
+            ),
+          );
+        }
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FDF8),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FDF8),
         elevation: 0,
@@ -1290,7 +1306,7 @@ SingleChildScrollView(
           ],
         ),
       ),
-
+      ),
     );
   }
 

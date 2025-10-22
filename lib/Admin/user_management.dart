@@ -4,6 +4,8 @@ import 'dart:convert';
 import '../auth/Signin.dart';
 import 'admin_homepage.dart';
 import 'adminreport.dart';
+import 'admin_orders_page.dart';
+import 'common_drawer.dart';
 import 'farmer_details_page.dart';
 import 'ConsumerManagement.dart';
 import 'transpoter_mang.dart';
@@ -289,77 +291,7 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
-                  ),
-                  SizedBox(height: 16),
-                  Text('Admin Dashboard', style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                  SizedBox(height: 4),
-                  Text('Manage your platform', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14)),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home_rounded, color: Colors.green[600]),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.manage_accounts_rounded, color: Colors.green[600]),
-              title: const Text('Management'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: Icon(Icons.analytics_rounded, color: Colors.green[600]),
-              title: const Text('Reports'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person_rounded, color: Colors.green[600]),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                _showAdminProfile();
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: AdminDrawer(token: widget.token, user: widget.user, currentIndex: 1),
       body: Column(
         children: [
           Container(
@@ -436,20 +368,26 @@ class _AdminUserManagementPageState extends State<AdminUserManagementPage> with 
         unselectedLabelStyle: TextStyle(fontSize: 12),
         elevation: 8,
         onTap: (index) {
-          setState(() => _currentIndex = index);
           if (index == 0) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => AdminManagementPage(token: widget.token, user: widget.user)),
+              (route) => false,
+            );
+          } else if (index == 1) {
+            // Already on management page
           } else if (index == 2) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Orders page coming soon'),
-                backgroundColor: Color(0xFF2E7D32),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => AdminOrdersPage(token: widget.token, user: widget.user)),
+              (route) => false,
             );
           } else if (index == 3) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)),
+              (route) => false,
+            );
           } else if (index == 4) {
             _showAdminProfile();
           }

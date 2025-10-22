@@ -3,6 +3,13 @@ import 'dart:async';
 import 'admin_order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/cloudinary_upload.dart';
+import 'admin_sidebar.dart';
+import 'farmer_details_page.dart';
+import 'transporter_details_page.dart';
+import 'customer_details_page.dart';
+import 'delivery_person_details_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class AdminOrderTrackingPage extends StatefulWidget {
   final String? token;
@@ -109,6 +116,7 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     }
 
     final result = await AdminOrderService.getActiveShipments(token);
+    print('DEBUG: Active Shipments Result: $result');
     
     if (mounted) {
       setState(() {
@@ -700,15 +708,33 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
+    print('DEBUG: Full Order Data: $order');
+    
     final product = order['product'] ?? {};
+    print('DEBUG: Product Data: $product');
+    
     final farmer = product['farmer'] ?? {};
+    print('DEBUG: Farmer Data: $farmer');
+    
     final customer = order['customer'] ?? {};
+    print('DEBUG: Customer Data: $customer');
+    
     final sourceTransporter = order['source_transporter'] ?? {};
+    print('DEBUG: Source Transporter Data: $sourceTransporter');
+    
     final destTransporter = order['destination_transporter'] ?? {};
+    print('DEBUG: Destination Transporter Data: $destTransporter');
+    
     final deliveryPerson = order['delivery_person'] ?? {};
+    print('DEBUG: Delivery Person Data: $deliveryPerson');
+    
     final hasSourceTransporter = sourceTransporter.isNotEmpty && sourceTransporter['name'] != null;
     final hasDestTransporter = destTransporter.isNotEmpty && destTransporter['name'] != null;
     final hasDeliveryPerson = deliveryPerson.isNotEmpty && deliveryPerson['name'] != null;
+    
+    print('DEBUG: Has Source Transporter: $hasSourceTransporter');
+    print('DEBUG: Has Dest Transporter: $hasDestTransporter');
+    print('DEBUG: Has Delivery Person: $hasDeliveryPerson');
     
     return Column(
       children: [
@@ -755,9 +781,44 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
-              _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
-              _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
+              GestureDetector(
+                onTap: () {
+                  if (farmer['farmer_id'] != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FarmerDetailsPage(
+                          farmerId: farmer['farmer_id'].toString(),
+                          token: widget.token ?? '',
+                          user: farmer,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
+                      _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
+                      _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
+                      if (farmer['farmer_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('View Details', style: TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.green[700]),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -804,9 +865,68 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', customer['name'] ?? 'N/A', color: Colors.blue),
-              _buildEnhancedDetailRow(Icons.email, 'Email', customer['email'] ?? 'N/A', color: Colors.blue),
-              _buildEnhancedDetailRow(Icons.phone, 'Contact', customer['mobile_number'] ?? 'N/A', color: Colors.blue),
+              GestureDetector(
+                onTap: () async {
+                  if (customer['customer_id'] != null) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.blue)),
+                    );
+                    
+                    final customerId = customer['customer_id'].toString();
+                    final fullData = await _fetchCustomerDetails(customerId);
+                    
+                    Navigator.of(context, rootNavigator: true).pop();
+                    
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CustomerDetailsPage(
+                            customerId: customerId,
+                            token: widget.token ?? '',
+                            customer: fullData ?? {
+                              'name': customer['name'] ?? 'Unknown',
+                              'email': 'N/A',
+                              'phone': customer['mobile_number'] ?? 'N/A',
+                              'age': 0,
+                              'address': customer['address'] ?? 'N/A',
+                              'district': 'N/A',
+                              'state': 'N/A',
+                              'orders': 0,
+                              'spent': 0,
+                              'imageUrl': null,
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      _buildEnhancedDetailRow(Icons.person, 'Name', customer['name'] ?? 'N/A', color: Colors.blue),
+                      _buildEnhancedDetailRow(Icons.email, 'Email', customer['email'] ?? 'N/A', color: Colors.blue),
+                      _buildEnhancedDetailRow(Icons.phone, 'Contact', customer['mobile_number'] ?? 'N/A', color: Colors.blue),
+                      if (customer['customer_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('View Details', style: TextStyle(color: Colors.blue[700], fontSize: 12, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.blue[700]),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -853,8 +973,70 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasSourceTransporter ? sourceTransporter['name'] : 'Wait for assigning', color: Colors.purple),
-              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasSourceTransporter ? sourceTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.purple),
+              GestureDetector(
+                onTap: () async {
+                  if (hasSourceTransporter && sourceTransporter['transporter_id'] != null) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.orange)),
+                    );
+                    
+                    final transporterId = sourceTransporter['transporter_id'].toString();
+                    final fullData = await _fetchTransporterDetails(transporterId);
+                    
+                    Navigator.of(context, rootNavigator: true).pop();
+                    
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransporterDetailsPage(
+                            transporterId: transporterId,
+                            token: widget.token ?? '',
+                            transporter: fullData ?? {
+                              'name': sourceTransporter['name'] ?? 'Unknown',
+                              'email': 'N/A',
+                              'phone': sourceTransporter['mobile_number'] ?? 'N/A',
+                              'age': 0,
+                              'zone': 'N/A',
+                              'district': 'N/A',
+                              'state': 'N/A',
+                              'verifiedStatus': false,
+                              'totalOrders': 0,
+                              'totalAmount': 0.0,
+                              'sourceOrders': 0,
+                              'destOrders': 0,
+                              'imageUrl': null,
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      _buildEnhancedDetailRow(Icons.person, 'Name', hasSourceTransporter ? sourceTransporter['name'] : 'Wait for assigning', color: Colors.purple),
+                      _buildEnhancedDetailRow(Icons.location_on, 'Address', hasSourceTransporter ? sourceTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.purple),
+                      if (hasSourceTransporter && sourceTransporter['transporter_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('View Details', style: TextStyle(color: Colors.purple[700], fontSize: 12, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.purple[700]),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -901,8 +1083,70 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasDestTransporter ? destTransporter['name'] : 'Wait for assigning', color: Colors.indigo),
-              _buildEnhancedDetailRow(Icons.location_on, 'Address', hasDestTransporter ? destTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.indigo),
+              GestureDetector(
+                onTap: () async {
+                  if (hasDestTransporter && destTransporter['transporter_id'] != null) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.orange)),
+                    );
+                    
+                    final transporterId = destTransporter['transporter_id'].toString();
+                    final fullData = await _fetchTransporterDetails(transporterId);
+                    
+                    Navigator.of(context, rootNavigator: true).pop();
+                    
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransporterDetailsPage(
+                            transporterId: transporterId,
+                            token: widget.token ?? '',
+                            transporter: fullData ?? {
+                              'name': destTransporter['name'] ?? 'Unknown',
+                              'email': 'N/A',
+                              'phone': destTransporter['mobile_number'] ?? 'N/A',
+                              'age': 0,
+                              'zone': 'N/A',
+                              'district': 'N/A',
+                              'state': 'N/A',
+                              'verifiedStatus': false,
+                              'totalOrders': 0,
+                              'totalAmount': 0.0,
+                              'sourceOrders': 0,
+                              'destOrders': 0,
+                              'imageUrl': null,
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      _buildEnhancedDetailRow(Icons.person, 'Name', hasDestTransporter ? destTransporter['name'] : 'Wait for assigning', color: Colors.indigo),
+                      _buildEnhancedDetailRow(Icons.location_on, 'Address', hasDestTransporter ? destTransporter['address'] ?? 'N/A' : 'N/A', color: Colors.indigo),
+                      if (hasDestTransporter && destTransporter['transporter_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('View Details', style: TextStyle(color: Colors.indigo[700], fontSize: 12, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.indigo[700]),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -949,8 +1193,68 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', hasDeliveryPerson ? deliveryPerson['name'] : 'Wait for assigning', color: Colors.teal),
-              _buildEnhancedDetailRow(Icons.phone, 'Contact', hasDeliveryPerson ? deliveryPerson['mobile_number'] ?? 'N/A' : 'N/A', color: Colors.teal),
+              GestureDetector(
+                onTap: () async {
+                  if (hasDeliveryPerson && deliveryPerson['delivery_person_id'] != null) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (loadingContext) => Center(child: CircularProgressIndicator(color: Colors.purple)),
+                    );
+                    
+                    final deliveryPersonId = deliveryPerson['delivery_person_id'].toString();
+                    final fullData = await _fetchDeliveryPersonDetails(deliveryPersonId);
+                    
+                    Navigator.of(context, rootNavigator: true).pop();
+                    
+                    if (mounted) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DeliveryPersonDetailsPage(
+                            deliveryPersonId: deliveryPersonId,
+                            token: widget.token ?? '',
+                            deliveryPerson: fullData ?? {
+                              'id': deliveryPerson['delivery_person_id'],
+                              'name': deliveryPerson['name'] ?? 'Unknown',
+                              'vehicleNumber': deliveryPerson['vehicle_number'] ?? 'N/A',
+                              'isAvailable': false,
+                              'totalOrders': 0,
+                              'rating': '0.0',
+                              'phone': deliveryPerson['mobile_number'] ?? 'N/A',
+                              'licenseNumber': 'N/A',
+                              'currentLocation': 'N/A',
+                              'vehicleType': 'bike',
+                              'totalAmount': 0.0,
+                            },
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: Container(
+                  color: Colors.transparent,
+                  child: Column(
+                    children: [
+                      _buildEnhancedDetailRow(Icons.person, 'Name', hasDeliveryPerson ? deliveryPerson['name'] : 'Wait for assigning', color: Colors.teal),
+                      _buildEnhancedDetailRow(Icons.phone, 'Contact', hasDeliveryPerson ? deliveryPerson['mobile_number'] ?? 'N/A' : 'N/A', color: Colors.teal),
+                      if (hasDeliveryPerson && deliveryPerson['delivery_person_id'] != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('View Details', style: TextStyle(color: Colors.teal[700], fontSize: 12, fontWeight: FontWeight.bold)),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, size: 12, color: Colors.teal[700]),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -1039,6 +1343,139 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     );
   }
 
+  Future<Map<String, dynamic>?> _fetchCustomerDetails(String customerId) async {
+    try {
+      final token = await _resolveToken();
+      if (token == null) return null;
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/customers'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final customers = data['data'] as List;
+        final customer = customers.firstWhere(
+          (c) => c['customer_id'].toString() == customerId,
+          orElse: () => null,
+        );
+        
+        if (customer != null) {
+          final stats = customer['order_stats'] ?? {};
+          return {
+            'name': customer['name'],
+            'email': customer['email'] ?? 'N/A',
+            'phone': customer['mobile_number'],
+            'age': customer['age'] ?? 0,
+            'address': customer['address'],
+            'district': customer['district'],
+            'state': customer['state'],
+            'orders': stats['total_orders'] ?? 0,
+            'spent': stats['total_spent'] ?? 0,
+            'imageUrl': customer['image_url'],
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching customer details: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _fetchTransporterDetails(String transporterId) async {
+    try {
+      final token = await _resolveToken();
+      if (token == null) return null;
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/transporters'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final transporters = data['data'] as List;
+        final transporter = transporters.firstWhere(
+          (t) => t['transporter_id'].toString() == transporterId,
+          orElse: () => null,
+        );
+        
+        if (transporter != null) {
+          final stats = transporter['order_stats'] ?? {};
+          return {
+            'name': transporter['name'],
+            'email': transporter['email'] ?? 'N/A',
+            'phone': transporter['mobile_number'],
+            'age': transporter['age'] ?? 0,
+            'zone': transporter['zone'] ?? 'N/A',
+            'district': transporter['district'],
+            'state': transporter['state'],
+            'verifiedStatus': transporter['is_verified'] ?? false,
+            'totalOrders': stats['total_orders'] ?? 0,
+            'totalAmount': (stats['total_amount'] ?? 0.0).toDouble(),
+            'sourceOrders': stats['source_orders'] ?? 0,
+            'destOrders': stats['destination_orders'] ?? 0,
+            'imageUrl': transporter['image_url'],
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching transporter details: $e');
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> _fetchDeliveryPersonDetails(String deliveryPersonId) async {
+    try {
+      final token = await _resolveToken();
+      if (token == null) return null;
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/admin/delivery-persons'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final deliveryPersons = data['data'] as List;
+        final deliveryPerson = deliveryPersons.firstWhere(
+          (dp) => dp['delivery_person_id'].toString() == deliveryPersonId,
+          orElse: () => null,
+        );
+        
+        if (deliveryPerson != null) {
+          final stats = deliveryPerson['order_stats'] ?? {};
+          return {
+            'id': deliveryPerson['delivery_person_id'],
+            'name': deliveryPerson['name'],
+            'vehicleNumber': deliveryPerson['vehicle_number'],
+            'isAvailable': deliveryPerson['is_available'] ?? false,
+            'totalOrders': stats['total_orders'] ?? 0,
+            'rating': (stats['average_rating'] ?? 0.0).toString(),
+            'phone': deliveryPerson['mobile_number'],
+            'licenseNumber': deliveryPerson['license_number'] ?? 'N/A',
+            'currentLocation': deliveryPerson['current_location'] ?? 'N/A',
+            'vehicleType': deliveryPerson['vehicle_type'] ?? 'bike',
+            'totalAmount': (stats['total_amount'] ?? 0.0).toDouble(),
+          };
+        }
+      }
+    } catch (e) {
+      print('Error fetching delivery person details: $e');
+    }
+    return null;
+  }
+
   String _formatDate(dynamic dateTime) {
     if (dateTime == null) return '';
     try {
@@ -1061,9 +1498,18 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
         ),
         title: const Text('Order Tracking'),
         backgroundColor: Colors.green[600],
@@ -1075,6 +1521,7 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
           ),
         ],
       ),
+      drawer: AdminSidebar(token: widget.token ?? '', user: {}),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

@@ -676,7 +676,53 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.exit_to_app, color: Colors.red, size: 24),
+                ),
+                SizedBox(width: 12),
+                Text('Exit App', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Text('Are you sure you want to exit the app?', style: TextStyle(fontSize: 16)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text('Cancel', style: TextStyle(color: Colors.grey[700], fontSize: 16)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: Icon(Icons.exit_to_app, size: 18),
+                label: Text('Exit', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 2,
+                ),
+              ),
+            ],
+          ),
+        ) ?? false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
         title: Text('Transporter Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -961,6 +1007,7 @@ class _TransporterDashboardState extends State<TransporterDashboard> {
           ],
         ),
       ),
+    ),
     );
   }
 

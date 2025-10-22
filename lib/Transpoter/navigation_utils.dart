@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'transporter_dashboard.dart';
 import 'order_status_page.dart';
 import 'order_history_page.dart';
 import 'vehicle_page.dart';
 import 'profile_page.dart';
+import '../auth/main.dart';
 
 class TransporterNavigationUtils {
   static Widget buildTransporterDrawer(BuildContext context, String? token, int selectedIndex, Function(int) onItemTapped) {
@@ -341,9 +343,19 @@ class TransporterNavigationUtils {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           Navigator.pop(context);
-                          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                          try {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.clear();
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(builder: (context) => const FarmCrateLandingApp()),
+                              (route) => false,
+                            );
+                          } catch (e) {
+                            print('Logout error: $e');
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red[700],

@@ -1,7 +1,9 @@
+import 'package:farmer_crate/Admin/user_management.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import '../auth/Signin.dart';
 import 'common_navigation.dart';
 import 'admin_homepage.dart';
 import 'total_order.dart';
@@ -25,7 +27,7 @@ class _ReportsPageState extends State<ReportsPage> {
   bool _isWeeklyView = false;
   bool _isLoading = true;
   String? _error;
-  int _currentIndex = 1; // Reports tab is index 1
+  int _currentIndex = 3; // Reports tab is index 3 in the new navigation
 
   // Aggregated order count by calendar day
   final Map<DateTime, int> _orderData = {};
@@ -116,19 +118,6 @@ class _ReportsPageState extends State<ReportsPage> {
     }
   }
 
-  // API call placeholder (commented out)
-  /*
-  Future<void> _fetchOrderData() async {
-    try {
-      // final response = await http.get(Uri.parse('your-api-endpoint/reports'));
-      // final data = json.decode(response.body);
-      // Process the data and update _orderData
-    } catch (e) {
-      print('Error fetching order data: $e');
-    }
-  }
-  */
-
   Color _getOrderColor(int orderCount) {
     if (orderCount >= 40) return Colors.green;
     if (orderCount >= 20) return Colors.orange;
@@ -145,12 +134,230 @@ class _ReportsPageState extends State<ReportsPage> {
     return _recentOrders.take(count).toList();
   }
 
+  void _showAdminProfile() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+            ),
+            SizedBox(height: 20),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFF2E7D32),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
+            ),
+            SizedBox(height: 16),
+            Text(widget.user['name'] ?? 'Admin', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20))),
+            SizedBox(height: 4),
+            Text(widget.user['email'] ?? 'admin@farmercrate.com', style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Color(0xFF2E7D32).withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+              child: Text('Administrator', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+            SizedBox(height: 24),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text('Logout', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+              onTap: () {
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3FF),
-      appBar: AdminNavigation.buildAppBar(context, 'Reports', onRefresh: _fetchOrders),
-      drawer: AdminNavigation.buildDrawer(context, widget.user, widget.token),
+      appBar: AppBar(
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 8,
+        shadowColor: Colors.black26,
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.15)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.analytics_rounded, color: Colors.white, size: 26),
+            ),
+            SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Reports & Analytics',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Text(
+                  'Order Insights',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          Container(
+            margin: EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+              onPressed: _fetchOrders,
+            ),
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF4CAF50)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Icon(Icons.analytics, size: 40, color: Colors.white),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Reports Dashboard',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Order analytics & insights',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: Icon(Icons.home_rounded, color: Colors.green[600]),
+              title: const Text('Home'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminManagementPage(user: widget.user, token: widget.token)));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.manage_accounts_rounded, color: Colors.green[600]),
+              title: const Text('Management'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.analytics_rounded, color: Colors.green[600]),
+              title: const Text('Reports'),
+              onTap: () {
+                Navigator.pop(context);
+                // Already on reports page
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.person_rounded, color: Colors.green[600]),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context);
+                _showAdminProfile();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red[600]),
+              title: const Text('Logout'),
+              onTap: () {
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context) => LoginPage()), (route) => false);
+              },
+            ),
+          ],
+        ),
+      ),
       body: _isLoading
           ? const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
           : _error != null
@@ -517,7 +724,45 @@ class _ReportsPageState extends State<ReportsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: AdminNavigation.buildBottomNavigationBar(context, _currentIndex, widget.user, widget.token),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: Color(0xFF2E7D32),
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: TextStyle(fontSize: 12),
+        elevation: 8,
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          if (index == 0) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminManagementPage(user: widget.user, token: widget.token)));
+          } else if (index == 1) {
+            Navigator.push(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+          } else if (index == 2) {
+            // Orders page - you can add your orders page navigation here
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Orders page coming soon'),
+                backgroundColor: Color(0xFF2E7D32),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else if (index == 3) {
+            // Already on reports page
+          } else if (index == 4) {
+            _showAdminProfile();
+          }
+        },
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.manage_accounts_rounded), label: 'Management'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart_rounded), label: 'Orders'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_rounded), label: 'Reports'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+        ],
+      ),
     );
   }
 
@@ -570,7 +815,8 @@ class _ReportsPageState extends State<ReportsPage> {
         ? _orderData[DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day)]
         : null;
     final orders = _recentOrders.where((o) =>
-    o.date.year == _selectedDay!.year && o.date.month == _selectedDay!.month && o.date.day == _selectedDay!.day).toList();
+    o.date.year == _selectedDay!.year && o.date.month == _selectedDay!.month && o.date.day == _selectedDay!.day
+    ).toList();
 
     return Column(
       children: [

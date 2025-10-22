@@ -13,6 +13,7 @@ import 'dart:convert';
 import '../utils/cloudinary_upload.dart';
 import '../utils/notification_helper.dart';
 import '../utils/snackbar_utils.dart';
+import 'common_drawer.dart';
 
 class FarmersHomePage extends StatefulWidget {
   final String? token; // Add token parameter
@@ -377,8 +378,12 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[50],
+    return WillPopScope(
+      onWillPop: () async {
+        return await _showExitDialog();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50],
       appBar: AppBar(
         backgroundColor: Colors.green[600],
         elevation: 0,
@@ -423,93 +428,7 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.green[600],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'FarmerCrate',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Welcome, Farmer!',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.green[600]),
-              title: Text('Home'),
-              onTap: () {
-                Navigator.pop(context);
-                _onNavItemTapped(0);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.shopping_bag, color: Colors.green[600]),
-              title: Text('Orders'),
-              onTap: () {
-                Navigator.pop(context);
-                _onNavItemTapped(1);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit, color: Colors.green[600]),
-              title: Text('Edit Products'),
-              onTap: () {
-                Navigator.pop(context);
-                _onNavItemTapped(2);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.contact_mail, color: Colors.green[600]),
-              title: Text('Contact Admin'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ContactAdminPage(token: widget.token),
-                  ),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.person, color: Colors.green[600]),
-              title: Text('Profile'),
-              onTap: () {
-                Navigator.pop(context);
-                _onNavItemTapped(3);
-              },
-            ),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red[600]),
-              title: Text('Logout'),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmLogout();
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: FarmerDrawer(token: widget.token, currentIndex: 0),
       body: isLoading
           ? Center(
               child: Column(
@@ -912,7 +831,39 @@ class _FarmersHomePageState extends State<FarmersHomePage> with TickerProviderSt
           ],
         ),
       ),
+      ),
     );
+  }
+
+  Future<bool> _showExitDialog() async {
+    return await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.exit_to_app, color: Colors.green[600]),
+            SizedBox(width: 8),
+            Text('Exit App', style: TextStyle(color: Colors.green[600], fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text('Are you sure you want to exit FarmerCrate?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green[600],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Exit', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    ) ?? false;
   }
 
   String _getProductStatus(Product product) {

@@ -6,6 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'admin_homepage.dart';
 import 'admin_order_tracking.dart';
+import 'admin_sidebar.dart';
+import 'user_management.dart';
+import 'adminreport.dart';
+import '../auth/Signin.dart';
 
 class AdminOrdersPage extends StatefulWidget {
   final String token;
@@ -36,6 +40,8 @@ class OrderItem {
   final String customerName;
   final String customerEmail;
   final String customerPhone;
+  final String customerImage;
+  final List<String> productImages;
 
   OrderItem({
     required this.orderId,
@@ -56,15 +62,26 @@ class OrderItem {
     required this.customerName,
     required this.customerEmail,
     required this.customerPhone,
+    required this.customerImage,
+    required this.productImages,
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     final product = json['product'] ?? {};
     final images = product['images'] as List<dynamic>? ?? [];
     String imageUrl = '';
+    List<String> allImages = [];
     
     if (images.isNotEmpty) {
       try {
+        // Get all image URLs
+        for (var img in images) {
+          if (img is Map && img['image_url'] != null) {
+            allImages.add(img['image_url'].toString());
+          }
+        }
+        
+        // Get primary image for main display
         final primaryImage = images.firstWhere(
           (img) => img is Map && img['is_primary'] == true,
           orElse: () => null,
@@ -85,10 +102,12 @@ class OrderItem {
     final customer = json['customer'] ?? {};
     
     final customerName = (customer['name'] ?? '').toString();
+    final customerImage = (customer['image_url'] ?? '').toString();
     final deliveryPersonName = deliveryPerson != null ? (deliveryPerson['name'] ?? 'N/A').toString() : 'Wait for assigning';
     
     print('Customer data: $customer');
     print('Final customer name: $customerName');
+    print('Final customer image: $customerImage');
     print('Final delivery person: $deliveryPersonName');
     
     return OrderItem(
@@ -110,6 +129,8 @@ class OrderItem {
       customerName: customerName,
       customerEmail: (customer['email'] ?? '').toString(),
       customerPhone: (customer['mobile_number'] ?? '').toString(),
+      customerImage: customerImage,
+      productImages: allImages,
     );
   }
 }
@@ -258,47 +279,140 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FDF8),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
+          ),
+        );
+        return false;
+      },
+      child: Scaffold(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Color(0xFFF5F7FA),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdminManagementPage(token: widget.token, user: widget.user),
-              ),
-            );
-          },
-        ),
-        title: const Text(
-          'All Orders',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF388E3C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
-        backgroundColor: const Color(0xFF4CAF50),
-        elevation: 0,
-        centerTitle: true,
+        elevation: 8,
+        shadowColor: Colors.black26,
+        leading: Builder(
+          builder: (context) => Container(
+            margin: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.menu_rounded, color: Colors.white, size: 24),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.15)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.shopping_cart_rounded, color: Colors.white, size: 26),
+            ),
+            SizedBox(width: 14),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'All Orders',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                Text(
+                  'Order Management',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              onPressed: _fetchOrders,
+              icon: Icon(Icons.refresh_rounded, color: Colors.white, size: 22),
+              onPressed: () {
+                _fetchOrders();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                        SizedBox(width: 10),
+                        Text('Refreshing...', style: TextStyle(fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    backgroundColor: Color(0xFF2E7D32),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: Duration(seconds: 1),
+                    margin: EdgeInsets.all(16),
+                  ),
+                );
+              },
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: Icon(Icons.notifications_rounded, color: Colors.white, size: 22),
+              onPressed: () {},
             ),
           ),
         ],
       ),
+      drawer: AdminSidebar(token: widget.token, user: widget.user),
       body: _isLoading
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
                   ),
                   SizedBox(height: 16),
                   Text(
@@ -334,7 +448,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       ElevatedButton(
                         onPressed: _fetchOrders,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF4CAF50),
+                          backgroundColor: const Color(0xFF2E7D32),
                           foregroundColor: Colors.white,
                         ),
                         child: const Text('Retry'),
@@ -375,7 +489,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     )
                   : RefreshIndicator(
                       onRefresh: _fetchOrders,
-                      color: const Color(0xFF4CAF50),
+                      color: const Color(0xFF2E7D32),
                       child: ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _orders.length,
@@ -772,11 +886,13 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
               ),
             );
           } else if (index == 1) {
-            // Management - could navigate to user management
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AdminUserManagementPage(token: widget.token, user: widget.user)));
+          } else if (index == 2) {
+            // Already on orders page
           } else if (index == 3) {
-            // Reports
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ReportsPage(token: widget.token, user: widget.user)));
           } else if (index == 4) {
-            // Profile
+            _showAdminProfile();
           }
         },
         items: [
@@ -786,6 +902,85 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
           BottomNavigationBarItem(icon: Icon(Icons.analytics_rounded), label: 'Reports'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
         ],
+      ),
+    ),
+    );
+  }
+
+  void _showAdminProfile() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            SizedBox(height: 20),
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Color(0xFF2E7D32),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
+            ),
+            SizedBox(height: 16),
+            Text(
+              widget.user['name'] ?? 'Admin',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B5E20),
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              widget.user['email'] ?? 'admin@farmercrate.com',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Color(0xFF2E7D32).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Administrator',
+                style: TextStyle(
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+            ListTile(
+              leading: Icon(Icons.logout, color: Colors.red),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+              ),
+              onTap: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginPage()),
+                  (route) => false,
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -876,11 +1071,27 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(30),
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.grey[400],
-                          size: 30,
-                        ),
+                        child: order.customerImage.isNotEmpty
+                            ? Image.network(
+                                order.customerImage,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  print('Customer image load error: $error');
+                                  print('Customer image URL: ${order.customerImage}');
+                                  return Icon(
+                                    Icons.person,
+                                    color: Colors.grey[400],
+                                    size: 30,
+                                  );
+                                },
+                              )
+                            : Icon(
+                                Icons.person,
+                                color: Colors.grey[400],
+                                size: 30,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -913,23 +1124,52 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                 ),
               ),
               const SizedBox(height: 16),
-              if (order.productImage.isNotEmpty) ...[
-                Container(
-                  height: 120,
-                  width: 120,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!, width: 2),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      order.productImage,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[200],
-                        child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
-                      ),
+              if (order.productImages.isNotEmpty) ...[
+                GestureDetector(
+                  onTap: () => _showProductImages(order.productImages),
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green[200]!, width: 2),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            order.productImages.first,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                            ),
+                          ),
+                        ),
+                        if (order.productImages.length > 1)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                '+${order.productImages.length - 1}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -948,7 +1188,7 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     child: ElevatedButton(
                       onPressed: () => Navigator.pop(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey[600],
+                        backgroundColor: Colors.red[600],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -988,6 +1228,112 @@ class _AdminOrdersPageState extends State<AdminOrdersPage> {
                     ),
                   ],
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showProductImages(List<String> images) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Product Images (${images.length})',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Colors.grey[100],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  color: Colors.white,
+                  child: PageView.builder(
+                    itemCount: images.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        margin: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            images[index],
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              color: Colors.grey[200],
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_not_supported, color: Colors.grey[400], size: 64),
+                                  SizedBox(height: 8),
+                                  Text('Image not available', style: TextStyle(color: Colors.grey[600])),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    images.length,
+                    (index) => Container(
+                      margin: EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.green[600],
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

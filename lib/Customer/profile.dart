@@ -897,56 +897,70 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: _isLoading ? _buildLoadingWidget() : _buildProfileForm(),
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CustomerHomePage(token: widget.token),
+          ),
+          (route) => false,
+        );
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: CustomScrollView(
+          slivers: [
+            _buildSliverAppBar(),
+            SliverToBoxAdapter(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: _isLoading ? _buildLoadingWidget() : _buildProfileForm(),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      drawer: CustomerNavigationUtils.buildCustomerDrawer(
-        parentContext: context,
-        token: widget.token,
-        customerImageUrl: _customerImageUrl,
-        customerName: _nameController.text,
-        isLoadingProfile: _isLoading,
-      ),
-      bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
-        currentIndex: 3, // Profile is index 3
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => CustomerHomePage(token: widget.token)),
-              );
-              break;
-            case 1:
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => CategoryPage(token: widget.token)),
-              );
-              break;
-            case 2:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
-              );
-              break;
-            case 3:
-              // Already on profile page
-              break;
-          }
-        },
+          ],
+        ),
+        drawer: CustomerNavigationUtils.buildCustomerDrawer(
+          parentContext: context,
+          token: widget.token,
+          customerImageUrl: _customerImageUrl,
+          customerName: _nameController.text,
+          isLoadingProfile: _isLoading,
+        ),
+        bottomNavigationBar: CustomerNavigationUtils.buildCustomerBottomNav(
+          currentIndex: 3, // Profile is index 3
+          onTap: (index) {
+            if (index != 3) {
+              switch (index) {
+                case 0:
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => CustomerHomePage(token: widget.token)),
+                    (route) => false,
+                  );
+                  break;
+                case 1:
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => CategoryPage(token: widget.token)),
+                    (route) => false,
+                  );
+                  break;
+                case 2:
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => CartPage(token: widget.token)),
+                    (route) => false,
+                  );
+                  break;
+              }
+            }
+          },
+        ),
       ),
     );
   }
@@ -1833,10 +1847,4 @@ class _CustomerProfilePageState extends State<CustomerProfilePage> with TickerPr
       ),
     );
   }
-
-
-
-
-
-
 }

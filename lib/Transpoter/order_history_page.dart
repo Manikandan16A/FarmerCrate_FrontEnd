@@ -141,7 +141,15 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => TransporterDashboard(token: widget.token)),
+        );
+        return false;
+      },
+      child: Scaffold(
       backgroundColor: Color(0xFFF0F8F0),
       appBar: AppBar(
         title: Text('Order History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -262,6 +270,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           ],
         ),
       ),
+    ),
     );
   }
 

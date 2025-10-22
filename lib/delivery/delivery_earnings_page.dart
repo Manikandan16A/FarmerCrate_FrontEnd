@@ -404,6 +404,7 @@ class DeliveryEarningsPage extends StatelessWidget {
       title: Text(amount, style: TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(date),
       trailing: Text(status, style: TextStyle(color: Colors.green, fontSize: 12)),
+
     );
   }
 }
