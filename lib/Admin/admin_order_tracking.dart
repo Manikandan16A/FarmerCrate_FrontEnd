@@ -713,8 +713,11 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
     final product = order['product'] ?? {};
     print('DEBUG: Product Data: $product');
     
-    final farmer = product['farmer'] ?? {};
+    // Try to get farmer from product first, then from order directly
+    final farmer = product['farmer'] ?? order['farmer'] ?? {};
     print('DEBUG: Farmer Data: $farmer');
+    print('DEBUG: Farmer ID: ${farmer['farmer_id']}');
+    print('DEBUG: Farmer Name: ${farmer['name']}');
     
     final customer = order['customer'] ?? {};
     print('DEBUG: Customer Data: $customer');
@@ -783,14 +786,15 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
               const SizedBox(height: 16),
               GestureDetector(
                 onTap: () {
-                  if (farmer['farmer_id'] != null) {
+                  final farmerId = farmer['farmer_id'] ?? product['farmer_id'];
+                  if (farmerId != null) {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => FarmerDetailsPage(
-                          farmerId: farmer['farmer_id'].toString(),
+                          farmerId: farmerId.toString(),
                           token: widget.token ?? '',
-                          user: farmer,
+                          user: farmer.isNotEmpty ? farmer : product,
                         ),
                       ),
                     );
@@ -800,10 +804,10 @@ class _AdminOrderTrackingPageState extends State<AdminOrderTrackingPage> with Si
                   color: Colors.transparent,
                   child: Column(
                     children: [
-                      _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
-                      _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
-                      _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
-                      if (farmer['farmer_id'] != null)
+                      _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? product['farmer_name'] ?? 'N/A'),
+                      _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? product['farmer_email'] ?? 'N/A'),
+                      _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? product['farmer_mobile'] ?? 'N/A'),
+                      if ((farmer['farmer_id'] ?? product['farmer_id']) != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Row(

@@ -6,6 +6,7 @@ import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
 import '../Transpoter/transporter_dashboard.dart';
 import '../delivery/delivery_dashboard.dart';
+import '../splash_screen.dart';
 import 'Signin.dart';
 import 'signup.dart';
 
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         fontFamily: 'Roboto',
       ),
-      home: const AuthChecker(),
+      home: SplashScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -94,6 +95,15 @@ class _AuthCheckerState extends State<AuthChecker> {
         child: CircularProgressIndicator(color: Colors.green),
       ),
     );
+  }
+}
+
+class GetStartedPage extends StatelessWidget {
+  const GetStartedPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const FarmCrateLandingApp();
   }
 }
 

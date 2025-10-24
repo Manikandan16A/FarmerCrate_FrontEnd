@@ -104,6 +104,29 @@ class OrderItem {
     final customerName = (customer['name'] ?? '').toString();
     final customerImage = (customer['image_url'] ?? '').toString();
     final deliveryPersonName = deliveryPerson != null ? (deliveryPerson['name'] ?? 'N/A').toString() : 'Wait for assigning';
+
+    // Try to extract transporter info if API returned nested transporter objects
+    String sourceName = 'Wait for assigning';
+    String sourceAddress = 'Wait for assigning';
+    String destName = 'Wait for assigning';
+    String destAddress = 'Wait for assigning';
+    try {
+      if (json['source_transporter'] != null && json['source_transporter'] is Map) {
+        final st = json['source_transporter'] as Map<String, dynamic>;
+        sourceName = (st['name'] ?? st['transporter_name'] ?? sourceName).toString();
+        sourceAddress = (st['address'] ?? st['location'] ?? sourceAddress).toString();
+      } else if (json['source_transporter_id'] != null) {
+        // keep default until transporter objects are available elsewhere
+      }
+
+      if (json['destination_transporter'] != null && json['destination_transporter'] is Map) {
+        final dt = json['destination_transporter'] as Map<String, dynamic>;
+        destName = (dt['name'] ?? dt['transporter_name'] ?? destName).toString();
+        destAddress = (dt['address'] ?? dt['location'] ?? destAddress).toString();
+      }
+    } catch (e) {
+      // ignore and keep defaults
+    }
     
     print('Customer data: $customer');
     print('Final customer name: $customerName');
@@ -120,10 +143,10 @@ class OrderItem {
       productName: (product['name'] ?? '').toString(),
       productPrice: (product['current_price'] is num) ? (product['current_price'] as num).toDouble() : double.tryParse('${product['current_price']}') ?? 0.0,
       productImage: imageUrl,
-      sourceTransporterName: 'Wait for assigning',
-      sourceTransporterAddress: 'Wait for assigning',
-      destTransporterName: 'Wait for assigning',
-      destTransporterAddress: 'Wait for assigning',
+  sourceTransporterName: sourceName,
+  sourceTransporterAddress: sourceAddress,
+  destTransporterName: destName,
+  destTransporterAddress: destAddress,
       deliveryPersonName: deliveryPersonName,
       deliveryPersonPhone: deliveryPerson != null ? (deliveryPerson['mobile_number'] ?? 'N/A').toString() : 'Wait for assigning',
       customerName: customerName,

@@ -103,15 +103,17 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
           completedOrders = allOrders.where((order) => 
             order['current_status'] == 'COMPLETED' || 
             order['current_status'] == 'CANCELLED' ||
-            order['current_status'] == 'RECEIVED'
+            order['current_status'] == 'DELIVERED'
           ).toList();
           isLoading = false;
         });
       } else {
         setState(() => isLoading = false);
+        _showSnackBar('Failed to load order history', isError: true);
       }
     } catch (e) {
       setState(() => isLoading = false);
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 
