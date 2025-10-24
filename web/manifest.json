@@ -1,6 +1,6 @@
 {
-    "name": "farmer_crate",
-    "short_name": "farmer_crate",
+    "name": "FarmerCrate",
+    "short_name": "FarmerCrate",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

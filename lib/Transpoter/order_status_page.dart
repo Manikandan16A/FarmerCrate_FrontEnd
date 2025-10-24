@@ -104,15 +104,25 @@ class _OrderStatusPageState extends State<OrderStatusPage> {
         final data = jsonDecode(response.body);
         final allOrders = data['data'] ?? [];
         setState(() {
-          sourceOrders = allOrders.where((order) => order['transporter_role'] == 'PICKUP_SHIPPING').toList();
-          destinationOrders = allOrders.where((order) => order['transporter_role'] == 'DELIVERY').toList();
+          sourceOrders = allOrders.where((order) => 
+            order['transporter_role'] == 'PICKUP_SHIPPING' && 
+            order['current_status'] != 'COMPLETED' && 
+            order['current_status'] != 'CANCELLED'
+          ).toList();
+          destinationOrders = allOrders.where((order) => 
+            order['transporter_role'] == 'DELIVERY' && 
+            order['current_status'] != 'COMPLETED' && 
+            order['current_status'] != 'CANCELLED'
+          ).toList();
           isLoading = false;
         });
       } else {
         setState(() => isLoading = false);
+        _showSnackBar('Failed to load orders', isError: true);
       }
     } catch (e) {
       setState(() => isLoading = false);
+      _showSnackBar('Error: $e', isError: true);
     }
   }
 

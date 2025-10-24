@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "farmer_crate" "\0"
+            VALUE "FileDescription", "FarmerCrate" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "farmer_crate" "\0"
+            VALUE "InternalName", "FarmerCrate" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "farmer_crate.exe" "\0"
-            VALUE "ProductName", "farmer_crate" "\0"
+            VALUE "OriginalFilename", "FarmerCrate.exe" "\0"
+            VALUE "ProductName", "FarmerCrate" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

@@ -77,6 +77,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_native_splash: ^2.2.19
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -108,6 +110,7 @@ flutter:
     - assets/resetpage.jpg
     - assets/getstart.png
     - assets/get.png
+    - assets/FarmerCrate_Logo.jpg
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
@@ -136,3 +139,21 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+  # flutter_native_splash configuration (native splash using app logo)
+  # This will generate native splash screens for Android, iOS and web
+  # using the image at assets/FarmerCrate_Logo.jpg. Run:
+  #   flutter pub get
+  #   flutter pub run flutter_native_splash:create
+flutter_native_splash:
+  color: "#2E7D32"
+  android: true
+  ios: true
+  web: false
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/FarmerCrate_Logo.jpg"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/FarmerCrate_Logo.jpg"

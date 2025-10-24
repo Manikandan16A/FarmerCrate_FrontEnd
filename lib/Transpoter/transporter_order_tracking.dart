@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'transporter_order_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TransporterOrderTrackingPage extends StatefulWidget {
   final String? token;
@@ -26,6 +28,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
   Timer? _refreshTimer;
   AnimationController? _vehicleAnimationController;
   Animation<double>? _vehicleAnimation;
+  Map<String, dynamic> _farmerDetails = {};
   
   @override
   void initState() {
@@ -145,9 +148,10 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
     if (mounted && result['success'] == true) {
       setState(() {
         final data = result['data'] as Map<String, dynamic>;
-        final steps = (data['tracking_steps'] as List<dynamic>? ?? [])
-            .where((step) => step['status']?.toUpperCase() != 'IN_TRANSIT')
-            .toList();
+    // Include all steps from the API (including IN_TRANSIT) so the timeline
+    // reflects the true order state. Previously IN_TRANSIT was filtered out
+    // which made tracking stop when orders were in transit.
+    final steps = (data['tracking_steps'] as List<dynamic>? ?? []).toList();
         _trackingSteps = steps.map((step) => {
           ...step,
           'label': _mapStatusLabel(step['status']),
@@ -156,7 +160,79 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
         if (currentIndex >= 0 && _trackingSteps.isNotEmpty) {
           _startVehicleAnimation(currentIndex, _trackingSteps.length);
         }
+
+        // Try to populate farmer details straight from the track response if available
+        // Many track responses include data.order.product.farmer — prefer that to avoid an extra request
+        try {
+          if (data['order'] != null) {
+            final orderMap = data['order'] as Map<String, dynamic>;
+            if (orderMap['product'] != null) {
+              final prod = orderMap['product'] as Map<String, dynamic>;
+              if (prod['farmer'] != null) {
+                _farmerDetails = prod['farmer'] as Map<String, dynamic>;
+              }
+            }
+          }
+        } catch (_) {
+          // ignore parsing errors, we'll fallback to explicit fetch below
+        }
       });
+
+      // If farmer details are still empty, try to get a product id from a few possible places
+      String? productId;
+      // 1) prefer product id from the track response (data.order.product.product_id)
+      try {
+        final data = result['data'] as Map<String, dynamic>;
+        if (data['order'] != null) {
+          final orderMap = data['order'] as Map<String, dynamic>;
+          if (orderMap['product'] != null && orderMap['product'] is Map<String, dynamic>) {
+            final prod = orderMap['product'] as Map<String, dynamic>;
+            productId = (prod['product_id'] ?? prod['id'] ?? prod['productId'])?.toString();
+          } else {
+            productId = (orderMap['product_id'] ?? orderMap['productId'])?.toString();
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+
+      // 2) fall back to reading product_id from the selected order (older endpoints / active list)
+      if ((productId == null || productId.isEmpty) && _selectedOrder != null) {
+        try {
+          productId = (_selectedOrder!['product_id'] ?? _selectedOrder!['productId'] ?? _selectedOrder!['product']?['product_id'])?.toString();
+        } catch (_) {
+          // ignore
+        }
+      }
+
+      if ((productId != null && productId.isNotEmpty) && (_farmerDetails.isEmpty)) {
+        _fetchFarmerDetails(productId);
+      }
+    }
+  }
+
+  Future<void> _fetchFarmerDetails(String productId) async {
+    try {
+      final token = await _resolveToken();
+      if (token == null) return;
+      
+      final response = await http.get(
+        Uri.parse('https://farmercrate.onrender.com/api/products/$productId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final productData = data['data'];
+        if (productData != null && mounted) {
+          setState(() {
+            _farmerDetails = productData['farmer'] ?? {};
+            print('DEBUG: Fetched Farmer Details: $_farmerDetails');
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching farmer details: $e');
     }
   }
 
@@ -666,11 +742,7 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
     if (_selectedOrder == null) return const SizedBox.shrink();
     
     final order = _selectedOrder!;
-    print('DEBUG: Full order data: $order');
-    final product = order['product'] ?? {};
-    print('DEBUG: Product data: $product');
-    final farmer = product['farmer'] ?? {};
-    print('DEBUG: Farmer data: $farmer');
+    final farmer = _farmerDetails;
     
     return Column(
       children: [
@@ -717,9 +789,9 @@ class _TransporterOrderTrackingPageState extends State<TransporterOrderTrackingP
                 ],
               ),
               const SizedBox(height: 16),
-              _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'N/A'),
-              _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'N/A'),
-              _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'N/A'),
+              _buildEnhancedDetailRow(Icons.person, 'Name', farmer['name'] ?? 'Loading...'),
+              _buildEnhancedDetailRow(Icons.email, 'Email', farmer['email'] ?? 'Loading...'),
+              _buildEnhancedDetailRow(Icons.phone, 'Contact', farmer['mobile_number'] ?? 'Loading...'),
             ],
           ),
         ),
