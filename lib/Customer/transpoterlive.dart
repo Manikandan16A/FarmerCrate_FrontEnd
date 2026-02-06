@@ -26,57 +26,57 @@ class _LiveDeliveryTrackingPageState extends State<LiveDeliveryTrackingPage>
   Timer? _statusUpdateTimer;
 
   int currentStage = 3; // Current stage (0-5)
-  String estimatedDeliveryTime = "11:20 AM";
+  String estimatedDeliveryTime = '11:20 AM';
 
   // Order tracking stages
   List<OrderStage> orderStages = [
     OrderStage(
-      title: "Order Placed & Paid",
-      subtitle: "Customer completes online payment",
-      emoji: "✅",
-      time: "10:00 AM",
+      title: 'Order Placed & Paid',
+      subtitle: 'Customer completes online payment',
+      emoji: '✅',
+      time: '10:00 AM',
       isCompleted: true,
-      description: "Order confirmed in system",
+      description: 'Order confirmed in system',
     ),
     OrderStage(
-      title: "Farmer Preparing",
-      subtitle: "Farmer gets order notification",
-      emoji: "🌱",
-      time: "10:10 AM",
+      title: 'Farmer Preparing',
+      subtitle: 'Farmer gets order notification',
+      emoji: '🌱',
+      time: '10:10 AM',
       isCompleted: true,
-      description: "Farmer starts packing the produce",
+      description: 'Farmer starts packing the produce',
     ),
     OrderStage(
-      title: "Picked from Farmer",
-      subtitle: "Delivery agent assigned",
-      emoji: "🛵",
-      time: "10:25 AM",
+      title: 'Picked from Farmer',
+      subtitle: 'Delivery agent assigned',
+      emoji: '🛵',
+      time: '10:25 AM',
       isCompleted: true,
-      description: "Agent picks up items from farmer",
+      description: 'Agent picks up items from farmer',
     ),
     OrderStage(
-      title: "Arrived at Hub",
-      subtitle: "Hub staff receive items",
-      emoji: "🏬",
-      time: "10:40 AM",
+      title: 'Arrived at Hub',
+      subtitle: 'Hub staff receive items',
+      emoji: '🏬',
+      time: '10:40 AM',
       isCompleted: true,
-      description: "Quality & quantity check completed",
+      description: 'Quality & quantity check completed',
     ),
     OrderStage(
-      title: "Out for Delivery",
-      subtitle: "On the way to customer",
-      emoji: "🚚",
-      time: "11:00 AM",
+      title: 'Out for Delivery',
+      subtitle: 'On the way to customer',
+      emoji: '🚚',
+      time: '11:00 AM',
       isCompleted: false,
-      description: "Order leaves hub for customer",
+      description: 'Order leaves hub for customer',
     ),
     OrderStage(
-      title: "Delivered",
-      subtitle: "Customer receives produce",
-      emoji: "📦",
-      time: "11:20 AM",
+      title: 'Delivered',
+      subtitle: 'Customer receives produce',
+      emoji: '📦',
+      time: '11:20 AM',
       isCompleted: false,
-      description: "Feedback option available",
+      description: 'Feedback option available',
     ),
   ];
 

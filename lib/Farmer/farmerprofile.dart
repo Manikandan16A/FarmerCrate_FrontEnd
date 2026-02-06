@@ -1824,7 +1824,7 @@ class _FarmerProfilePageState extends State<FarmerProfilePage> with TickerProvid
             fontWeight: FontWeight.w600,
             fontSize: 14,
           ),
-          counterText: maxLength != null ? null : "",
+          counterText: maxLength != null ? null : '',
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 20, vertical: 18),
         ),

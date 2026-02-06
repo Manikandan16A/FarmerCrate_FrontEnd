@@ -264,7 +264,7 @@ class _AddProductPageState extends State<AddProductPage> with TickerProviderStat
           ),
         );
 
-        String? url = await CloudinaryUploader.uploadImage(image!);
+        String? url = await CloudinaryUploader.uploadImage(image);
         
         if (url == null) {
           setState(() {

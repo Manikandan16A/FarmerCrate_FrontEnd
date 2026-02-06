@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../utils/cloudinary_upload.dart';
 import '../utils/snackbar_utils.dart';
 import 'Signin.dart';
@@ -42,13 +43,17 @@ final _licenseNumberController = TextEditingController();
 bool _isPasswordVisible = false;
 bool _isConfirmPasswordVisible = false;
 bool _isLoading = false;
-String? _selectedRole = "Farmer";
+String? _selectedRole = 'Farmer';
 File? _selectedImage;
 File? _selectedAadharFile;
 File? _selectedPanFile;
 File? _selectedVoterIdFile;
 File? _selectedLicenseFile;
 final ImagePicker _picker = ImagePicker();
+final GoogleSignIn _googleSignIn = GoogleSignIn(
+scopes: ['email', 'profile'],
+serverClientId: '850075546970-5v0jdspjmtm4ciu5sqrukvlhmohhqon9.apps.googleusercontent.com',
+);
 
 late AnimationController _animationController;
 late Animation<double> _fadeAnimation;
@@ -846,15 +851,15 @@ await prefs.setString('role', (userData['role'] ?? apiRole).toString());
 await prefs.setInt('user_id', userData['id'] ?? 0);
 await prefs.setInt('customer_id', userData['id'] ?? 0);
 
-String title = "Account Created!";
-String successMessage = "";
+String title = 'Account Created!';
+String successMessage = '';
 
-if (apiRole == "farmer") {
-successMessage = "Your account has created successfully. Wait for verification to join our family.";
-} else if (apiRole == "transporter") {
-successMessage = "Your account has created successfully. Wait for verification to join our family.";
+if (apiRole == 'farmer') {
+successMessage = 'Your account has created successfully. Wait for verification to join our family.';
+} else if (apiRole == 'transporter') {
+successMessage = 'Your account has created successfully. Wait for verification to join our family.';
 } else {
-successMessage = "Your account created successfully.";
+successMessage = 'Your account created successfully.';
 }
 
 // Show success dialog
@@ -874,6 +879,57 @@ builder: (context) => LoginPage(),
 String errorMessage = 'Error registering user (Status: ${response.statusCode})';
 if (responseData.isNotEmpty) {
 errorMessage = responseData['message']?.toString() ?? errorMessage;
+
+// Handle email uniqueness conflict (409 status)
+if (response.statusCode == 409 && responseData['existingRole'] != null) {
+final existingRole = responseData['existingRole'];
+showDialog(
+context: context,
+builder: (BuildContext context) {
+return AlertDialog(
+title: Row(
+children: [
+Icon(Icons.warning, color: Colors.orange),
+SizedBox(width: 8),
+Text('Email Already Registered'),
+],
+),
+content: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+Text(
+'This email is already registered as a $existingRole.',
+style: TextStyle(fontSize: 16),
+),
+SizedBox(height: 12),
+Text(
+'Please use a different email address or sign in with your existing account.',
+style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+),
+],
+),
+actions: [
+TextButton(
+onPressed: () => Navigator.pop(context),
+child: Text('OK'),
+),
+TextButton(
+onPressed: () {
+Navigator.pop(context);
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(builder: (context) => LoginPage()),
+);
+},
+child: Text('Go to Login'),
+),
+],
+);
+},
+);
+return;
+}
+
 if (responseData['errors'] != null) {
 try {
 final errors = responseData['errors'] as List;
@@ -889,7 +945,6 @@ print('Error parsing error messages: $e');
 }
 }
 }
-
 
 print('Registration failed: $errorMessage');
 print('Full response: ${response.body}');
@@ -916,6 +971,138 @@ print('Registration error: $error');
 
 SnackBarUtils.showError(context, errorMessage);
 }
+}
+}
+
+Future<void> _handleGoogleSignUp() async {
+setState(() {
+_isLoading = true;
+});
+
+try {
+final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+if (googleUser == null) {
+setState(() {
+_isLoading = false;
+});
+return;
+}
+
+final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+final String? idToken = googleAuth.idToken;
+
+if (idToken == null) {
+throw Exception('Failed to get ID token');
+}
+
+final response = await http.post(
+Uri.parse('https://farmercrate.onrender.com/api/auth/google-signin'),
+headers: {'Content-Type': 'application/json'},
+body: jsonEncode({
+'idToken': idToken,
+'role': 'customer',
+}),
+);
+
+setState(() {
+_isLoading = false;
+});
+
+if (response.statusCode == 200) {
+final data = jsonDecode(response.body);
+final token = data['token'];
+final user = data['user'];
+
+final prefs = await SharedPreferences.getInstance();
+await prefs.setString('jwt_token', token);
+await prefs.setString('auth_token', token);
+await prefs.setString('role', 'customer');
+await prefs.setInt('user_id', user['id']);
+await prefs.setString('username', user['name']);
+await prefs.setString('email', user['email']);
+await prefs.setBool('is_logged_in', true);
+
+_showSuccessDialog(
+'Account Created!',
+'Your account has been created successfully.',
+onOk: () {
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(builder: (context) => LoginPage()),
+);
+},
+);
+} else if (response.statusCode == 409) {
+// Handle email uniqueness conflict
+final data = jsonDecode(response.body);
+final existingRole = data['existingRole'];
+final requestedRole = data['requestedRole'];
+
+showDialog(
+context: context,
+builder: (BuildContext context) {
+return AlertDialog(
+title: Row(
+children: [
+Icon(Icons.warning, color: Colors.orange),
+SizedBox(width: 8),
+Text('Email Already Registered'),
+],
+),
+content: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+Text(
+'This email is already registered as a $existingRole.',
+style: TextStyle(fontSize: 16),
+),
+SizedBox(height: 12),
+Text(
+'You cannot sign up as a $requestedRole with this email. Please use a different email or sign in with your existing account.',
+style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+),
+],
+),
+actions: [
+TextButton(
+onPressed: () => Navigator.pop(context),
+child: Text('OK'),
+),
+TextButton(
+onPressed: () {
+Navigator.pop(context);
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(builder: (context) => LoginPage()),
+);
+},
+child: Text('Go to Login'),
+),
+],
+);
+},
+);
+} else {
+SnackBarUtils.showError(context, 'Google Sign-In failed. Please try again.');
+}
+} on PlatformException catch (e) {
+setState(() {
+_isLoading = false;
+});
+print('Google Sign-In PlatformException: ${e.code}');
+print('Error message: ${e.message}');
+if (e.code == 'sign_in_failed' || e.code == 'network_error') {
+SnackBarUtils.showError(context, 'Google Sign-In not available. Please use regular sign-up.');
+} else {
+SnackBarUtils.showError(context, 'Error: ${e.message}');
+}
+} catch (e) {
+setState(() {
+_isLoading = false;
+});
+print('Google Sign-In Error: $e');
+SnackBarUtils.showError(context, 'Error: $e');
 }
 }
 
@@ -1403,6 +1590,55 @@ return null;
 ),
 const SizedBox(height: 24),
 _buildSignUpButton(),
+const SizedBox(height: 16),
+Row(
+children: [
+Expanded(child: Divider(color: Colors.grey[400])),
+Padding(
+padding: EdgeInsets.symmetric(horizontal: 16),
+child: Text('OR', style: TextStyle(color: Colors.grey[600])),
+),
+Expanded(child: Divider(color: Colors.grey[400])),
+],
+),
+const SizedBox(height: 16),
+Container(
+width: double.infinity,
+height: 56,
+child: ElevatedButton(
+onPressed: _isLoading ? null : _handleGoogleSignUp,
+style: ElevatedButton.styleFrom(
+backgroundColor: Colors.white,
+foregroundColor: Colors.black87,
+elevation: 2,
+shadowColor: Colors.black26,
+shape: RoundedRectangleBorder(
+borderRadius: BorderRadius.circular(28),
+side: BorderSide(color: Colors.grey[300]!, width: 1),
+),
+padding: EdgeInsets.symmetric(horizontal: 16),
+),
+child: Row(
+mainAxisAlignment: MainAxisAlignment.center,
+children: [
+Image.asset(
+'assets/icons8-google-logo-50.png',
+width: 20,
+height: 20,
+),
+SizedBox(width: 12),
+Text(
+'Continue with Google',
+style: TextStyle(
+fontSize: 15,
+fontWeight: FontWeight.w500,
+color: Colors.black87,
+),
+),
+],
+),
+),
+),
 const SizedBox(height: 16),
 Wrap(
 alignment: WrapAlignment.center,
@@ -1899,7 +2135,7 @@ onPressed: () {
 Navigator.of(context).pop();
 if (onOk != null) onOk();
 },
-child: Text("OK", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+child: Text('OK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
 ),
 ],
 ),

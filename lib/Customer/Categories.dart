@@ -1312,7 +1312,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
                       topLeft: Radius.circular(16),
                       topRight: Radius.circular(16),
                     ),
-                    child: displayImage != null && displayImage.toString().isNotEmpty
+                    child: displayImage.toString().isNotEmpty
                         ? Image.network(
                       displayImage,
                       fit: BoxFit.cover,
@@ -1600,7 +1600,7 @@ class _CategoryPageState extends State<CategoryPage> with TickerProviderStateMix
               child: Stack(
                 children: [
                   Center(
-                    child: displayImage != null && displayImage.toString().isNotEmpty
+                    child: displayImage.toString().isNotEmpty
                         ? Image.network(
                       displayImage,
                       fit: BoxFit.cover,

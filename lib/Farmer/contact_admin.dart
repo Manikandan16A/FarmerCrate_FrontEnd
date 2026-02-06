@@ -41,9 +41,9 @@ class UserService {
     // return UserModel.fromJson(userData);
 
     return UserModel(
-      name: "Seenivasagam V",
-      email: "farmercrate@gmail.com",
-      phone: "+91 95510 84651",
+      name: 'Seenivasagam V',
+      email: 'farmercrate@gmail.com',
+      phone: '+91 95510 84651',
       profileImageUrl: null, // Add actual profile image URL if available
     );
   }
@@ -127,7 +127,7 @@ class _ContactAdminPageState extends State<ContactAdminPage> {
 
     // For now, just show a demo
     setState(() {
-      _selectedFileName = "document.pdf";
+      _selectedFileName = 'document.pdf';
     });
 
     if (mounted) {

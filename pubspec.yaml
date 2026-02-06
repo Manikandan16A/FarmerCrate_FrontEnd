@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ">=3.0.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -61,6 +61,9 @@ dependencies:
 
   # URL launcher for opening links
   url_launcher: ^6.3.1
+
+  # Google Sign-In
+  google_sign_in: ^6.2.1
 
   # Share functionality
   share_plus: ^10.1.2
@@ -111,6 +114,7 @@ flutter:
     - assets/getstart.png
     - assets/get.png
     - assets/FarmerCrate_Logo.jpg
+    - assets/icons8-google-logo-50.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

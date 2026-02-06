@@ -764,8 +764,8 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
     List<String?> imagePaths = [null, null, null];
     if (product?.images != null) {
       final images = product!.images!.contains('|||')
-          ? product!.images!.split('|||').map((e) => e.trim()).toList()
-          : [product!.images!];
+          ? product.images!.split('|||').map((e) => e.trim()).toList()
+          : [product.images!];
       for (int i = 0; i < images.length && i < 3; i++) {
         imagePaths[i] = images[i];
       }
@@ -1209,7 +1209,7 @@ class _FarmerProductsPageState extends State<FarmerProductsPage> {
 
                                   Navigator.of(context).pop();
 
-                                  if (isEdit && product != null) {
+                                  if (isEdit) {
                                     final validImages = imagePaths.where((img) => img != null).toList();
                                     final updatedProduct = Product(
                                       id: product.id,

@@ -28,15 +28,15 @@ class _DeliveryTrackingPageState extends State<DeliveryTrackingPage>
 
   // Mock delivery agent data
   final DeliveryAgent agent = DeliveryAgent(
-    name: "Ravi Kumar",
-    phone: "+91 98765 43210",
-    vehicleNumber: "TN45AB1234",
-    vehicleType: "Bike",
-    currentLocation: "Near Market Road",
-    estimatedPickup: "10 mins",
-    estimatedDelivery: "30 mins",
-    status: "Assigned",
-    profileImage: "assets/images/agent_profile.jpg", // Add your asset
+    name: 'Ravi Kumar',
+    phone: '+91 98765 43210',
+    vehicleNumber: 'TN45AB1234',
+    vehicleType: 'Bike',
+    currentLocation: 'Near Market Road',
+    estimatedPickup: '10 mins',
+    estimatedDelivery: '30 mins',
+    status: 'Assigned',
+    profileImage: 'assets/images/agent_profile.jpg', // Add your asset
     rating: 4.8,
   );
 

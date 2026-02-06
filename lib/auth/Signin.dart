@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:typed_data';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../Admin/admin_homepage.dart';
 import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
@@ -13,6 +15,7 @@ import 'Forget.dart';
 import 'Signup.dart';
 import 'customerFTL.dart';
 import 'Repass.dart';
+import 'google_profile_completion.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -25,6 +28,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: '850075546970-5v0jdspjmtm4ciu5sqrukvlhmohhqon9.apps.googleusercontent.com',
+  );
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -419,6 +426,213 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    // Show role selection dialog
+    final String? selectedRole = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Select Your Role'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.shopping_cart, color: Color(0xFF4CAF50)),
+              title: Text('Customer'),
+              onTap: () => Navigator.pop(context, 'customer'),
+            ),
+            ListTile(
+              leading: Icon(Icons.agriculture, color: Color(0xFF4CAF50)),
+              title: Text('Farmer'),
+              onTap: () => Navigator.pop(context, 'farmer'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (selectedRole == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('Google user signed in: ${googleUser.email}');
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      print('Access token: ${googleAuth.accessToken?.substring(0, 20)}...');
+      print('ID token: ${googleAuth.idToken?.substring(0, 20) ?? "NULL"}...');
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        print('ERROR: ID token is null');
+        print('Server auth code: ${googleAuth.serverAuthCode}');
+        throw Exception('Failed to get ID token');
+      }
+
+      print('Sending request to backend...');
+      final response = await http.post(
+        Uri.parse('https://farmercrate.onrender.com/api/auth/google-signin'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'idToken': idToken,
+          'role': selectedRole,
+        }),
+      );
+
+      print('Backend response status: ${response.statusCode}');
+      print('Backend response body: ${response.body}');
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        // Check if token exists (existing user) or if it's a new user
+        if (data['token'] != null) {
+          final token = data['token'];
+          final user = data['user'];
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jwt_token', token);
+          await prefs.setString('auth_token', token);
+          await prefs.setString('role', selectedRole);
+          await prefs.setInt('user_id', user['id']);
+          await prefs.setString('username', user['name']);
+          await prefs.setString('email', user['email']);
+          await prefs.setBool('is_logged_in', true);
+
+          if (selectedRole == 'customer') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => FarmersHomePage(token: token)),
+            );
+          }
+        } else {
+          // New user created but needs profile completion
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GoogleProfileCompletionPage(
+                email: googleUser.email,
+                name: googleUser.displayName ?? 'User',
+                googleId: googleUser.id,
+                role: selectedRole,
+              ),
+            ),
+          );
+        }
+      } else if (response.statusCode == 404) {
+        // New user - show profile completion page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => GoogleProfileCompletionPage(
+              email: googleUser.email,
+              name: googleUser.displayName ?? 'User',
+              googleId: googleUser.id,
+              role: selectedRole,
+            ),
+          ),
+        );
+      } else if (response.statusCode == 403) {
+        // Account pending verification
+        final data = jsonDecode(response.body);
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.pending, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Verification Pending'),
+              ],
+            ),
+            content: Text(data['message'] ?? 'Your account is pending admin verification. Please wait for approval.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else if (response.statusCode == 409) {
+        // Handle email uniqueness conflict
+        final data = jsonDecode(response.body);
+        final existingRole = data['existingRole'];
+        final requestedRole = data['requestedRole'];
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Email Conflict'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'This email is registered as a $existingRole.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'You cannot sign in as a $requestedRole with this email. Please select the correct role or use a different email.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        SnackBarUtils.show(context, 'Google Sign-In failed. Please try again.');
+      }
+    } on PlatformException catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Google Sign-In PlatformException: ${e.code}');
+      print('Error message: ${e.message}');
+      if (e.code == 'sign_in_failed' || e.code == 'network_error') {
+        SnackBarUtils.show(context, 'Google Sign-In not available. Please use regular login.');
+      } else {
+        SnackBarUtils.show(context, 'Error: ${e.message}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Google Sign-In Error: $e');
+      SnackBarUtils.show(context, 'Error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -604,6 +818,55 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                   ),
                                   SizedBox(height: 24),
                                   _buildLoginButton(),
+                                  SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(child: Divider(color: Colors.grey[400])),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 16),
+                                        child: Text('OR', style: TextStyle(color: Colors.grey[600])),
+                                      ),
+                                      Expanded(child: Divider(color: Colors.grey[400])),
+                                    ],
+                                  ),
+                                  SizedBox(height: 20),
+                                  Container(
+                                    width: double.infinity,
+                                    height: 56,
+                                    child: ElevatedButton(
+                                      onPressed: _isLoading ? null : _handleGoogleSignIn,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: Colors.black87,
+                                        elevation: 2,
+                                        shadowColor: Colors.black26,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(28),
+                                          side: BorderSide(color: Colors.grey[300]!, width: 1),
+                                        ),
+                                        padding: EdgeInsets.symmetric(horizontal: 16),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Image.asset(
+                                            'assets/icons8-google-logo-50.png',
+                                            width: 20,
+                                            height: 20,
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text(
+                                            'Continue with Google',
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                                   SizedBox(height: 20),
                                   Center(
                                     child: TextButton(

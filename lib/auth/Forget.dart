@@ -502,7 +502,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> with TickerProv
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          "Remember your password? ",
+          'Remember your password? ',
           style: TextStyle(
             color: Colors.white.withOpacity(0.9),
             fontSize: 16,
