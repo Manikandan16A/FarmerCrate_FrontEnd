@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Customer/customerhomepage.dart';
 import '../Farmer/homepage.dart';
+import '../Transpoter/transporter_dashboard.dart';
 import '../utils/snackbar_utils.dart';
 
 class GoogleProfileCompletionPage extends StatefulWidget {
@@ -47,28 +48,40 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
   }
 
   Future<void> _completeProfile() async {
+    print('[PROFILE] Starting profile completion...');
+    print('[PROFILE] Email: ${widget.email}');
+    print('[PROFILE] Name: ${widget.name}');
+    print('[PROFILE] Role: ${widget.role}');
+    
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        final response = await http.post(
+        final requestBody = {
+          'email': widget.email,
+          'name': widget.name,
+          'googleId': widget.googleId,
+          'role': widget.role,
+          'mobile_number': _phoneController.text.trim(),
+          'address': _addressController.text.trim(),
+          'zone': _zoneController.text.trim(),
+          'state': _stateController.text.trim(),
+          'district': _districtController.text.trim(),
+          'age': int.parse(_ageController.text.trim()),
+        };
+        
+        print('[PROFILE] Request body: $requestBody');
+        
+        final response = await http.put(
           Uri.parse('https://farmercrate.onrender.com/api/auth/google-complete-profile'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'email': widget.email,
-            'name': widget.name,
-            'googleId': widget.googleId,
-            'role': widget.role,
-            'mobile_number': _phoneController.text.trim(),
-            'address': _addressController.text.trim(),
-            'zone': _zoneController.text.trim(),
-            'state': _stateController.text.trim(),
-            'district': _districtController.text.trim(),
-            'age': int.parse(_ageController.text.trim()),
-          }),
+          body: jsonEncode(requestBody),
         );
+
+        print('[PROFILE] Response status: ${response.statusCode}');
+        print('[PROFILE] Response body: ${response.body}');
 
         setState(() {
           _isLoading = false;
@@ -78,6 +91,9 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
           final data = jsonDecode(response.body);
           final token = data['token'];
           final user = data['user'];
+          
+          print('[PROFILE] Token received: ${token?.substring(0, 20)}...');
+          print('[PROFILE] User data: $user');
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
@@ -87,11 +103,18 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
           await prefs.setString('username', widget.name);
           await prefs.setString('email', widget.email);
           await prefs.setBool('is_logged_in', true);
+          
+          print('[PROFILE] Navigating to ${widget.role} home page...');
 
           if (widget.role == 'customer') {
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
+            );
+          } else if (widget.role == 'transporter') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => TransporterDashboard(token: token)),
             );
           } else {
             Navigator.pushReplacement(
@@ -99,20 +122,30 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
               MaterialPageRoute(builder: (context) => FarmersHomePage(token: token)),
             );
           }
+        } else if (response.statusCode == 400) {
+          final data = jsonDecode(response.body);
+          print('[PROFILE ERROR] User already exists: ${data['message']}');
+          SnackBarUtils.showError(context, 'User already exists. Please login instead.');
         } else {
+          print('[PROFILE ERROR] Failed with status ${response.statusCode}');
           SnackBarUtils.showError(context, 'Failed to complete profile. Please try again.');
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('[PROFILE ERROR] Exception: $e');
+        print('[PROFILE ERROR] Stack trace: $stackTrace');
         setState(() {
           _isLoading = false;
         });
         SnackBarUtils.showError(context, 'Error: $e');
       }
+    } else {
+      print('[PROFILE] Form validation failed');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    print('[PROFILE] Building page for ${widget.name} (${widget.role})');
     return Scaffold(
       appBar: AppBar(
         title: Text('Complete Your Profile'),

@@ -427,7 +427,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleGoogleSignIn() async {
-    // Show role selection dialog
     final String? selectedRole = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -445,6 +444,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               title: Text('Farmer'),
               onTap: () => Navigator.pop(context, 'farmer'),
             ),
+            ListTile(
+              leading: Icon(Icons.local_shipping, color: Color(0xFF4CAF50)),
+              title: Text('Transporter'),
+              onTap: () => Navigator.pop(context, 'transporter'),
+            ),
           ],
         ),
       ),
@@ -457,6 +461,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     });
 
     try {
+      await _googleSignIn.signOut();
+      
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
@@ -498,7 +504,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Check if token exists (existing user) or if it's a new user
         if (data['token'] != null) {
           final token = data['token'];
           final user = data['user'];
@@ -517,6 +522,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               context,
               MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
             );
+          } else if (selectedRole == 'transporter') {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => TransporterDashboard(token: token)),
+            );
           } else {
             Navigator.pushReplacement(
               context,
@@ -524,7 +534,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             );
           }
         } else {
-          // New user created but needs profile completion
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -537,17 +546,68 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             ),
           );
         }
-      } else if (response.statusCode == 404) {
-        // New user - show profile completion page
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => GoogleProfileCompletionPage(
-              email: googleUser.email,
-              name: googleUser.displayName ?? 'User',
-              googleId: googleUser.id,
-              role: selectedRole,
+      } else if (response.statusCode == 400) {
+        final data = jsonDecode(response.body);
+        final existingRole = data['existingRole'];
+        
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 28),
+                SizedBox(width: 8),
+                Expanded(child: Text('Email Already Registered')),
+              ],
             ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'This email is already registered as a $existingRole.',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'You cannot use the same email for multiple roles.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                ),
+                SizedBox(height: 12),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Please:',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '• Select "$existingRole" role to login',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                      Text(
+                        '• Or use a different email',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK', style: TextStyle(color: Color(0xFF4CAF50), fontSize: 16)),
+              ),
+            ],
           ),
         );
       } else if (response.statusCode == 403) {

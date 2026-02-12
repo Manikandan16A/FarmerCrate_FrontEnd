@@ -100,11 +100,15 @@ class _CustomerHomePageState extends State<CustomerHomePage>
   }
 
   Future<void> _fetchProducts() async {
+    print('[PRODUCTS] Starting product fetch...');
     setState(() {
       _isLoading = true;
     });
 
     try {
+      print('[PRODUCTS] Making API request to: https://farmercrate.onrender.com/api/products');
+      print('[PRODUCTS] Token present: ${widget.token != null && widget.token!.isNotEmpty}');
+      
       final response = await http.get(
         Uri.parse('https://farmercrate.onrender.com/api/products'),
         headers: {
@@ -113,22 +117,31 @@ class _CustomerHomePageState extends State<CustomerHomePage>
         },
       );
 
+      print('[PRODUCTS] Response status: ${response.statusCode}');
+      print('[PRODUCTS] Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         final List<dynamic> productsData = responseData['data'];
+        
+        print('[PRODUCTS] Total products received: ${productsData.length}');
 
         setState(() {
           // Convert JSON data to Product objects using fromJson factory
           products = productsData.map((data) => Product.fromJson(data)).toList();
+          print('[PRODUCTS] Products parsed: ${products.length}');
 
           // Sort products by views and take top 3 for featured section
           final sortedProducts = List<Product>.from(products);
           sortedProducts.sort((a, b) => b.views.compareTo(a.views));
           topBuys = sortedProducts.take(3).toList();
+          print('[PRODUCTS] Top buys: ${topBuys.length}');
 
           _isLoading = false;
         });
+        print('[PRODUCTS] Product fetch completed successfully');
       } else {
+        print('[PRODUCTS ERROR] Failed with status ${response.statusCode}');
         setState(() {
           products = [];
           topBuys = [];
@@ -142,7 +155,9 @@ class _CustomerHomePageState extends State<CustomerHomePage>
           onRetry: _fetchProducts,
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[PRODUCTS ERROR] Exception: $e');
+      print('[PRODUCTS ERROR] Stack trace: $stackTrace');
       setState(() {
         products = [];
         topBuys = [];
@@ -2100,17 +2115,17 @@ class Farmer {
 
   factory Farmer.fromJson(Map<String, dynamic> json) {
     return Farmer(
-      id: json['farmer_id'],
-      globalId: json['global_farmer_id'],
-      name: json['name'],
-      mobileNumber: json['mobile_number'],
-      email: json['email'],
-      address: json['address'],
-      zone: json['zone'],
-      state: json['state'],
-      district: json['district'],
+      id: json['farmer_id'] ?? 0,
+      globalId: json['global_farmer_id'] ?? json['unique_id'] ?? '',
+      name: json['name'] ?? '',
+      mobileNumber: json['mobile_number'] ?? '',
+      email: json['email'] ?? '',
+      address: json['address'] ?? '',
+      zone: json['zone'] ?? '',
+      state: json['state'] ?? '',
+      district: json['district'] ?? '',
       imageUrl: json['image_url'],
-      isVerifiedByGov: json['is_verified_by_gov'],
+      isVerifiedByGov: json['is_verified_by_gov'] ?? false,
     );
   }
 }

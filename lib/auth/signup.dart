@@ -7,9 +7,13 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../Customer/customerhomepage.dart';
+import '../Farmer/homepage.dart';
+import '../Transpoter/transporter_dashboard.dart';
 import '../utils/cloudinary_upload.dart';
 import '../utils/snackbar_utils.dart';
 import 'Signin.dart';
+import 'google_profile_completion.dart';
 
 
 class SignUpPage extends StatefulWidget {
@@ -975,11 +979,42 @@ SnackBarUtils.showError(context, errorMessage);
 }
 
 Future<void> _handleGoogleSignUp() async {
+final String? selectedRole = await showDialog<String>(
+context: context,
+builder: (context) => AlertDialog(
+title: Text('Select Your Role'),
+content: Column(
+mainAxisSize: MainAxisSize.min,
+children: [
+ListTile(
+leading: Icon(Icons.shopping_cart, color: Color(0xFF4CAF50)),
+title: Text('Customer'),
+onTap: () => Navigator.pop(context, 'customer'),
+),
+ListTile(
+leading: Icon(Icons.agriculture, color: Color(0xFF4CAF50)),
+title: Text('Farmer'),
+onTap: () => Navigator.pop(context, 'farmer'),
+),
+ListTile(
+leading: Icon(Icons.local_shipping, color: Color(0xFF4CAF50)),
+title: Text('Transporter'),
+onTap: () => Navigator.pop(context, 'transporter'),
+),
+],
+),
+),
+);
+
+if (selectedRole == null) return;
+
 setState(() {
 _isLoading = true;
 });
 
 try {
+await _googleSignIn.signOut();
+
 final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
 if (googleUser == null) {
@@ -1001,7 +1036,7 @@ Uri.parse('https://farmercrate.onrender.com/api/auth/google-signin'),
 headers: {'Content-Type': 'application/json'},
 body: jsonEncode({
 'idToken': idToken,
-'role': 'customer',
+'role': selectedRole,
 }),
 );
 
@@ -1011,30 +1046,135 @@ _isLoading = false;
 
 if (response.statusCode == 200) {
 final data = jsonDecode(response.body);
+
+if (data['token'] != null) {
 final token = data['token'];
 final user = data['user'];
 
 final prefs = await SharedPreferences.getInstance();
 await prefs.setString('jwt_token', token);
 await prefs.setString('auth_token', token);
-await prefs.setString('role', 'customer');
+await prefs.setString('role', selectedRole);
 await prefs.setInt('user_id', user['id']);
 await prefs.setString('username', user['name']);
 await prefs.setString('email', user['email']);
 await prefs.setBool('is_logged_in', true);
 
-_showSuccessDialog(
-'Account Created!',
-'Your account has been created successfully.',
-onOk: () {
+if (selectedRole == 'customer') {
 Navigator.pushReplacement(
 context,
-MaterialPageRoute(builder: (context) => LoginPage()),
+MaterialPageRoute(builder: (context) => CustomerHomePage(token: token)),
 );
-},
+} else if (selectedRole == 'transporter') {
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(builder: (context) => TransporterDashboard(token: token)),
+);
+} else {
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(builder: (context) => FarmersHomePage(token: token)),
+);
+}
+} else {
+Navigator.pushReplacement(
+context,
+MaterialPageRoute(
+builder: (context) => GoogleProfileCompletionPage(
+email: googleUser.email,
+name: googleUser.displayName ?? 'User',
+googleId: googleUser.id,
+role: selectedRole,
+),
+),
+);
+}
+} else if (response.statusCode == 400) {
+final data = jsonDecode(response.body);
+final existingRole = data['existingRole'];
+
+showDialog(
+context: context,
+builder: (context) => AlertDialog(
+title: Row(
+children: [
+Icon(Icons.error_outline, color: Colors.red, size: 28),
+SizedBox(width: 8),
+Expanded(child: Text('Email Already Registered')),
+],
+),
+content: Column(
+mainAxisSize: MainAxisSize.min,
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Text(
+'This email is already registered as a $existingRole.',
+style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+),
+SizedBox(height: 12),
+Text(
+'You cannot use the same email for multiple roles.',
+style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+),
+SizedBox(height: 12),
+Container(
+padding: EdgeInsets.all(12),
+decoration: BoxDecoration(
+color: Colors.orange[50],
+borderRadius: BorderRadius.circular(8),
+border: Border.all(color: Colors.orange[200]!),
+),
+child: Column(
+crossAxisAlignment: CrossAxisAlignment.start,
+children: [
+Text(
+'Please:',
+style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+),
+SizedBox(height: 4),
+Text(
+'• Select "$existingRole" role to login',
+style: TextStyle(fontSize: 13),
+),
+Text(
+'• Or use a different email',
+style: TextStyle(fontSize: 13),
+),
+],
+),
+),
+],
+),
+actions: [
+TextButton(
+onPressed: () => Navigator.pop(context),
+child: Text('OK', style: TextStyle(color: Color(0xFF4CAF50), fontSize: 16)),
+),
+],
+),
+);
+} else if (response.statusCode == 403) {
+final data = jsonDecode(response.body);
+showDialog(
+context: context,
+builder: (context) => AlertDialog(
+title: Row(
+children: [
+Icon(Icons.pending, color: Colors.orange),
+SizedBox(width: 8),
+Text('Verification Pending'),
+],
+),
+content: Text(data['message'] ?? 'Your account is pending admin verification. Please wait for approval.'),
+actions: [
+TextButton(
+onPressed: () => Navigator.pop(context),
+child: Text('OK'),
+),
+],
+),
 );
 } else if (response.statusCode == 409) {
-// Handle email uniqueness conflict
 final data = jsonDecode(response.body);
 final existingRole = data['existingRole'];
 final requestedRole = data['requestedRole'];
