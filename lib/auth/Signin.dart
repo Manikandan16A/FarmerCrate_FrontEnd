@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '850075546970-ajmrvfu7lkmvhbogrdk94jt43qv92dnd.apps.googleusercontent.com',
+    serverClientId: '378078726342-minsgq70u39derfc6vdm4lt1kv7d5gok.apps.googleusercontent.com',
   );
 
   late AnimationController _animationController;
@@ -427,6 +427,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Future<void> _handleGoogleSignIn() async {
+    print('\n========== GOOGLE SIGN-IN ATTEMPT ==========');
+    print('[GOOGLE] Button pressed at: ${DateTime.now()}');
+    
     final String? selectedRole = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -454,37 +457,66 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       ),
     );
 
-    if (selectedRole == null) return;
+    if (selectedRole == null) {
+      print('[GOOGLE] User cancelled role selection');
+      print('==========================================\n');
+      return;
+    }
+
+    print('[GOOGLE] Selected role: $selectedRole');
 
     setState(() {
       _isLoading = true;
     });
 
     try {
+      print('[GOOGLE] Signing out previous session...');
       await _googleSignIn.signOut();
+      print('[GOOGLE] Previous session cleared');
       
+      print('[GOOGLE] Initiating Google Sign-In...');
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       
       if (googleUser == null) {
+        print('[GOOGLE] User cancelled Google Sign-In');
         setState(() {
           _isLoading = false;
         });
+        print('==========================================\n');
         return;
       }
 
-      print('Google user signed in: ${googleUser.email}');
+      print('[GOOGLE] ✓ Google user signed in successfully');
+      print('[GOOGLE] Email: ${googleUser.email}');
+      print('[GOOGLE] Display Name: ${googleUser.displayName}');
+      print('[GOOGLE] Google ID: ${googleUser.id}');
+      
+      print('[GOOGLE] Getting authentication tokens...');
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-      print('Access token: ${googleAuth.accessToken?.substring(0, 20)}...');
-      print('ID token: ${googleAuth.idToken?.substring(0, 20) ?? "NULL"}...');
+      print('[GOOGLE] Access token: ${googleAuth.accessToken?.substring(0, 20)}...');
+      print('[GOOGLE] ID token: ${googleAuth.idToken?.substring(0, 20) ?? "NULL"}...');
+      print('[GOOGLE] Server auth code: ${googleAuth.serverAuthCode ?? "NULL"}');
+      
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null) {
-        print('ERROR: ID token is null');
-        print('Server auth code: ${googleAuth.serverAuthCode}');
+        print('[GOOGLE ERROR] ❌ ID token is NULL');
+        print('[GOOGLE ERROR] Access token present: ${googleAuth.accessToken != null}');
+        print('[GOOGLE ERROR] Server auth code: ${googleAuth.serverAuthCode}');
+        print('[GOOGLE ERROR] This usually means serverClientId is not configured correctly');
+        setState(() {
+          _isLoading = false;
+        });
+        SnackBarUtils.show(context, 'Failed to get ID token. Please check configuration.');
+        print('==========================================\n');
         throw Exception('Failed to get ID token');
       }
 
-      print('Sending request to backend...');
+      print('[GOOGLE] ✓ ID token retrieved successfully');
+      print('[GOOGLE] Sending request to backend...');
+      print('[GOOGLE] Backend URL: https://farmercrate.onrender.com/api/auth/google-signin');
+      print('[GOOGLE] Request payload: {idToken: ${idToken.substring(0, 20)}..., role: $selectedRole}');
+      
       final response = await http.post(
         Uri.parse('https://farmercrate.onrender.com/api/auth/google-signin'),
         headers: {'Content-Type': 'application/json'},
@@ -494,19 +526,25 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         }),
       );
 
-      print('Backend response status: ${response.statusCode}');
-      print('Backend response body: ${response.body}');
+      print('[GOOGLE] Backend response status: ${response.statusCode}');
+      print('[GOOGLE] Backend response body: ${response.body}');
 
       setState(() {
         _isLoading = false;
       });
 
       if (response.statusCode == 200) {
+        print('[GOOGLE] ✓ Backend authentication successful');
         final data = jsonDecode(response.body);
+        print('[GOOGLE] Response data keys: ${data.keys.toList()}');
         
         if (data['token'] != null) {
+          print('[GOOGLE] Token received - existing user login');
           final token = data['token'];
           final user = data['user'];
+          print('[GOOGLE] User ID: ${user['id']}');
+          print('[GOOGLE] User Name: ${user['name']}');
+          print('[GOOGLE] User Email: ${user['email']}');
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
@@ -517,6 +555,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           await prefs.setString('email', user['email']);
           await prefs.setBool('is_logged_in', true);
 
+          print('[GOOGLE] Navigating to ${selectedRole} homepage...');
           if (selectedRole == 'customer') {
             Navigator.pushReplacement(
               context,
@@ -533,7 +572,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               MaterialPageRoute(builder: (context) => FarmersHomePage(token: token)),
             );
           }
+          print('[GOOGLE] ✓ Navigation successful');
+          print('==========================================\n');
         } else {
+          print('[GOOGLE] No token received - new user, navigating to profile completion');
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -545,10 +587,15 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
               ),
             ),
           );
+          print('[GOOGLE] ✓ Navigation to profile completion successful');
+          print('==========================================\n');
         }
       } else if (response.statusCode == 400) {
+        print('[GOOGLE ERROR] ❌ Status 400 - Email already registered with different role');
         final data = jsonDecode(response.body);
         final existingRole = data['existingRole'];
+        print('[GOOGLE ERROR] Existing role: $existingRole');
+        print('[GOOGLE ERROR] Requested role: $selectedRole');
         
         showDialog(
           context: context,
@@ -611,8 +658,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         );
       } else if (response.statusCode == 403) {
-        // Account pending verification
+        print('[GOOGLE ERROR] ❌ Status 403 - Account pending verification');
         final data = jsonDecode(response.body);
+        print('[GOOGLE ERROR] Message: ${data['message']}');
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -633,10 +681,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         );
       } else if (response.statusCode == 409) {
-        // Handle email uniqueness conflict
+        print('[GOOGLE ERROR] ❌ Status 409 - Email conflict');
         final data = jsonDecode(response.body);
         final existingRole = data['existingRole'];
         final requestedRole = data['requestedRole'];
+        print('[GOOGLE ERROR] Existing role: $existingRole');
+        print('[GOOGLE ERROR] Requested role: $requestedRole');
 
         showDialog(
           context: context,
@@ -671,25 +721,37 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           ),
         );
       } else {
+        print('[GOOGLE ERROR] ❌ Unexpected status code: ${response.statusCode}');
+        print('[GOOGLE ERROR] Response body: ${response.body}');
         SnackBarUtils.show(context, 'Google Sign-In failed. Please try again.');
+        print('==========================================\n');
       }
     } on PlatformException catch (e) {
       setState(() {
         _isLoading = false;
       });
-      print('Google Sign-In PlatformException: ${e.code}');
-      print('Error message: ${e.message}');
+      print('[GOOGLE ERROR] ❌ PlatformException caught');
+      print('[GOOGLE ERROR] Error code: ${e.code}');
+      print('[GOOGLE ERROR] Error message: ${e.message}');
+      print('[GOOGLE ERROR] Error details: ${e.details}');
+      print('[GOOGLE ERROR] Stack trace: ${e.stacktrace}');
       if (e.code == 'sign_in_failed' || e.code == 'network_error') {
+        print('[GOOGLE ERROR] Sign-in failed or network error');
         SnackBarUtils.show(context, 'Google Sign-In not available. Please use regular login.');
       } else {
         SnackBarUtils.show(context, 'Error: ${e.message}');
       }
-    } catch (e) {
+      print('==========================================\n');
+    } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
       });
-      print('Google Sign-In Error: $e');
+      print('[GOOGLE ERROR] ❌ General Exception caught');
+      print('[GOOGLE ERROR] Error: $e');
+      print('[GOOGLE ERROR] Error type: ${e.runtimeType}');
+      print('[GOOGLE ERROR] Stack trace: $stackTrace');
       SnackBarUtils.show(context, 'Error: $e');
+      print('==========================================\n');
     }
   }
 

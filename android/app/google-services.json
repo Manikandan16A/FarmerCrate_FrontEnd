@@ -1,33 +1,41 @@
 {
   "project_info": {
-    "project_number": "850075546970",
-    "project_id": "farmercrate",
-    "storage_bucket": "farmercrate.appspot.com"
+    "project_number": "378078726342",
+    "project_id": "farmercrate-c62de",
+    "storage_bucket": "farmercrate-c62de.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:850075546970:android:YOUR_APP_ID",
+        "mobilesdk_app_id": "1:378078726342:android:a5098b05a46ade6cb7efc7",
         "android_client_info": {
           "package_name": "com.example.farmer_crate"
         }
       },
       "oauth_client": [
         {
-          "client_id": "850075546970-ht5596bvsemid65mtofatetijkrpb526.apps.googleusercontent.com",
+          "client_id": "378078726342-4o955sqp0p85j1egddvm35oeksifs6es.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.farmer_crate",
+            "certificate_hash": "24615593ea0b94caa8d183427045a7e36c92c50d"
+          }
+        },
+        {
+          "client_id": "378078726342-minsgq70u39derfc6vdm4lt1kv7d5gok.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "YOUR_API_KEY_HERE"
+          "current_key": "AIzaSyB3HRV2xBuNXBdrGGPbYYtf2IlRvPezzsY"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "850075546970-ht5596bvsemid65mtofatetijkrpb526.apps.googleusercontent.com",
+              "client_id": "378078726342-minsgq70u39derfc6vdm4lt1kv7d5gok.apps.googleusercontent.com",
               "client_type": 3
             }
           ]
