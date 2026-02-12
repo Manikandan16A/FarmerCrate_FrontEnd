@@ -56,7 +56,7 @@ File? _selectedLicenseFile;
 final ImagePicker _picker = ImagePicker();
 final GoogleSignIn _googleSignIn = GoogleSignIn(
 scopes: ['email', 'profile'],
-serverClientId: '378078726342-minsgq70u39derfc6vdm4lt1kv7d5gok.apps.googleusercontent.com',
+serverClientId: '378078726342-4o955sqp0p85j1egddvm35oeksifs6es.apps.googleusercontent.com',
 );
 
 late AnimationController _animationController;
