@@ -30,7 +30,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _isLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '850075546970-ht5596bvsemid65mtofatetijkrpb526.apps.googleusercontent.com',
+    serverClientId: '850075546970-ajmrvfu7lkmvhbogrdk94jt43qv92dnd.apps.googleusercontent.com',
   );
 
   late AnimationController _animationController;
