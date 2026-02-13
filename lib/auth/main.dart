@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Admin/admin_homepage.dart';
 import '../Customer/customerhomepage.dart';
@@ -10,7 +11,9 @@ import '../splash_screen.dart';
 import 'Signin.dart';
 import 'signup.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
