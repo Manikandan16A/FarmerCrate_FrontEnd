@@ -37,6 +37,13 @@
             {
               "client_id": "378078726342-minsgq70u39derfc6vdm4lt1kv7d5gok.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "378078726342-7qscei11afthiupeirvuulq23kjb7f26.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.farmerCrate"
+              }
             }
           ]
         }
