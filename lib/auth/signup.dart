@@ -857,10 +857,8 @@ await prefs.setInt('customer_id', userData['id'] ?? 0);
 String title = 'Account Created!';
 String successMessage = '';
 
-if (apiRole == 'farmer') {
-successMessage = 'Your account has created successfully. Wait for verification to join our family.';
-} else if (apiRole == 'transporter') {
-successMessage = 'Your account has created successfully. Wait for verification to join our family.';
+if (apiRole == 'farmer' || apiRole == 'transporter') {
+successMessage = 'Your account has been created successfully. Please wait for admin verification to access your account.';
 } else {
 successMessage = 'Your account created successfully.';
 }
@@ -1037,6 +1035,11 @@ body: jsonEncode({
 'idToken': idToken,
 'role': selectedRole,
 }),
+).timeout(
+Duration(seconds: 30),
+onTimeout: () {
+throw Exception('Request timeout. Please check your internet connection.');
+},
 );
 
 setState(() {
@@ -1049,6 +1052,34 @@ final data = jsonDecode(response.body);
 if (data['token'] != null) {
 final token = data['token'];
 final user = data['user'];
+
+if (selectedRole == 'farmer' || selectedRole == 'transporter') {
+final verificationStatus = user['verification_status'];
+
+if (verificationStatus == 'pending') {
+showDialog(
+context: context,
+barrierDismissible: false,
+builder: (context) => AlertDialog(
+title: Row(
+children: [
+Icon(Icons.pending, color: Colors.orange),
+SizedBox(width: 8),
+Text('Verification Pending'),
+],
+),
+content: Text('Your account is under verification process. Please wait for admin approval.'),
+actions: [
+TextButton(
+onPressed: () => Navigator.pop(context),
+child: Text('OK'),
+),
+],
+),
+);
+return;
+}
+}
 
 final prefs = await SharedPreferences.getInstance();
 await prefs.setString('jwt_token', token);

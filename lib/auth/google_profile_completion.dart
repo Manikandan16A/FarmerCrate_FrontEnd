@@ -181,11 +181,77 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
 
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
-          final token = data['token'];
           final user = data['user'];
           
-          print('[PROFILE] Token received: ${token?.substring(0, 20)}...');
           print('[PROFILE] User data: $user');
+
+          if (widget.role == 'farmer' || widget.role == 'transporter') {
+            final verificationStatus = user['verification_status'];
+            print('[PROFILE] Verification status: $verificationStatus');
+
+            if (verificationStatus == null || verificationStatus == 'pending') {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: Row(
+                    children: [
+                      Icon(Icons.pending_actions, color: Colors.orange, size: 28),
+                      SizedBox(width: 12),
+                      Expanded(child: Text('Verification Pending', style: TextStyle(fontSize: 20))),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your account has been created successfully and is currently under review by our admin team.',
+                        style: TextStyle(fontSize: 15, height: 1.4),
+                      ),
+                      SizedBox(height: 12),
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange.shade700, size: 20),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'You will be notified once your account is approved.',
+                                style: TextStyle(fontSize: 13, color: Colors.orange.shade900),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: Text('Understood', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              );
+              return;
+            }
+          }
+
+          final token = data['token'];
+          print('[PROFILE] Token received: ${token?.substring(0, 20)}...');
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
@@ -352,10 +418,13 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(18),
+                  ],
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
-                    if (value.length < 9) return 'Must be at least 9 digits';
+                    if (value.length < 9 || value.length > 18) return 'Must be 9-18 digits';
                     return null;
                   },
                 ),
@@ -470,10 +539,13 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(18),
+                  ],
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Required';
-                    if (value.length < 9) return 'Must be at least 9 digits';
+                    if (value.length < 9 || value.length > 18) return 'Must be 9-18 digits';
                     return null;
                   },
                 ),
@@ -504,11 +576,32 @@ class _GoogleProfileCompletionPageState extends State<GoogleProfileCompletionPag
                   onPressed: _isLoading ? null : _completeProfile,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF4CAF50),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 2,
+                    disabledBackgroundColor: Colors.grey.shade300,
                   ),
                   child: _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
-                      : Text('Complete Profile', style: TextStyle(fontSize: 16)),
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ),
+                            SizedBox(width: 12),
+                            Text('Submitting...', style: TextStyle(fontSize: 16)),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.check_circle_outline, size: 22),
+                            SizedBox(width: 8),
+                            Text('Complete Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
                 ),
               ),
             ],

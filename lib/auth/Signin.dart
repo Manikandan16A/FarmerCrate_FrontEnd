@@ -523,6 +523,11 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           'idToken': idToken,
           'role': selectedRole,
         }),
+      ).timeout(
+        Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Request timeout. Please check your internet connection.');
+        },
       );
 
       print('[GOOGLE] Backend response status: ${response.statusCode}');
@@ -544,6 +549,37 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           print('[GOOGLE] User ID: ${user['id']}');
           print('[GOOGLE] User Name: ${user['name']}');
           print('[GOOGLE] User Email: ${user['email']}');
+
+          if (selectedRole == 'farmer' || selectedRole == 'transporter') {
+            final verificationStatus = user['verification_status'];
+            print('[GOOGLE] Verification status: $verificationStatus');
+
+            if (verificationStatus == 'pending') {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  title: Row(
+                    children: [
+                      Icon(Icons.pending, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('Verification Pending'),
+                    ],
+                  ),
+                  content: Text('Your account is under verification process. Please wait for admin approval.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('OK'),
+                    ),
+                  ],
+                ),
+              );
+              print('[GOOGLE] Account pending verification - blocking login');
+              print('==========================================\n');
+              return;
+            }
+          }
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);

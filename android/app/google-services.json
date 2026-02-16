@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "378078726342-4jk3au7sjqqot85g5nrenbo18jvet4co.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.farmer_crate",
+            "certificate_hash": "402354ef3dd3acbc88b2c515c14137aa7774b9c6"
+          }
+        },
+        {
           "client_id": "378078726342-4o955sqp0p85j1egddvm35oeksifs6es.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
